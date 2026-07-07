@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Score AI
 
-## Getting Started
+Score AI, sosyal medya ve dijital pazarlama içeriklerini yapay zeka ile analiz edip puanlayan (scoring) ve iyileştirme önerileri sunan bir B2B SaaS platformudur. Amaç, içerik üretim ve optimizasyon sürecini veriye dayalı, ölçülebilir ve hızlı hale getirmektir.
 
-First, run the development server:
+## Amaç
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Dijital içeriklerin performansını yapay zeka ile analiz etmek ve nesnel bir puan (score) üretmek.
+- İçeriklerin güçlü/zayıf yönlerini ortaya koyarak somut, uygulanabilir iyileştirme önerileri sunmak.
+- İçerik üretim ve karar süreçlerini hızlandırarak zaman ve maliyet tasarrufu sağlamak.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Hedef Kitle
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Ajanslar:** Birden fazla müşteri hesabını yöneten, ölçeklenebilir ve tekrarlanabilir içerik değerlendirme akışına ihtiyaç duyan dijital/kreatif ajanslar.
+- **KOBİ'ler:** Sınırlı pazarlama kaynağıyla profesyonel kalitede içerik üretmek ve performansını artırmak isteyen küçük ve orta ölçekli işletmeler.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+## Teknoloji Yığını
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+### Frontend
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Next.js (App Router)** - Modern routing ve sunucu bileşenleri mimarisi.
+- **React** - Bileşen tabanlı arayüz geliştirme.
+- **Tailwind CSS** - Utility-first, tutarlı ve hızlı stillendirme.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+### Backend & Veritabanı
+
+- **Firebase**
+  - **Authentication** - Üyelik, giriş/kayıt ve oturum yönetimi.
+  - **Firestore** - Gerçek zamanlı, ölçeklenebilir NoSQL veritabanı.
+  - **Storage** - Medya ve dosya depolama.
+
+
+
+### AI Motoru
+
+- **OpenAI GPT-4o** - İçerik analizi, puanlama ve öneri üretimi.
+
+
+
+## Mimari
+
+Score AI, **üyelik gerektiren (Login / Signup) bir B2B SaaS** modeli üzerine kuruludur. Platformun tüm çekirdek özellikleri kimlik doğrulaması yapılmış kullanıcılar için erişilebilirdir.
+
+İlerleyen fazlarda, kullanıcıların **sosyal medya hesaplarını OAuth ile bağlayabileceği** bir sistem kurgulanmıştır. Bu sayede içeriklerin doğrudan bağlı hesaplar üzerinden analiz edilmesi ve performans verileriyle zenginleştirilmesi hedeflenmektedir.
+
+## Tasarım & UI Dili
+
+Tüm sayfaların arayüz dili **temiz, sade ve premium** olacak şekilde tasarlanır (Apple / Linear tarzı):
+
+- Minimalist düzen, bol boşluk (whitespace) ve net görsel hiyerarşi.
+- Sade tipografi ve ölçülü renk paleti.
+- Dikkat dağıtmayan, işlevsel ve yüksek kaliteli bir kullanıcı deneyimi.
+
+
+
+## Not
+
+> Bu README, proje vizyonunu ve uzun vadeli hedefleri anlatır.  
+> **Güncel teknik durum ve yapılan işler** için bkz. `[ILERLEME.md](./ILERLEME.md)` — her anlamlı geliştirmeden sonra güncellenir.
+
