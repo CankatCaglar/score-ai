@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
@@ -57,14 +57,7 @@ export default function DashboardLayout({
       <aside className="flex w-64 shrink-0 flex-col bg-brand-dark text-white">
         <div className="px-6 py-7">
           <Link href="/dashboard">
-            <Image
-              src="/logo-disi.svg"
-              alt="Score AI"
-              width={132}
-              height={40}
-              className="h-9 w-auto"
-              priority
-            />
+            <Logo className="h-7 w-auto text-white" />
           </Link>
         </div>
 

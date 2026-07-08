@@ -1,14 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import { motion } from "framer-motion";
+import { Logo } from "@/components/Logo";
 import {
   ArrowRight,
   BarChart3,
   Brain,
   Check,
   ChevronDown,
-  Clock,
   CloudUpload,
   History,
   Lightbulb,
@@ -20,7 +19,6 @@ import {
   Sparkles,
   Target,
   TrendingUp,
-  Users,
   Wand2,
   Zap,
 } from "lucide-react";
@@ -32,7 +30,38 @@ import {
 } from "@/components/landing/DashboardScreenshot";
 
 const PAGE_CONTAINER =
-  "mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-12 xl:px-16";
+  "mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12";
+
+const ANALYSIS_PREVIEW_IMAGES = {
+  current: "/screenshots/analysis-current.png",
+  suggested: "/screenshots/analysis-suggested.png",
+} as const;
+
+const AUDIENCE_CARD_IMAGES = [
+  "/screenshots/audience-card-1.png",
+  "/screenshots/audience-card-2.png",
+  "/screenshots/audience-card-3.png",
+  "/screenshots/audience-card-4.png",
+  "/screenshots/audience-card-5.png",
+] as const;
+
+const FINAL_STATS_ICON_IMAGES = [
+  "/screenshots/final-stat-icon-1.png",
+  "/screenshots/final-stat-icon-2.png",
+  "/screenshots/final-stat-icon-3.png",
+  "/screenshots/final-stat-icon-4.png",
+] as const;
+
+const FEATURE_PILL_IMAGES = [
+  "/screenshots/feature-pill-1.png",
+  "/screenshots/feature-pill-2.png",
+  "/screenshots/feature-pill-3.png",
+  "/screenshots/feature-pill-4.png",
+  "/screenshots/feature-pill-5.png",
+  "/screenshots/feature-pill-6.png",
+] as const;
+
+const FOOTER_QUOTE_IMAGE = "/screenshots/footer-quote-image.png";
 
 const menuItems = [
   { label: "Özellikler", id: "ozellikler" },
@@ -174,11 +203,13 @@ function WaitlistForm({
   setEmail,
   isValid,
   id,
+  showSecurityNote = true,
 }: {
   email: string;
   setEmail: (v: string) => void;
   isValid: boolean;
   id: string;
+  showSecurityNote?: boolean;
 }) {
   return (
     <div className="space-y-3">
@@ -203,10 +234,12 @@ function WaitlistForm({
           <ArrowRight className="size-4" />
         </button>
       </div>
-      <p className="flex items-center gap-1.5 text-xs text-brand-dark/50">
-        <Lock className="size-3" />
-        Spam yok. Dilediğiniz zaman çıkabilirsiniz.
-      </p>
+      {showSecurityNote && (
+        <p className="flex items-center gap-1.5 text-xs text-brand-dark/50">
+          <Lock className="size-3" />
+          Spam yok. Dilediğiniz zaman çıkabilirsiniz.
+        </p>
+      )}
     </div>
   );
 }
@@ -234,25 +267,18 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="bg-bg-offwhite text-brand-dark">
+    <div className="bg-bg-offwhite text-brand-dark [&_a]:cursor-pointer [&_button:not(:disabled)]:cursor-pointer">
       {/* HEADER */}
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-brand-dark/10 bg-brand-dark/95 backdrop-blur-md">
-        <div className={`grid grid-cols-3 items-center py-2 ${PAGE_CONTAINER}`}>
+      <header className="fixed inset-x-0 top-0 z-50 h-16 border-b border-white/10 bg-brand-dark/95 backdrop-blur-md">
+        <div className={`grid h-full grid-cols-3 items-center ${PAGE_CONTAINER}`}>
           <div className="flex justify-start">
             <button
               type="button"
               onClick={scrollToTop}
-              className="inline-flex h-16 items-center overflow-hidden rounded-lg transition hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-neon/50"
+              className="cursor-pointer border-0 bg-transparent p-0"
               aria-label="Sayfanın başına dön"
             >
-              <Image
-                src="/logo-disi.svg"
-                alt="Score AI"
-                width={280}
-                height={112}
-                className="h-24 w-auto min-w-0 sm:min-w-0"
-                priority
-              />
+              <Logo className="h-7 w-auto text-white" />
             </button>
           </div>
 
@@ -287,7 +313,7 @@ export default function LandingPage() {
       </header>
 
       {/* 1. HERO */}
-      <section className="bg-bg-light pt-28 pb-20">
+      <section className="bg-bg-light pt-24 pb-20">
         <div
           className={`grid items-center gap-12 lg:grid-cols-[1fr_2fr] lg:gap-16 xl:gap-20 ${PAGE_CONTAINER}`}
         >
@@ -298,15 +324,16 @@ export default function LandingPage() {
                 Yapay Zeka Destekli İçerik Analizi
               </span>
               <h1 className="text-4xl font-bold leading-[1.12] tracking-tight text-brand-dark md:text-[2.75rem] lg:text-5xl">
-                İçeriğinizin kalitesini ölçün.{" "}
+                İçeriğinizin kalitesini ölçün.
+                <br />
                 <span className="text-brand-dark">Otomatik geliştirin.</span>
               </h1>
-              <p className="max-w-md text-base leading-relaxed text-brand-dark/65">
+              <p className="max-w-md text-base leading-relaxed text-brand-dark/80">
                 Score AI, içeriklerinizi 45 mikro kriterle analiz eder, markanızı
                 anlar ve daha iyi sonuçlar için otomatik olarak uygulanabilir
                 öneriler sunar.
               </p>
-              <p className="text-sm font-medium text-brand-dark/80">
+              <p className="text-sm font-medium text-brand-dark">
                 Waitlist&apos;e katılın, lansmana özel avantajlardan ilk siz
                 haberdar olun.
               </p>
@@ -327,7 +354,7 @@ export default function LandingPage() {
                     </div>
                   ))}
                 </div>
-                <p className="text-sm leading-snug text-brand-dark/70">
+                <p className="text-sm leading-snug text-brand-dark/80">
                   <span className="font-bold text-brand-dark">1.000+</span>{" "}
                   içerik üreticisi, pazarlama ekibi ve ajans Score AI&apos;a erken
                   erişim için sıraya girdi.
@@ -338,7 +365,6 @@ export default function LandingPage() {
 
           <FadeIn delay={0.15} className="min-w-0">
             <div className="relative">
-              <div className="absolute -inset-4 rounded-3xl bg-brand-neon/10 blur-2xl" />
               <DashboardScreenshot
                 variant="hero"
                 src={DASHBOARD_SCREENSHOTS.hero}
@@ -361,30 +387,54 @@ export default function LandingPage() {
           </FadeIn>
 
           <FadeIn delay={0.1} className="mt-12">
-            <div className="grid items-stretch gap-4 lg:grid-cols-[1fr_auto_1fr_1.2fr]">
-              <div className="rounded-2xl border border-brand-dark/10 bg-bg-light p-5 shadow-sm">
-                <p className="text-sm font-semibold text-brand-dark/50">Mevcut</p>
-                <p className="mt-2 text-4xl font-bold text-brand-dark">78<span className="text-lg text-brand-dark/30">/100</span></p>
-                <div className="mt-4 h-40 rounded-xl bg-brand-dark/5" />
-              </div>
-
-              <div className="flex flex-col items-center justify-center gap-2 px-2">
-                <div className="flex size-12 items-center justify-center rounded-full bg-brand-neon shadow-lg">
-                  <ArrowRight className="size-5 text-brand-dark" />
+            <div className="grid items-stretch gap-4 lg:gap-x-5 lg:grid-cols-[1fr_auto_1fr_1fr]">
+              <div className="relative min-h-[500px] rounded-2xl border border-brand-dark/10 bg-bg-light p-6 pt-8 shadow-sm">
+                <p className="absolute -top-6 left-1/2 -translate-x-1/2 bg-bg-offwhite px-3 text-sm font-semibold text-brand-dark/60">
+                  Mevcut
+                </p>
+                <p className="mt-2 text-center text-5xl leading-none font-bold text-brand-dark">
+                  78<span className="text-xl text-brand-dark/35">/100</span>
+                </p>
+                <div className="mt-4 h-92 overflow-hidden rounded-xl bg-brand-dark/5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={ANALYSIS_PREVIEW_IMAGES.current}
+                    alt="Mevcut içerik önizlemesi"
+                    className="h-full w-full object-cover"
+                    decoding="async"
+                  />
                 </div>
-                <p className="text-sm font-bold text-brand-neon">+8</p>
-                <p className="text-xs text-brand-dark/50">Potansiyel</p>
               </div>
 
-              <div className="rounded-2xl border-2 border-brand-neon/50 bg-brand-neon/5 p-5 shadow-sm">
-                <p className="text-sm font-semibold text-brand-neon">Önerilen</p>
-                <p className="mt-2 text-4xl font-bold text-brand-dark">86<span className="text-lg text-brand-dark/30">/100</span></p>
-                <div className="mt-4 h-40 rounded-xl bg-brand-dark/5" />
+              <div className="flex flex-col items-center justify-center gap-3 px-5">
+                <div className="flex size-12 items-center justify-center rounded-full bg-brand-neon shadow-lg">
+                  <ArrowRight className="size-6 text-brand-dark" />
+                </div>
+                <p className="text-4xl leading-none font-bold text-brand-dark">+8</p>
+                <p className="text-lg font-semibold text-brand-dark/80">Potansiyel</p>
               </div>
 
-              <div className="rounded-2xl border border-brand-dark/10 bg-bg-light p-5 shadow-sm">
-                <p className="text-sm font-bold text-brand-neon">Önerilen İyileştirmeler</p>
-                <ul className="mt-4 space-y-2.5">
+              <div className="relative min-h-[500px] rounded-2xl border border-brand-dark/15 bg-bg-light p-6 pt-8 shadow-sm">
+                <p className="absolute -top-6 left-1/2 -translate-x-1/2 bg-bg-offwhite px-3 text-sm font-semibold text-brand-dark/70">
+                  Önerilen
+                </p>
+                <p className="mt-2 text-center text-5xl leading-none font-bold text-brand-dark">
+                  86<span className="text-xl text-brand-dark/35">/100</span>
+                </p>
+                <div className="mt-4 h-92 overflow-hidden rounded-xl bg-brand-dark/5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={ANALYSIS_PREVIEW_IMAGES.suggested}
+                    alt="Önerilen içerik önizlemesi"
+                    className="h-full w-full object-cover"
+                    decoding="async"
+                  />
+                </div>
+              </div>
+
+              <div className="min-h-[500px] rounded-2xl border border-brand-dark/10 bg-bg-light p-6 shadow-sm lg:ml-3">
+                <p className="text-xl font-bold text-brand-dark">Önerilen İyileştirmeler</p>
+                <ul className="mt-5 space-y-4.5">
                   {[
                     "Başlığı daha güçlü hale getir",
                     "CTA ekleyerek etkileşimi artır",
@@ -392,19 +442,19 @@ export default function LandingPage() {
                     "Görsel hiyerarşisini iyileştir",
                     "Metin uzunluğunu optimize et",
                   ].map((item) => (
-                    <li key={item} className="flex items-center gap-2 text-sm text-brand-dark/75">
-                      <Check className="size-4 shrink-0 text-brand-neon" strokeWidth={2.5} />
+                    <li key={item} className="flex items-center gap-2.5 text-[1.05rem] leading-relaxed text-brand-dark/85">
+                      <Check className="size-4 shrink-0 text-brand-dark" strokeWidth={2.5} />
                       {item}
                     </li>
                   ))}
                 </ul>
                 <button
                   type="button"
-                  className="mt-5 w-full rounded-xl bg-linear-to-r from-violet-600 to-teal-500 py-3 text-sm font-semibold text-white"
+                  className="mt-8 w-full rounded-xl bg-linear-to-r from-violet-600 to-teal-500 py-4 text-base font-semibold text-white"
                 >
                   Canva&apos;da Güncelle
                 </button>
-                <p className="mt-2 text-center text-xs text-brand-dark/40">
+                <p className="mt-4 text-center text-sm text-brand-dark/55">
                   Tek tıkla tasarımı aç ve güncelle.
                 </p>
               </div>
@@ -412,25 +462,62 @@ export default function LandingPage() {
           </FadeIn>
 
           <FadeIn delay={0.15} className="mt-8">
-            <div className="flex flex-wrap items-center justify-between gap-6 rounded-2xl border border-brand-dark/10 bg-brand-dark px-8 py-6">
-              <p className="text-sm font-medium text-white/70">
+            <div className="rounded-2xl border border-brand-dark/10 bg-bg-light px-6 py-5">
+              <div className="inline-flex rounded-full bg-brand-neon px-4 py-1.5 text-sm font-bold text-brand-dark">
                 Score AI ile ortalama iyileşme
-              </p>
-              <div className="flex flex-wrap gap-8">
+              </div>
+              <div className="mt-5 grid items-center gap-4 md:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_2fr_auto]">
                 {[
                   ["+12", "Puan artışı"],
                   ["%28", "Daha fazla etkileşim"],
                   ["%18", "Daha yüksek dönüşüm"],
                 ].map(([val, lbl]) => (
-                  <div key={lbl} className="text-center">
-                    <p className="text-2xl font-bold text-brand-neon">{val}</p>
-                    <p className="text-xs text-white/50">{lbl}</p>
+                  <div key={lbl} className="border-brand-dark/12 py-2 lg:border-r lg:pr-5">
+                    <p className="text-[2rem] leading-none font-bold text-brand-dark">{val}</p>
+                    <p className="mt-1 text-sm text-brand-dark/70">{lbl}</p>
                   </div>
                 ))}
+                <p className="py-2 text-xl leading-tight text-brand-dark">
+                  İçeriklerinizi geliştirin,
+                  <br />
+                  <span className="font-semibold text-brand-dark">
+                    daha yüksek performans elde edin.
+                  </span>
+                </p>
+                <div className="hidden items-center justify-end lg:flex">
+                  <svg
+                    viewBox="0 0 160 64"
+                    className="h-14 w-40"
+                    aria-label="Performans trend grafiği"
+                    role="img"
+                  >
+                    <polyline
+                      points="0,50 28,34 56,36"
+                      fill="none"
+                      stroke="rgba(0, 39, 44, 0.25)"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <polyline
+                      points="56,36 82,18 108,22 136,8 158,2"
+                      fill="none"
+                      stroke="#0f7a3a"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    {[
+                      [82, 18],
+                      [108, 22],
+                      [136, 8],
+                      [158, 2],
+                    ].map(([cx, cy]) => (
+                      <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="2.5" fill="#0f7a3a" />
+                    ))}
+                  </svg>
+                </div>
               </div>
-              <p className="text-sm text-white/60">
-                İçeriklerinizi geliştirin, daha yüksek performans elde edin.
-              </p>
             </div>
           </FadeIn>
         </div>
@@ -438,7 +525,7 @@ export default function LandingPage() {
 
       {/* 3. DAHA İYİ İÇERİK İÇİN - ZIG ZAG */}
       <section id="ozellikler" className="bg-brand-dark py-24">
-        <div className={`space-y-16 ${PAGE_CONTAINER}`}>
+        <div className={`space-y-20 lg:space-y-30 ${PAGE_CONTAINER}`}>
           <FadeIn className="text-center">
             <SectionBadge>Özellikler</SectionBadge>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-white md:text-5xl">
@@ -453,14 +540,17 @@ export default function LandingPage() {
 
           {/* Brand Brain */}
           <FadeIn>
-            <div className="grid items-center gap-10 lg:grid-cols-2">
-              <div className="space-y-5">
-                <h3 className="text-2xl font-bold text-white">
+            <div className="grid items-stretch gap-10 lg:grid-cols-2">
+              <div className="mx-auto flex h-full w-full max-w-xl flex-col justify-center space-y-7">
+                <h3 className="text-left text-3xl font-bold text-white md:text-5xl">
                   Brand <span className="text-brand-neon">Brain</span>
                 </h3>
-                <p className="text-white/65">
-                  Score AI, markanızın nasıl iletişim kurduğunu öğrenir. Tonunuzu,
-                  görsel dilinizi ve başarılı içerik kalıplarınızı zamanla
+                <p className="text-left text-xl font-semibold leading-snug text-white md:text-2xl">
+                  Score AI, markanızın nasıl iletişim kurduğunu{" "}
+                  <span className="text-brand-neon">öğrenir.</span>
+                </p>
+                <p className="text-left text-sm text-white/75">
+                  Tonunuzu, görsel dilinizi ve başarılı içerik kalıplarınızı zamanla
                   hafızasına kaydeder.
                 </p>
                 {[
@@ -469,15 +559,16 @@ export default function LandingPage() {
                   "İçgörülerle daha doğru öneriler sunar.",
                   "Markanız için sürekli gelişen bir hafıza oluşturur.",
                 ].map((item) => (
-                  <p key={item} className="flex items-center gap-3 text-sm text-white/75">
+                  <p key={item} className="flex items-start gap-3 text-left text-sm text-white/75">
                     <Check className="size-4 text-brand-neon" />
                     {item}
                   </p>
                 ))}
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="h-full">
                 <DashboardScreenshot
                   variant="section"
+                  className="h-full"
                   src={DASHBOARD_SCREENSHOTS.brandBrain}
                   alt="Score AI Brand Brain ekranı"
                 />
@@ -487,28 +578,24 @@ export default function LandingPage() {
 
           {/* Benchmark */}
           <FadeIn>
-            <div className="grid items-center gap-10 lg:grid-cols-2">
-              <div className="order-2 rounded-2xl border border-white/10 bg-white/5 p-6 lg:order-1">
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: "Sizin Score", val: "84", color: "text-brand-neon" },
-                    { label: "Sektör Ort.", val: "65", color: "text-white/50" },
-                    { label: "Lider Marka", val: "78", color: "text-white" },
-                  ].map((s) => (
-                    <div key={s.label} className="rounded-xl bg-brand-dark/60 p-4 text-center">
-                      <p className={`text-3xl font-bold ${s.color}`}>{s.val}</p>
-                      <p className="mt-1 text-[10px] text-white/50">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-4 rounded-lg bg-brand-neon/10 px-4 py-2 text-center text-xs text-brand-neon">
-                  Sektörünüzün %91&apos;inden daha kaliteli içerik üretiyorsunuz.
-                </p>
+            <div className="grid items-stretch gap-10 lg:grid-cols-2">
+              <div className="order-2 h-full lg:order-1">
+                <DashboardScreenshot
+                  variant="section"
+                  className="h-full"
+                  src={DASHBOARD_SCREENSHOTS.benchmark}
+                  alt="Score AI Benchmark ekranı"
+                />
               </div>
-              <div className="order-1 space-y-5 lg:order-2">
-                <h3 className="text-2xl font-bold text-white">Benchmark Engine</h3>
-                <p className="text-white/65">
-                  Sektörünüzdeki en iyi içeriklerle sürekli kıyaslama.
+              <div className="order-1 mx-auto flex h-full w-full max-w-xl flex-col justify-center space-y-7 lg:order-2">
+                <h3 className="text-left text-3xl font-bold text-white md:text-5xl">
+                  Benchmark <span className="text-brand-neon">Engine</span>
+                </h3>
+                <p className="text-left text-xl font-semibold leading-snug text-white md:text-2xl">
+                  Sektörünüzdeki en iyi içeriklerle sürekli{" "}
+                  <span className="text-brand-neon">kıyaslama.</span>
+                </p>
+                <p className="text-left text-sm text-white/75">
                   Performansınızı görün, gelişim alanlarınızı keşfedin.
                 </p>
                 {[
@@ -517,7 +604,7 @@ export default function LandingPage() {
                   "Trendleri ve fırsatları yakalayın.",
                   "Veriye dayalı stratejilerle ilerleyin.",
                 ].map((item) => (
-                  <p key={item} className="flex items-center gap-3 text-sm text-white/75">
+                  <p key={item} className="flex items-start gap-3 text-left text-sm text-white/75">
                     <Check className="size-4 text-brand-neon" />
                     {item}
                   </p>
@@ -528,12 +615,18 @@ export default function LandingPage() {
 
           {/* Creative Memory */}
           <FadeIn>
-            <div className="grid items-center gap-10 lg:grid-cols-2">
-              <div className="space-y-5">
-                <h3 className="text-2xl font-bold text-white">Creative Memory</h3>
-                <p className="text-white/65">
-                  Geçmiş paylaşımlarınızdan öğrenir. Nelerin işe yaradığını
-                  hatırlar ve gelecekte daha doğru öneriler üretir.
+            <div className="grid items-stretch gap-10 lg:grid-cols-2">
+              <div className="mx-auto flex h-full w-full max-w-xl flex-col justify-center space-y-7">
+                <h3 className="text-left text-3xl font-bold text-white md:text-5xl">
+                  Creative <span className="text-brand-neon">Memory</span>
+                </h3>
+                <p className="text-left text-xl font-semibold leading-snug text-white md:text-2xl">
+                  Geçmiş paylaşımlarınızdan{" "}
+                  <span className="text-brand-neon">öğrenir.</span>
+                </p>
+                <p className="text-left text-sm text-white/75">
+                  Nelerin işe yaradığını hatırlar ve gelecekte daha doğru öneriler
+                  üretir.
                 </p>
                 {[
                   "Geçmiş verilerinizi analiz ederek kalıpları keşfeder.",
@@ -541,41 +634,46 @@ export default function LandingPage() {
                   "İçerik tercihlerinizi ve kalıplarınızı öğrenir.",
                   "Daha isabetli, size özel öneriler sunar.",
                 ].map((item) => (
-                  <p key={item} className="flex items-center gap-3 text-sm text-white/75">
+                  <p key={item} className="flex items-start gap-3 text-left text-sm text-white/75">
                     <Check className="size-4 text-brand-neon" />
                     {item}
                   </p>
                 ))}
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="grid grid-cols-2 gap-2">
-                  {["128", "24", "%37", "%89"].map((v, i) => (
-                    <div key={v} className="rounded-xl bg-brand-dark/60 p-4">
-                      <p className="text-xl font-bold text-brand-neon">{v}</p>
-                      <p className="text-[10px] text-white/50">
-                        {["Analiz", "Kalıp", "Etkileşim", "Doğruluk"][i]}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+              <div className="h-full">
+                <DashboardScreenshot
+                  variant="section"
+                  className="h-full"
+                  src={DASHBOARD_SCREENSHOTS.creativeMemory}
+                  alt="Score AI Creative Memory ekranı"
+                />
               </div>
             </div>
           </FadeIn>
 
           {/* 6 Feature Pills */}
           <FadeIn>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {featurePills.map(({ icon: Icon, title, desc }) => (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+              {featurePills.map(({ title, desc }, i) => (
                 <div
                   key={title}
-                  className="flex gap-4 rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:border-brand-neon/30"
+                  className="flex min-h-[128px] gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-brand-neon/30"
                 >
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-neon/15">
-                    <Icon className="size-5 text-brand-neon" />
+                  <div className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-neon/15">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={FEATURE_PILL_IMAGES[i]}
+                      alt={`${title} ikonu`}
+                      className="h-full w-full object-cover"
+                      decoding="async"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
                   </div>
-                  <div>
-                    <p className="font-semibold text-white">{title}</p>
-                    <p className="mt-1 text-sm text-white/55">{desc}</p>
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-semibold leading-tight text-white">{title}</p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-white/65">{desc}</p>
                   </div>
                 </div>
               ))}
@@ -591,7 +689,7 @@ export default function LandingPage() {
             <SectionBadge>Ürünü Keşfedin</SectionBadge>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-brand-dark md:text-5xl">
               Score AI&apos;yı{" "}
-              <span className="text-brand-neon">60 saniyede</span> izleyin.
+              <span className="text-brand-dark">60 saniyede</span> izleyin.
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-brand-dark/60">
               İçeriklerinizi analiz edin, geliştirin ve daha iyi sonuçlar elde edin.
@@ -629,8 +727,8 @@ export default function LandingPage() {
                   key={title}
                   className="flex gap-4 rounded-2xl border border-brand-dark/10 bg-bg-light p-5 shadow-sm"
                 >
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-neon/20">
-                    <Icon className="size-5 text-brand-dark" />
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-dark">
+                    <Icon className="size-5 text-brand-neon" />
                   </div>
                   <div>
                     <p className="font-semibold text-brand-dark">{title}</p>
@@ -644,47 +742,136 @@ export default function LandingPage() {
       </section>
 
       {/* 5. NASIL ÇALIŞIYOR - 5 ADIM */}
-      <section id="nasil-calisir" className="bg-brand-dark py-24">
+      <section id="nasil-calisir" className="bg-bg-offwhite py-22">
         <div className={PAGE_CONTAINER}>
           <FadeIn className="text-center">
             <SectionBadge>Nasıl Çalışıyor?</SectionBadge>
-            <h2 className="mt-4 text-3xl font-bold tracking-tight text-white md:text-5xl">
+            <h2 className="mt-4 text-3xl font-bold tracking-tight text-brand-dark md:text-5xl">
               İçerik üretim sürecinizi{" "}
-              <span className="text-brand-neon">5 adımda</span> optimize edin.
+              <span className="text-brand-dark">5 adımda</span> optimize edin.
             </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-white/60">
+            <p className="mx-auto mt-3 max-w-2xl text-brand-dark/60">
               Score AI, içeriğinizi analiz eder, markanızı öğrenir ve
               uygulanabilir önerilerle performansınızı artırır.
             </p>
           </FadeIn>
 
-          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
             {steps.map((step, i) => (
               <FadeIn key={step.num} delay={i * 0.05}>
                 <div
-                  className={`relative flex h-full flex-col rounded-2xl border p-5 ${
-                    step.highlight
-                      ? "border-brand-neon bg-brand-neon/5"
-                      : "border-white/10 bg-white/5"
-                  }`}
+                  className="group relative flex h-full min-h-[460px] flex-col rounded-2xl border border-brand-dark/12 bg-bg-light p-6 transition hover:border-brand-dark/25 hover:bg-bg-offwhite"
                 >
-                  <span className="flex size-7 items-center justify-center rounded-full bg-brand-neon text-xs font-bold text-brand-dark">
+                  <span className="absolute left-4 top-4 flex size-7 items-center justify-center rounded-full bg-brand-dark text-xs font-bold text-white">
                     {step.num}
                   </span>
-                  <step.icon className="mt-4 size-6 text-brand-neon" />
-                  <p className="mt-3 text-sm font-bold text-white">{step.title}</p>
-                  <p className="mt-2 flex-1 text-xs text-white/55">{step.desc}</p>
-                  {step.highlight && (
-                    <div className="mt-4 text-center">
-                      <p className="text-3xl font-bold text-brand-neon">84</p>
-                      <p className="text-xs text-white/40">/100</p>
-                      <p className="mt-2 rounded-full bg-brand-neon/20 px-2 py-0.5 text-[10px] text-brand-neon">
-                        Yayınlanmaya Hazır
-                      </p>
+                  <div className="mx-auto mt-2 flex size-16 items-center justify-center rounded-full bg-brand-dark/5 transition group-hover:bg-brand-dark/10">
+                    <step.icon className="size-10 text-brand-dark" />
+                  </div>
+                  <p className="mt-6 text-center text-2xl leading-tight font-bold text-brand-dark">
+                    {step.title}
+                  </p>
+                  <p className="mt-2 text-center text-base leading-relaxed text-brand-dark/70">
+                    {step.desc}
+                  </p>
+                  {step.num === 1 && (
+                    <div className="mt-4 space-y-4 text-sm">
+                      <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-3">
+                        <p className="text-brand-dark/90">İçeriğinizi yükleyin</p>
+                        <div className="mt-3 grid grid-cols-5 gap-2">
+                          {["IG", "IN", "YT", "DOC", "URL"].map((label) => (
+                            <div key={label} className="rounded-md border border-brand-dark/10 bg-bg-light py-2 text-center text-[11px] text-brand-dark/80">
+                              {label}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-3">
+                        <p className="text-brand-dark/70">veya link yapıştırın</p>
+                        <div className="mt-2 rounded-md border border-brand-dark/10 bg-bg-light px-3 py-2 text-xs text-brand-dark/60">
+                          https://example.com/icerik
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {step.num === 2 && (
+                    <div className="mt-6 rounded-xl border border-brand-dark/10 bg-bg-light p-3">
+                      <p className="text-brand-dark/90">Analiz Kriterleri</p>
+                      <div className="mt-3 space-y-2.5">
+                        {[
+                          ["Hook Gücü", "92"],
+                          ["CTA Etkinliği", "79"],
+                          ["Storytelling", "84"],
+                          ["Görsel Kalitesi", "93"],
+                          ["Okunabilirlik", "88"],
+                        ].map(([label, score]) => (
+                          <div key={label} className="grid grid-cols-[1fr_auto] items-center gap-2 text-xs">
+                            <span className="text-brand-dark/75">{label}</span>
+                            <span className="text-brand-dark">{score}</span>
+                            <div className="col-span-2 h-1.5 rounded-full bg-brand-dark/12">
+                              <div className="h-full w-[78%] rounded-full bg-brand-dark/75" />
+                            </div>
+                          </div>
+                        ))}
+                        <p className="text-xs text-brand-dark/70">... ve 40 kriter daha</p>
+                      </div>
+                    </div>
+                  )}
+                  {step.num === 3 && (
+                    <div className="mt-6 space-y-3">
+                      <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-4 text-center">
+                        <p className="text-sm font-semibold text-brand-dark">Yayınlanmaya Hazır</p>
+                        <p className="mt-1 text-xs text-brand-dark/70">Geçen aya göre +12 puan artışı</p>
+                      </div>
+                      <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-4">
+                        <p className="text-brand-dark/85">Gelişim Alanı</p>
+                        <p className="mt-1 text-4xl leading-none font-bold text-brand-dark">
+                          12 <span className="text-base font-medium text-brand-dark/75">adet</span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {step.num === 4 && (
+                    <div className="mt-6 rounded-xl border border-brand-dark/10 bg-bg-light p-3">
+                      <p className="text-brand-dark/90">Önerilen İyileştirmeler</p>
+                      <ul className="mt-3 space-y-2.5">
+                        {[
+                          "Daha güçlü bir giriş cümlesi kullan",
+                          "CTA ekleyerek etkileşimi artır",
+                          "İlk cümleyi daha dikkat çekici yap",
+                          "Görseli üstte konumlandırın",
+                          "Marka tonunu daha net yansıt",
+                        ].map((item) => (
+                          <li key={item} className="flex items-center justify-between gap-2 text-xs text-brand-dark/80">
+                            <span>{item}</span>
+                            <span className="text-brand-dark">›</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {step.num === 5 && (
+                    <div className="mt-6 rounded-xl border border-brand-dark/10 bg-bg-light p-3">
+                      <div className="overflow-hidden rounded-lg border border-brand-dark/10">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={DASHBOARD_SCREENSHOTS.brandBrain}
+                          alt="Canva öneri önizlemesi"
+                          className="h-32 w-full object-cover"
+                          decoding="async"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="mt-3 w-full rounded-lg bg-brand-dark py-2 text-sm font-semibold text-white transition hover:brightness-110"
+                      >
+                        Canva&apos;da Aç
+                      </button>
+                      <p className="mt-2 text-center text-xs text-brand-dark/65">Düzenle, indir ve paylaş</p>
                     </div>
                   )}
                   {i < steps.length - 1 && (
-                    <ArrowRight className="absolute -right-3 top-1/2 hidden size-5 -translate-y-1/2 text-brand-neon lg:block" />
+                    <ArrowRight className="absolute -right-3 top-1/2 hidden size-5 -translate-y-1/2 text-brand-dark/50 lg:block" />
                   )}
                 </div>
               </FadeIn>
@@ -700,7 +887,7 @@ export default function LandingPage() {
             <SectionBadge>Kimler Kullanmalı?</SectionBadge>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-brand-dark md:text-5xl">
               Daha iyi içerik üretmek isteyen{" "}
-              <span className="text-brand-neon">herkes için.</span>
+              <span className="text-brand-dark">herkes için.</span>
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-brand-dark/60">
               Score AI, ihtiyaçlarınıza göre içeriklerinizi analiz eder ve
@@ -711,11 +898,26 @@ export default function LandingPage() {
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
             {audienceItems.map((item, i) => (
               <FadeIn key={item.title} delay={i * 0.05}>
-                <article className="flex h-full flex-col rounded-2xl border border-brand-dark/10 bg-bg-light p-5 shadow-sm transition hover:border-brand-neon/40 hover:shadow-md">
-                  <span className="text-3xl">{item.icon}</span>
-                  <div className="my-3 h-px w-8 bg-brand-neon" />
-                  <h3 className="text-sm font-bold text-brand-dark">{item.title}</h3>
-                  <p className="mt-2 flex-1 text-xs leading-relaxed text-brand-dark/60">
+                <article className="flex h-full min-h-[340px] flex-col rounded-2xl border border-brand-dark/10 bg-bg-light p-5 shadow-sm transition hover:border-brand-neon/40 hover:shadow-md">
+                  <div className="mx-auto">
+                    <div className="relative size-32 overflow-hidden rounded-2xl bg-brand-dark/5">
+                      <div className="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-brand-dark/40">
+                        Görsel
+                      </div>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={AUDIENCE_CARD_IMAGES[i]}
+                        alt={`${item.title} görseli`}
+                        className="relative z-10 h-full w-full object-cover"
+                        decoding="async"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <h3 className="mt-4 text-center text-base font-bold text-brand-dark">{item.title}</h3>
+                  <p className="mt-3 flex-1 text-center text-sm leading-relaxed text-brand-dark/65">
                     {item.desc}
                   </p>
                 </article>
@@ -787,40 +989,61 @@ export default function LandingPage() {
             </p>
           </FadeIn>
 
-          <FadeIn delay={0.1} className="mx-auto max-w-xl">
+          <FadeIn delay={0.1} className="mx-auto max-w-3xl">
             <WaitlistForm
               email={footerEmail}
               setEmail={setFooterEmail}
               isValid={isFooterValid}
               id="footer-email"
+              showSecurityNote={false}
             />
-            <div className="mt-4 flex flex-wrap justify-center gap-4">
-              {["Erken erişim", "Özel fiyatlandırma", "Ücretsiz beta"].map((t) => (
-                <span key={t} className="flex items-center gap-1.5 text-xs text-brand-dark/50">
-                  <Check className="size-3 text-brand-neon" />
-                  {t}
-                </span>
-              ))}
+            <div className="mt-4 grid w-full grid-cols-2 gap-x-3 gap-y-2 text-[11px] text-brand-dark/75 md:grid-cols-4 md:text-[12px] lg:text-sm">
+              <span className="flex items-center justify-start gap-1.5 md:whitespace-nowrap">
+                <Check className="size-3.5 text-green-700" />
+                Erken erişim
+              </span>
+              <span className="flex items-center justify-start gap-1.5 md:justify-center md:whitespace-nowrap">
+                <Check className="size-3.5 text-green-700" />
+                Özel fiyatlandırma
+              </span>
+              <span className="flex items-center justify-start gap-1.5 md:justify-center md:whitespace-nowrap">
+                <Check className="size-3.5 text-green-700" />
+                Ücretsiz beta
+              </span>
+              <span className="flex items-center justify-start gap-0.5 text-brand-dark/60 md:justify-end md:whitespace-nowrap">
+                <Lock className="size-5" />
+                Spam yok. Güvende kalın.
+              </span>
             </div>
           </FadeIn>
 
           <FadeIn delay={0.15}>
             <div className="grid gap-4 rounded-2xl border border-brand-dark/10 bg-bg-light p-6 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
               {[
-                { icon: Users, val: "1.000+", lbl: "Kişi waitlist'te", sub: "Her geçen gün büyüyoruz." },
-                { icon: TrendingUp, val: "84", lbl: "Ortalama Score", sub: "İlk analiz sonrası ortalama." },
-                { icon: Target, val: "45", lbl: "Mikro Kriter", sub: "Detaylı kalite analizi." },
-                { icon: Clock, val: "3 dk", lbl: "İlk Analiz", sub: "Hızlı, kolay ve otomatik." },
-              ].map(({ icon: Icon, val, lbl, sub }) => (
-                <div key={lbl} className="flex items-center gap-4">
-                  <div className="flex size-11 items-center justify-center rounded-xl bg-brand-neon/20">
-                    <Icon className="size-5 text-brand-dark" />
+                { val: "1.000+", lbl: "Kişi waitlist'te", sub: "Her geçen gün büyüyoruz." },
+                { val: "84", lbl: "Ortalama Score", sub: "İlk analiz sonrası ortalama." },
+                { val: "45", lbl: "Mikro Kriter", sub: "Detaylı kalite analizi." },
+                { val: "3 dk", lbl: "İlk Analiz", sub: "Hızlı, kolay ve otomatik." },
+              ].map(({ val, lbl, sub }, i) => (
+                <div key={lbl} className="flex h-full flex-col items-center text-center">
+                  <div className="relative size-22 overflow-hidden rounded-full bg-brand-neon/20">
+                    <div className="absolute inset-0 flex items-center justify-center text-[10px] text-brand-dark/35">
+                      Icon
+                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={FINAL_STATS_ICON_IMAGES[i]}
+                      alt={`${lbl} ikonu`}
+                      className="relative z-10 h-full w-full object-cover"
+                      decoding="async"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
                   </div>
-                  <div>
-                    <p className="text-xl font-bold text-brand-dark">{val}</p>
-                    <p className="text-sm font-medium text-brand-dark/70">{lbl}</p>
-                    <p className="text-xs text-brand-dark/40">{sub}</p>
-                  </div>
+                  <p className="mt-4 text-[2rem] leading-none font-bold text-brand-dark">{val}</p>
+                  <p className="mt-2 text-base font-semibold text-brand-dark/80">{lbl}</p>
+                  <p className="mt-1 text-sm text-brand-dark/50">{sub}</p>
                 </div>
               ))}
             </div>
@@ -832,32 +1055,26 @@ export default function LandingPage() {
       <section className="bg-brand-dark py-16">
         <div className={`grid items-center gap-10 lg:grid-cols-2 lg:gap-16 xl:gap-20 ${PAGE_CONTAINER}`}>
           <FadeIn>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-              <p className="text-xs text-white/50">Ortalama gelişim artışı</p>
-              <div className="mt-4 flex items-end justify-between">
-                <div>
-                  <p className="text-sm text-white/50">İlk Analiz</p>
-                  <p className="text-3xl font-bold text-white">84<span className="text-lg text-white/30">/100</span></p>
-                </div>
-                <TrendingUp className="size-8 text-brand-neon" />
-                <div className="text-right">
-                  <p className="text-sm text-white/50">İyileştirme sonrası</p>
-                  <p className="text-3xl font-bold text-brand-neon">92<span className="text-lg text-brand-neon/50">/100</span></p>
-                </div>
-              </div>
-              <p className="mt-4 text-center text-sm text-brand-neon">
-                +8 puan ortalama gelişim
-              </p>
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={FOOTER_QUOTE_IMAGE}
+              alt="Footer içgörü görseli"
+              className="mx-auto w-full max-w-[440px] rounded-3xl"
+              decoding="async"
+            />
           </FadeIn>
           <FadeIn delay={0.1}>
-            <p className="text-4xl font-bold text-brand-neon">&ldquo;</p>
-            <h3 className="text-2xl font-bold text-white">
-              Veriye dayalı içgörülerle daha iyi içerikler üretin.
+            <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-brand-neon">
+              <span className="text-2xl font-bold leading-none text-brand-dark">&ldquo;</span>
+            </div>
+            <h3 className="text-3xl font-bold text-white">
+              Sadece analiz etmez. Geliştirir.
             </h3>
-            <p className="mt-4 text-white/60">
-              Score AI, binlerce içeriği analiz ederek size en net içgörüleri
-              sunar. Artık neyin işe yaradığını bilirsiniz.
+            <p className="mt-6 max-w-[62ch] text-base leading-relaxed text-white/70">
+              İçeriğinizi 45 mikro kalite kriterine göre analiz eder, markanızı
+              öğrenir ve performansınızı artıracak uygulanabilir öneriler sunar.
+              <br />
+              Her paylaşım, bir öncekinden daha güçlü hale gelir.
             </p>
           </FadeIn>
         </div>
@@ -869,15 +1086,9 @@ export default function LandingPage() {
           SCORE
         </p>
         <div className={`relative ${PAGE_CONTAINER}`}>
-          <div className="grid gap-10 md:grid-cols-4">
+          <div className="grid gap-42 md:grid-cols-4">
             <div className="md:col-span-1">
-              <Image
-                src="/logo-disi.svg"
-                alt="Score AI"
-                width={160}
-                height={64}
-                className="h-10 w-auto"
-              />
+              <Logo className="h-7 w-auto text-white" />
               <p className="mt-4 text-sm leading-relaxed text-white/50">
                 Yapay zeka destekli içerik analizi ile markaların daha iyi
                 sonuçlar almasını sağlıyoruz.

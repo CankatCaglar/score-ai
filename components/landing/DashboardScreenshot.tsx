@@ -2,17 +2,19 @@
 
 import { useState } from "react";
 
-/** Screenshot dosyalarını public/screenshots/ altına koyun — dosyayı değiştirmen yeterli. */
+/** Screenshot dosyalarını public/screenshots/ altında */
 export const DASHBOARD_SCREENSHOTS = {
   hero: "/screenshots/dashboard-hero.png",
   brandBrain: "/screenshots/dashboard-brand-brain.png",
+  benchmark: "/screenshots/dashboard-benchmark.png",
+  creativeMemory: "/screenshots/dashboard-creative-memory.png",
   video: "/screenshots/dashboard-video.png",
 } as const;
 
 const variantStyles = {
-  hero: "aspect-[16/11] min-h-[280px] rounded-2xl shadow-2xl",
-  section: "aspect-[4/3] min-h-[200px] rounded-xl",
-  video: "aspect-[16/10] w-full rounded-t-lg",
+  hero: "aspect-[15/10] min-h-[280px] rounded-2xl border border-white/10 bg-bg-offwhite shadow-2xl",
+  section: "h-full min-h-[480px] rounded-xl border border-white/10 bg-white",
+  video: "aspect-[16/8] w-full rounded-t-lg border border-white/10 bg-bg-offwhite",
 } as const;
 
 type DashboardScreenshotProps = {
@@ -31,25 +33,32 @@ export function DashboardScreenshot({
   priority = false,
 }: DashboardScreenshotProps) {
   const [showPlaceholder, setShowPlaceholder] = useState(!src);
+  const imageFit = variant === "section" ? "object-contain" : "object-fill";
+  const placeholderStyle =
+    variant === "section"
+      ? "bg-transparent"
+      : "bg-linear-to-br from-brand-dark/10 via-bg-offwhite to-brand-neon/5";
+  const placeholderCardStyle =
+    variant === "section"
+      ? "border-white/20 bg-white/5"
+      : "border-brand-dark/20 bg-white/60";
 
   return (
-    <div
-      className={`relative w-full overflow-hidden border border-white/10 bg-bg-offwhite ${variantStyles[variant]} ${className}`}
-    >
+    <div className={`relative w-full overflow-hidden ${variantStyles[variant]} ${className}`}>
       {src && !showPlaceholder ? (
         // Native img: public/ dosyası değişince Next.js image cache'e takılmaz
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={src}
           alt={alt}
-          className="absolute inset-0 h-full w-full object-fill"
+          className={`absolute inset-0 h-full w-full ${imageFit}`}
           decoding="async"
           fetchPriority={priority ? "high" : "auto"}
           onError={() => setShowPlaceholder(true)}
         />
       ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-linear-to-br from-brand-dark/10 via-bg-offwhite to-brand-neon/5 p-6 text-center">
-          <div className="rounded-lg border border-dashed border-brand-dark/20 bg-white/60 px-4 py-3">
+        <div className={`absolute inset-0 flex items-center justify-center p-6 text-center ${placeholderStyle}`}>
+          <div className={`rounded-lg border border-dashed px-4 py-3 ${placeholderCardStyle}`}>
             <p className="text-sm font-semibold text-brand-dark/70">Dashboard görseli</p>
             <p className="mt-1 text-xs text-brand-dark/45">
               {src ? "Görsel yüklenemedi — dosyayı kontrol edin" : "Screenshot buraya eklenecek"}
