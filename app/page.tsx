@@ -61,12 +61,21 @@ const FEATURE_PILL_IMAGES = [
   "/screenshots/feature-pill-6.png",
 ] as const;
 
-const FOOTER_QUOTE_IMAGE = "/screenshots/footer-quote-image.png";
+const UPLOAD_SOURCE_ICONS = [
+  { label: "IG", src: "/screenshots/upload-icon-instagram..png", alt: "Instagram ikonu" },
+  { label: "IN", src: "/screenshots/upload-icon-linkedin.png", alt: "LinkedIn ikonu" },
+  { label: "YT", src: "/screenshots/upload-icon-youtube.png", alt: "YouTube ikonu" },
+  { label: "DOC", src: "/screenshots/upload-icon-doc.png", alt: "Dosya ikonu" },
+  { label: "URL", src: "/screenshots/upload-icon-link.png", alt: "Link ikonu" },
+] as const;
 
-const menuItems = [
+const FOOTER_QUOTE_IMAGE = "/screenshots/footer-quote-image.png";
+const PRODUCT_VIDEO_EMBED_URL = "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0";
+const PRODUCT_VIDEO_WATCH_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+
+const menuItems: { label: string; id: string; disabled?: boolean }[] = [
   { label: "Özellikler", id: "ozellikler" },
   { label: "Nasıl Çalışır?", id: "nasil-calisir" },
-  { label: "Fiyatlandırma", id: "fiyatlandirma", disabled: true },
 ];
 
 const featurePills = [
@@ -248,6 +257,7 @@ export default function LandingPage() {
   const [heroEmail, setHeroEmail] = useState("");
   const [footerEmail, setFooterEmail] = useState("");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   const isHeroValid = useMemo(
     () => heroEmail.includes("@") && heroEmail.includes(".com"),
@@ -323,10 +333,10 @@ export default function LandingPage() {
                 <Sparkles className="size-3.5" />
                 Yapay Zeka Destekli İçerik Analizi
               </span>
-              <h1 className="text-4xl font-bold leading-[1.12] tracking-tight text-brand-dark md:text-[2.75rem] lg:text-5xl">
-                İçeriğinizin kalitesini ölçün.
+              <h1 className="text-[2.35rem] font-bold leading-[1.2] tracking-tight text-brand-dark md:text-[2.8rem] lg:text-[2.6rem]">
+                İçerikleriniz neden performans{"\u00a0"}göstermiyor?
                 <br />
-                <span className="text-brand-dark">Otomatik geliştirin.</span>
+                <span className="text-brand-dark">Score AI bunu size saniyeler içinde{"\u00a0"}söylesin.</span>
               </h1>
               <p className="max-w-md text-base leading-relaxed text-brand-dark/80">
                 Score AI, içeriklerinizi 45 mikro kriterle analiz eder, markanızı
@@ -343,23 +353,11 @@ export default function LandingPage() {
                 isValid={isHeroValid}
                 id="hero-email"
               />
-              <div className="flex items-center gap-3 pt-1">
-                <div className="flex -space-x-2">
-                  {["A", "B", "C", "D", "E"].map((l) => (
-                    <div
-                      key={l}
-                      className="flex size-9 items-center justify-center rounded-full border-2 border-bg-light bg-brand-neon/30 text-xs font-bold text-brand-dark"
-                    >
-                      {l}
-                    </div>
-                  ))}
-                </div>
-                <p className="text-sm leading-snug text-brand-dark/80">
-                  <span className="font-bold text-brand-dark">1.000+</span>{" "}
-                  içerik üreticisi, pazarlama ekibi ve ajans Score AI&apos;a erken
-                  erişim için sıraya girdi.
-                </p>
-              </div>
+              <p className="flex items-center gap-1.5 pt-1 text-sm leading-snug text-brand-dark/80">
+                <span aria-hidden="true">🎉</span>
+                <span className="font-bold text-brand-dark">1.042</span>{" "}
+                kişi bekleme listesinde.
+              </p>
             </div>
           </FadeIn>
 
@@ -553,17 +551,19 @@ export default function LandingPage() {
                   Tonunuzu, görsel dilinizi ve başarılı içerik kalıplarınızı zamanla
                   hafızasına kaydeder.
                 </p>
-                {[
-                  "Marka DNA'nızı çıkarır.",
-                  "Geçmiş içeriklerden öğrenir.",
-                  "İçgörülerle daha doğru öneriler sunar.",
-                  "Markanız için sürekli gelişen bir hafıza oluşturur.",
-                ].map((item) => (
-                  <p key={item} className="flex items-start gap-3 text-left text-sm text-white/75">
-                    <Check className="size-4 text-brand-neon" />
-                    {item}
-                  </p>
-                ))}
+                <div className="space-y-2.5">
+                  {[
+                    "Marka DNA'nızı çıkarır.",
+                    "Geçmiş içeriklerden öğrenir.",
+                    "İçgörülerle daha doğru öneriler sunar.",
+                    "Markanız için sürekli gelişen bir hafıza oluşturur.",
+                  ].map((item) => (
+                    <p key={item} className="flex items-start gap-2 text-left text-sm text-white/75">
+                      <Check className="mt-0.5 size-4 text-brand-neon" />
+                      {item}
+                    </p>
+                  ))}
+                </div>
               </div>
               <div className="h-full">
                 <DashboardScreenshot
@@ -598,17 +598,19 @@ export default function LandingPage() {
                 <p className="text-left text-sm text-white/75">
                   Performansınızı görün, gelişim alanlarınızı keşfedin.
                 </p>
-                {[
-                  "Kendi skorunuzu sektör ortalamasıyla karşılaştırın.",
-                  "Lider markalara göre konumunuzu görün.",
-                  "Trendleri ve fırsatları yakalayın.",
-                  "Veriye dayalı stratejilerle ilerleyin.",
-                ].map((item) => (
-                  <p key={item} className="flex items-start gap-3 text-left text-sm text-white/75">
-                    <Check className="size-4 text-brand-neon" />
-                    {item}
-                  </p>
-                ))}
+                <div className="space-y-2.5">
+                  {[
+                    "Kendi skorunuzu sektör ortalamasıyla karşılaştırın.",
+                    "Lider markalara göre konumunuzu görün.",
+                    "Trendleri ve fırsatları yakalayın.",
+                    "Veriye dayalı stratejilerle ilerleyin.",
+                  ].map((item) => (
+                    <p key={item} className="flex items-start gap-2 text-left text-sm text-white/75">
+                      <Check className="mt-0.5 size-4 text-brand-neon" />
+                      {item}
+                    </p>
+                  ))}
+                </div>
               </div>
             </div>
           </FadeIn>
@@ -628,17 +630,19 @@ export default function LandingPage() {
                   Nelerin işe yaradığını hatırlar ve gelecekte daha doğru öneriler
                   üretir.
                 </p>
-                {[
-                  "Geçmiş verilerinizi analiz ederek kalıpları keşfeder.",
-                  "En iyi performans gösteren içeriklerinizi hatırlar.",
-                  "İçerik tercihlerinizi ve kalıplarınızı öğrenir.",
-                  "Daha isabetli, size özel öneriler sunar.",
-                ].map((item) => (
-                  <p key={item} className="flex items-start gap-3 text-left text-sm text-white/75">
-                    <Check className="size-4 text-brand-neon" />
-                    {item}
-                  </p>
-                ))}
+                <div className="space-y-2.5">
+                  {[
+                    "Geçmiş verilerinizi analiz ederek kalıpları keşfeder.",
+                    "En iyi performans gösteren içeriklerinizi hatırlar.",
+                    "İçerik tercihlerinizi ve kalıplarınızı öğrenir.",
+                    "Daha isabetli, size özel öneriler sunar.",
+                  ].map((item) => (
+                    <p key={item} className="flex items-start gap-2 text-left text-sm text-white/75">
+                      <Check className="mt-0.5 size-4 text-brand-neon" />
+                      {item}
+                    </p>
+                  ))}
+                </div>
               </div>
               <div className="h-full">
                 <DashboardScreenshot
@@ -708,6 +712,8 @@ export default function LandingPage() {
                   <div className="absolute inset-0 flex items-center justify-center bg-brand-dark/20">
                     <button
                       type="button"
+                      onClick={() => setIsVideoModalOpen(true)}
+                      aria-label="Ürün videosunu aç"
                       className="flex size-16 items-center justify-center rounded-full bg-brand-neon shadow-xl transition hover:scale-105"
                     >
                       <Play className="ml-1 size-7 fill-brand-dark text-brand-dark" />
@@ -740,6 +746,47 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      {isVideoModalOpen && (
+        <div
+          className="fixed inset-0 z-100 flex items-center justify-center bg-brand-dark/75 p-4"
+          onClick={() => setIsVideoModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-4xl rounded-2xl bg-bg-light p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold text-brand-dark">Ürünü Keşfedin - Video</p>
+              <button
+                type="button"
+                onClick={() => setIsVideoModalOpen(false)}
+                className="rounded-md px-2 py-1 text-sm text-brand-dark/70 transition hover:bg-brand-dark/10 hover:text-brand-dark"
+              >
+                Kapat
+              </button>
+            </div>
+            <div className="overflow-hidden rounded-xl border border-brand-dark/10">
+              <iframe
+                src={PRODUCT_VIDEO_EMBED_URL}
+                title="Score AI ürün videosu"
+                className="aspect-video w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+            <div className="mt-3 flex justify-end">
+              <a
+                href={PRODUCT_VIDEO_WATCH_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-lg bg-brand-dark px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+              >
+                YouTube&apos;da Aç
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 5. NASIL ÇALIŞIYOR - 5 ADIM */}
       <section id="nasil-calisir" className="bg-bg-offwhite py-22">
@@ -779,9 +826,28 @@ export default function LandingPage() {
                       <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-3">
                         <p className="text-brand-dark/90">İçeriğinizi yükleyin</p>
                         <div className="mt-3 grid grid-cols-5 gap-2">
-                          {["IG", "IN", "YT", "DOC", "URL"].map((label) => (
-                            <div key={label} className="rounded-md border border-brand-dark/10 bg-bg-light py-2 text-center text-[11px] text-brand-dark/80">
-                              {label}
+                          {UPLOAD_SOURCE_ICONS.map(({ label, src, alt }) => (
+                            <div
+                              key={label}
+                              className="relative flex h-10 items-center justify-center overflow-hidden rounded-md border border-brand-dark/10 bg-bg-light"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={src}
+                                alt={alt}
+                                className="h-5 w-5 object-contain"
+                                decoding="async"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                  const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                                  if (fallback) fallback.style.display = "flex";
+                                }}
+                              />
+                              <span
+                                className="absolute inset-0 hidden items-center justify-center text-[11px] text-brand-dark/55"
+                              >
+                                {label}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -789,7 +855,9 @@ export default function LandingPage() {
                       <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-3">
                         <p className="text-brand-dark/70">veya link yapıştırın</p>
                         <div className="mt-2 rounded-md border border-brand-dark/10 bg-bg-light px-3 py-2 text-xs text-brand-dark/60">
-                          https://example.com/icerik
+                          <span className="block max-w-full truncate">
+                            https://example.com/icerik
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -997,21 +1065,17 @@ export default function LandingPage() {
               id="footer-email"
               showSecurityNote={false}
             />
-            <div className="mt-4 grid w-full grid-cols-2 gap-x-3 gap-y-2 text-[11px] text-brand-dark/75 md:grid-cols-4 md:text-[12px] lg:text-sm">
-              <span className="flex items-center justify-start gap-1.5 md:whitespace-nowrap">
+            <div className="mt-4 grid w-full grid-cols-1 gap-y-2 text-[11px] text-brand-dark/75 sm:grid-cols-3 sm:gap-x-6 sm:text-[12px] lg:text-sm">
+              <span className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                 <Check className="size-3.5 text-green-700" />
                 Erken erişim
               </span>
-              <span className="flex items-center justify-start gap-1.5 md:justify-center md:whitespace-nowrap">
-                <Check className="size-3.5 text-green-700" />
-                Özel fiyatlandırma
-              </span>
-              <span className="flex items-center justify-start gap-1.5 md:justify-center md:whitespace-nowrap">
+              <span className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                 <Check className="size-3.5 text-green-700" />
                 Ücretsiz beta
               </span>
-              <span className="flex items-center justify-start gap-0.5 text-brand-dark/60 md:justify-end md:whitespace-nowrap">
-                <Lock className="size-5" />
+              <span className="flex items-center justify-center gap-1.5 whitespace-nowrap text-brand-dark/60">
+                <Lock className="size-3.5" />
                 Spam yok. Güvende kalın.
               </span>
             </div>
@@ -1123,11 +1187,11 @@ export default function LandingPage() {
             <p>© 2026 Score AI. Tüm Hakları Saklıdır.</p>
             <p className="flex items-center gap-1.5">
               <Mail className="size-3" />
-              hello@score.ai
+              info@usescore.net
             </p>
             <p className="flex items-center gap-1.5">
               <MapPin className="size-3" />
-              İstanbul, Türkiye
+              Tallinn, Estonya
             </p>
           </div>
         </div>
