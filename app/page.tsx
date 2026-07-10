@@ -32,7 +32,7 @@ import {
 import { joinWaitlist } from "@/actions/waitlist";
 
 const PAGE_CONTAINER =
-  "mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12";
+  "mx-auto w-full max-w-[1780px] px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12";
 
 const ANALYSIS_PREVIEW_IMAGES = {
   current: "/screenshots/analysis-current.png",
@@ -1224,14 +1224,24 @@ export default function LandingPage() {
 
           <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/40">
             <p>© 2026 Score AI. Tüm Hakları Saklıdır.</p>
-            <p className="flex items-center gap-1.5">
+            <a
+              href="mailto:info@usescore.net"
+              className="flex items-center gap-1.5 transition hover:text-white"
+              aria-label="Score AI ekibine e-posta gönder"
+            >
               <Mail className="size-3" />
               info@usescore.net
-            </p>
-            <p className="flex items-center gap-1.5">
+            </a>
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=Tallinn%2C+Estonia"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 transition hover:text-white"
+              aria-label="Tallinn, Estonya konumunu Google Maps'te aç"
+            >
               <MapPin className="size-3" />
               Tallinn, Estonya
-            </p>
+            </a>
           </div>
         </div>
       </footer>
