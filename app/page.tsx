@@ -80,7 +80,7 @@ const menuItems: { label: string; id: string; disabled?: boolean }[] = [
 ];
 
 const featurePills = [
-  { icon: Target, title: "AI Content Scoring", desc: "45 mikro kritere göre içerik kalitenizi ölçün ve skorlayın." },
+  { icon: Target, title: "AI Content Scoring", desc: "40 mikro kritere göre içerik kalitenizi ölçün ve skorlayın." },
   { icon: Brain, title: "Marka Öğrenimi", desc: "Markanızın dilini, tonunu ve görsel kimliğini öğrenir." },
   { icon: TrendingUp, title: "Rakip Analizi", desc: "Sektördeki en iyi içerikleri analiz edin, öne geçin." },
   { icon: History, title: "İçerik Geçmişi", desc: "Tüm içerik performanslarınızı tek yerde takip edin." },
@@ -92,7 +92,7 @@ const faqItems = [
   {
     question: "Score AI tam olarak ne yapar?",
     answer:
-      "Score AI, içeriklerinizi 45 mikro kritere göre analiz eder, 0-100 arası bir skor verir ve performansı artırmak için uygulanabilir öneriler sunar. Markanızı öğrenir, geçmiş verilerinizden çıkarım yapar ve içerik üretim sürecinizi hızlandırır.",
+      "Score AI, içeriklerinizi 40 mikro kritere göre analiz eder, 0-100 arası bir skor verir ve performansı artırmak için uygulanabilir öneriler sunar. Markanızı öğrenir, geçmiş verilerinizden çıkarım yapar ve içerik üretim sürecinizi hızlandırır.",
   },
   {
     question: "Hangi platformları destekliyor?",
@@ -153,8 +153,8 @@ const steps = [
   },
   {
     num: 2,
-    title: "45 Mikro Kriter ile Analiz Edilir",
-    desc: "İçeriğiniz 45 mikro kriter ile detaylı olarak incelenir.",
+    title: "40 Mikro Kriter ile Analiz Edilir",
+    desc: "İçeriğiniz 40 mikro kriter ile detaylı olarak incelenir.",
     icon: Search,
   },
   {
@@ -378,7 +378,7 @@ export default function LandingPage() {
                 <span className="text-brand-dark">Score AI bunu size saniyeler içinde{"\u00a0"}söylesin.</span>
               </h1>
               <p className="max-w-md text-base leading-relaxed text-brand-dark/80">
-                Score AI, içeriklerinizi 45 mikro kriterle analiz eder, markanızı
+                Score AI, içeriklerinizi 40 mikro kriterle analiz eder, markanızı
                 anlar ve daha iyi sonuçlar için otomatik olarak uygulanabilir
                 öneriler sunar.
               </p>
@@ -770,7 +770,7 @@ export default function LandingPage() {
 
             <FadeIn delay={0.2} className="space-y-4">
               {[
-                { icon: BarChart3, title: "AI Destekli Analiz", desc: "45 mikro kritere göre içerik kalitenizi ölçer." },
+                { icon: BarChart3, title: "AI Destekli Analiz", desc: "40 mikro kritere göre içerik kalitenizi ölçer." },
                 { icon: TrendingUp, title: "Akıllı Öneriler", desc: "İçeriklerinizi geliştirmek için uygulanabilir öneriler sunar." },
                 { icon: Sparkles, title: "Daha İyi Sonuçlar", desc: "Performansınızı artırır, hedeflerinize daha hızlı ulaşmanızı sağlar." },
               ].map(({ icon: Icon, title, desc }) => (
@@ -1174,7 +1174,7 @@ export default function LandingPage() {
               Sadece analiz etmez. Geliştirir.
             </h3>
             <p className="mt-6 max-w-[62ch] text-base leading-relaxed text-white/70">
-              İçeriğinizi 45 mikro kalite kriterine göre analiz eder, markanızı
+              İçeriğinizi 40 mikro kalite kriterine göre analiz eder, markanızı
               öğrenir ve performansınızı artıracak uygulanabilir öneriler sunar.
               <br />
               Her paylaşım, bir öncekinden daha güçlü hale gelir.
