@@ -436,12 +436,12 @@ export default function LandingPage() {
                 <p className="mt-2 text-center text-5xl leading-none font-bold text-brand-dark">
                   78<span className="text-xl text-brand-dark/35">/100</span>
                 </p>
-                <div className="mt-4 h-92 overflow-hidden rounded-xl bg-brand-dark/5">
+                <div className="mt-4 overflow-hidden rounded-xl bg-brand-dark/5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={ANALYSIS_PREVIEW_IMAGES.current}
                     alt="Mevcut içerik önizlemesi"
-                    className="h-full w-full object-cover"
+                    className="h-auto w-full object-contain"
                     decoding="async"
                   />
                 </div>
@@ -462,12 +462,12 @@ export default function LandingPage() {
                 <p className="mt-2 text-center text-5xl leading-none font-bold text-brand-dark">
                   86<span className="text-xl text-brand-dark/35">/100</span>
                 </p>
-                <div className="mt-4 h-92 overflow-hidden rounded-xl bg-brand-dark/5">
+                <div className="mt-4 overflow-hidden rounded-xl bg-brand-dark/5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={ANALYSIS_PREVIEW_IMAGES.suggested}
                     alt="Önerilen içerik önizlemesi"
-                    className="h-full w-full object-cover"
+                    className="h-auto w-full object-contain"
                     decoding="async"
                   />
                 </div>
