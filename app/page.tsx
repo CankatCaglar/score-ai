@@ -14,12 +14,14 @@ import {
   Lock,
   Mail,
   MapPin,
+  Menu,
   Play,
   Search,
   Sparkles,
   Target,
   TrendingUp,
   Wand2,
+  X,
   Zap,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -266,6 +268,7 @@ export default function LandingPage() {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isHeroSubmitting, setIsHeroSubmitting] = useState(false);
   const [isFooterSubmitting, setIsFooterSubmitting] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isHeroValid = useMemo(
     () => heroEmail.includes("@") && heroEmail.includes(".com"),
@@ -277,10 +280,12 @@ export default function LandingPage() {
   );
 
   const scrollToTop = () => {
+    setIsMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const scrollTo = (id: string) => {
+    setIsMobileMenuOpen(false);
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -318,8 +323,8 @@ export default function LandingPage() {
   return (
     <div className="bg-bg-offwhite text-brand-dark [&_a]:cursor-pointer [&_button:not(:disabled)]:cursor-pointer">
       {/* HEADER */}
-      <header className="fixed inset-x-0 top-0 z-50 h-16 border-b border-white/10 bg-brand-dark/95 backdrop-blur-md">
-        <div className={`grid h-full grid-cols-3 items-center ${PAGE_CONTAINER}`}>
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-brand-dark/95 backdrop-blur-md">
+        <div className={`flex h-16 items-center justify-between gap-4 md:grid md:grid-cols-3 ${PAGE_CONTAINER}`}>
           <div className="flex justify-start">
             <button
               type="button"
@@ -349,16 +354,54 @@ export default function LandingPage() {
             ))}
           </nav>
 
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => scrollTo("son-adim")}
-              className="inline-flex h-10 items-center rounded-xl border border-brand-neon bg-brand-neon px-4 text-sm font-bold text-brand-dark transition hover:brightness-105"
+              className="hidden h-10 items-center rounded-xl border border-brand-neon bg-brand-neon px-4 text-sm font-bold text-brand-dark transition hover:brightness-105 md:inline-flex"
             >
               Waitlist&apos;e Katıl
             </button>
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              aria-label={isMobileMenuOpen ? "Menüyü kapat" : "Menüyü aç"}
+              aria-expanded={isMobileMenuOpen}
+              className="inline-flex size-10 items-center justify-center rounded-xl border border-white/15 text-white transition hover:border-brand-neon hover:text-brand-neon md:hidden"
+            >
+              {isMobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+            </button>
           </div>
         </div>
+
+        {isMobileMenuOpen && (
+          <div className="border-t border-white/10 bg-brand-dark md:hidden">
+            <nav className={`flex flex-col gap-1 py-4 ${PAGE_CONTAINER}`}>
+              {menuItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => !item.disabled && scrollTo(item.id)}
+                  disabled={item.disabled}
+                  className={`rounded-lg px-3 py-3 text-left text-base font-medium transition ${
+                    item.disabled
+                      ? "cursor-not-allowed text-white/25"
+                      : "text-white/80 hover:bg-white/5 hover:text-brand-neon"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => scrollTo("son-adim")}
+                className="mt-2 inline-flex h-11 items-center justify-center rounded-xl bg-brand-neon px-4 text-sm font-bold text-brand-dark transition hover:brightness-105"
+              >
+                Waitlist&apos;e Katıl
+              </button>
+            </nav>
+          </div>
+        )}
       </header>
 
       {/* 1. HERO */}
@@ -372,10 +415,10 @@ export default function LandingPage() {
                 <Sparkles className="size-3.5" />
                 Yapay Zeka Destekli İçerik Analizi
               </span>
-              <h1 className="text-[2.35rem] font-bold leading-[1.2] tracking-tight text-brand-dark md:text-[2.8rem] lg:text-[2.6rem]">
-                İçerikleriniz neden performans{"\u00a0"}göstermiyor?
+              <h1 className="text-[1.75rem] font-bold leading-[1.2] tracking-tight text-brand-dark wrap-break-word sm:text-[2.35rem] md:text-[2.8rem] lg:text-[2.6rem]">
+                İçerikleriniz neden performans göstermiyor?
                 <br />
-                <span className="text-brand-dark">Score AI bunu size saniyeler içinde{"\u00a0"}söylesin.</span>
+                <span className="text-brand-dark">Score AI bunu size saniyeler içinde söylesin.</span>
               </h1>
               <p className="max-w-md text-base leading-relaxed text-brand-dark/80">
                 Score AI, içeriklerinizi 40 mikro kriterle analiz eder, markanızı
@@ -608,10 +651,9 @@ export default function LandingPage() {
                   ))}
                 </div>
               </div>
-              <div className="h-full">
+              <div className="flex h-full items-center">
                 <DashboardScreenshot
                   variant="section"
-                  className="h-full"
                   src={DASHBOARD_SCREENSHOTS.brandBrain}
                   alt="Score AI Brand Brain ekranı"
                 />
@@ -622,10 +664,9 @@ export default function LandingPage() {
           {/* Benchmark */}
           <FadeIn>
             <div className="grid items-stretch gap-10 lg:grid-cols-2">
-              <div className="order-2 h-full lg:order-1">
+              <div className="order-2 flex h-full items-center lg:order-1">
                 <DashboardScreenshot
                   variant="section"
-                  className="h-full"
                   src={DASHBOARD_SCREENSHOTS.benchmark}
                   alt="Score AI Benchmark ekranı"
                 />
@@ -687,10 +728,9 @@ export default function LandingPage() {
                   ))}
                 </div>
               </div>
-              <div className="h-full">
+              <div className="flex h-full items-center">
                 <DashboardScreenshot
                   variant="section"
-                  className="h-full"
                   src={DASHBOARD_SCREENSHOTS.creativeMemory}
                   alt="Score AI Creative Memory ekranı"
                 />
@@ -743,7 +783,7 @@ export default function LandingPage() {
             </p>
           </FadeIn>
 
-          <div className="mt-12 grid items-center gap-1 lg:grid-cols-[1.4fr_1fr]">
+          <div className="mt-12 grid items-center gap-12 lg:grid-cols-[1.4fr_1fr] lg:gap-10">
             <FadeIn delay={0.1}>
               <div className="w-full max-w-[720px]">
                 <MacbookFrame>
@@ -768,7 +808,7 @@ export default function LandingPage() {
               </div>
             </FadeIn>
 
-            <FadeIn delay={0.2} className="space-y-4">
+            <FadeIn delay={0.2} className="space-y-5">
               {[
                 { icon: BarChart3, title: "AI Destekli Analiz", desc: "40 mikro kritere göre içerik kalitenizi ölçer." },
                 { icon: TrendingUp, title: "Akıllı Öneriler", desc: "İçeriklerinizi geliştirmek için uygulanabilir öneriler sunar." },
@@ -960,7 +1000,7 @@ export default function LandingPage() {
                         <img
                           src={DASHBOARD_SCREENSHOTS.brandBrain}
                           alt="Canva öneri önizlemesi"
-                          className="h-32 w-full object-cover"
+                          className="block h-auto w-full object-contain"
                           decoding="async"
                         />
                       </div>
@@ -1185,11 +1225,11 @@ export default function LandingPage() {
 
       {/* FOOTER */}
       <footer className="relative overflow-hidden bg-brand-dark pb-10 pt-16">
-        <p className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 text-[12rem] font-black leading-none text-white/3 select-none">
+        <p className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 text-[28vw] font-black leading-none text-white/3 select-none md:text-[12rem]">
           SCORE
         </p>
         <div className={`relative ${PAGE_CONTAINER}`}>
-          <div className="grid gap-42 md:grid-cols-4">
+          <div className="grid gap-10 md:grid-cols-4 md:gap-8">
             <div className="md:col-span-1">
               <Logo className="h-7 w-auto text-white" />
               <p className="mt-4 text-sm leading-relaxed text-white/50">

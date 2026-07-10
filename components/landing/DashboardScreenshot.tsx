@@ -33,15 +33,39 @@ export function DashboardScreenshot({
   priority = false,
 }: DashboardScreenshotProps) {
   const [showPlaceholder, setShowPlaceholder] = useState(!src);
-  const imageFit = variant === "section" ? "object-contain" : "object-fill";
+
+  // Section görselleri arka plan/letterbox olmadan, kendi doğal oranında gösterilir
+  if (variant === "section") {
+    if (src && !showPlaceholder) {
+      return (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt={alt}
+          className={`block h-auto w-full rounded-xl ${className}`}
+          decoding="async"
+          fetchPriority={priority ? "high" : "auto"}
+          onError={() => setShowPlaceholder(true)}
+        />
+      );
+    }
+    return (
+      <div
+        className={`flex min-h-[240px] items-center justify-center rounded-xl border border-dashed border-white/20 bg-white/5 p-6 text-center ${className}`}
+      >
+        <div>
+          <p className="text-sm font-semibold text-white/70">Dashboard görseli</p>
+          <p className="mt-1 text-xs text-white/45">
+            {src ? "Görsel yüklenemedi — dosyayı kontrol edin" : "Screenshot buraya eklenecek"}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const placeholderStyle =
-    variant === "section"
-      ? "bg-transparent"
-      : "bg-linear-to-br from-brand-dark/10 via-bg-offwhite to-brand-neon/5";
-  const placeholderCardStyle =
-    variant === "section"
-      ? "border-white/20 bg-white/5"
-      : "border-brand-dark/20 bg-white/60";
+    "bg-linear-to-br from-brand-dark/10 via-bg-offwhite to-brand-neon/5";
+  const placeholderCardStyle = "border-brand-dark/20 bg-white/60";
 
   return (
     <div className={`relative w-full overflow-hidden ${variantStyles[variant]} ${className}`}>
@@ -51,7 +75,7 @@ export function DashboardScreenshot({
         <img
           src={src}
           alt={alt}
-          className={`absolute inset-0 h-full w-full ${imageFit}`}
+          className="absolute inset-0 h-full w-full object-fill"
           decoding="async"
           fetchPriority={priority ? "high" : "auto"}
           onError={() => setShowPlaceholder(true)}
