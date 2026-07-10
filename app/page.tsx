@@ -34,7 +34,7 @@ import {
 import { joinWaitlist } from "@/actions/waitlist";
 
 const PAGE_CONTAINER =
-  "mx-auto w-full max-w-[1780px] px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12";
+  "mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12";
 
 const ANALYSIS_PREVIEW_IMAGES = {
   current: "/screenshots/analysis-current.png",
@@ -448,7 +448,7 @@ export default function LandingPage() {
           </FadeIn>
 
           <FadeIn delay={0.15} className="min-w-0">
-            <div className="relative">
+            <div className="relative mx-auto w-full max-w-3xl lg:max-w-none">
               <DashboardScreenshot
                 variant="hero"
                 src={DASHBOARD_SCREENSHOTS.hero}
@@ -471,7 +471,7 @@ export default function LandingPage() {
           </FadeIn>
 
           <FadeIn delay={0.1} className="mt-12">
-            <div className="grid items-stretch gap-4 lg:gap-x-5 lg:grid-cols-[1fr_auto_1fr_1fr]">
+            <div className="mx-auto grid max-w-xl items-stretch gap-4 lg:max-w-none lg:gap-x-5 lg:grid-cols-[1fr_auto_1fr_1fr]">
               <div className="relative min-h-[500px] rounded-2xl border border-brand-dark/10 bg-bg-light p-6 pt-8 shadow-sm">
                 <p className="absolute -top-6 left-1/2 -translate-x-1/2 bg-bg-offwhite px-3 text-sm font-semibold text-brand-dark/60">
                   Mevcut
@@ -651,7 +651,7 @@ export default function LandingPage() {
                   ))}
                 </div>
               </div>
-              <div className="flex h-full items-center">
+              <div className="mx-auto flex h-full w-full max-w-2xl items-center lg:max-w-none">
                 <DashboardScreenshot
                   variant="section"
                   src={DASHBOARD_SCREENSHOTS.brandBrain}
@@ -664,7 +664,7 @@ export default function LandingPage() {
           {/* Benchmark */}
           <FadeIn>
             <div className="grid items-stretch gap-10 lg:grid-cols-2">
-              <div className="order-2 flex h-full items-center lg:order-1">
+              <div className="order-2 mx-auto flex h-full w-full max-w-2xl items-center lg:order-1 lg:max-w-none">
                 <DashboardScreenshot
                   variant="section"
                   src={DASHBOARD_SCREENSHOTS.benchmark}
@@ -728,7 +728,7 @@ export default function LandingPage() {
                   ))}
                 </div>
               </div>
-              <div className="flex h-full items-center">
+              <div className="mx-auto flex h-full w-full max-w-2xl items-center lg:max-w-none">
                 <DashboardScreenshot
                   variant="section"
                   src={DASHBOARD_SCREENSHOTS.creativeMemory}
@@ -785,7 +785,7 @@ export default function LandingPage() {
 
           <div className="mt-12 grid items-center gap-12 lg:grid-cols-[1.4fr_1fr] lg:gap-10">
             <FadeIn delay={0.1}>
-              <div className="w-full max-w-[720px]">
+              <div className="mx-auto w-full max-w-[720px] lg:mx-0">
                 <MacbookFrame>
                   <div className="relative">
                     <DashboardScreenshot
@@ -966,7 +966,7 @@ export default function LandingPage() {
                         <p className="text-sm font-semibold text-brand-dark">Yayınlanmaya Hazır</p>
                         <p className="mt-1 text-xs text-brand-dark/70">Geçen aya göre +12 puan artışı</p>
                       </div>
-                      <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-4">
+                      <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-4 text-center">
                         <p className="text-brand-dark/85">Gelişim Alanı</p>
                         <p className="mt-1 text-4xl leading-none font-bold text-brand-dark">
                           12 <span className="text-base font-medium text-brand-dark/75">adet</span>
