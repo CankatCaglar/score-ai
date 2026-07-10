@@ -34,7 +34,7 @@ import {
 import { joinWaitlist } from "@/actions/waitlist";
 
 const PAGE_CONTAINER =
-  "mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12";
+  "mx-auto w-full max-w-[1880px] px-4 sm:px-6 lg:px-8 xl:px-10  2xl:px-12";
 
 const ANALYSIS_PREVIEW_IMAGES = {
   current: "/screenshots/analysis-current.png",
@@ -415,10 +415,21 @@ export default function LandingPage() {
                 <Sparkles className="size-3.5" />
                 Yapay Zeka Destekli İçerik Analizi
               </span>
-              <h1 className="text-[1.75rem] font-bold leading-[1.2] tracking-tight text-brand-dark wrap-break-word sm:text-[2.35rem] md:text-[2.8rem] lg:text-[2.6rem]">
-                İçerikleriniz neden performans göstermiyor?
-                <br />
-                <span className="text-brand-dark">Score AI bunu size saniyeler içinde söylesin.</span>
+              <h1 className="text-[1.5rem] font-bold leading-tight tracking-tight text-brand-dark sm:text-[2.35rem] md:text-[2.8rem] lg:text-[2.6rem]">
+                <span className="block sm:hidden">
+                  İçerikleriniz neden performans
+                  <br />
+                  göstermiyor?
+                  <br />
+                  Score AI bunu size saniyeler
+                  <br />
+                  içinde söylesin.
+                </span>
+                <span className="hidden sm:block">
+                  İçerikleriniz neden performans{"\u00a0"}göstermiyor?
+                  <br />
+                  Score AI bunu size saniyeler içinde{"\u00a0"}söylesin.
+                </span>
               </h1>
               <p className="max-w-md text-base leading-relaxed text-brand-dark/80">
                 Score AI, içeriklerinizi 40 mikro kriterle analiz eder, markanızı
@@ -439,7 +450,7 @@ export default function LandingPage() {
                 }
                 id="hero-email"
               />
-              <p className="flex items-center gap-1.5 pt-1 text-sm leading-snug text-brand-dark/80">
+              <p className="flex items-center gap-1.5 text-sm leading-snug text-brand-dark/80">
                 <span aria-hidden="true">🎉</span>
                 <span className="font-bold text-brand-dark">1.042</span>{" "}
                 kişi bekleme listesinde.
@@ -448,7 +459,7 @@ export default function LandingPage() {
           </FadeIn>
 
           <FadeIn delay={0.15} className="min-w-0">
-            <div className="relative mx-auto w-full max-w-3xl lg:max-w-none">
+            <div className="relative">
               <DashboardScreenshot
                 variant="hero"
                 src={DASHBOARD_SCREENSHOTS.hero}
@@ -471,8 +482,8 @@ export default function LandingPage() {
           </FadeIn>
 
           <FadeIn delay={0.1} className="mt-12">
-            <div className="mx-auto grid max-w-xl items-stretch gap-4 lg:max-w-none lg:gap-x-5 lg:grid-cols-[1fr_auto_1fr_1fr]">
-              <div className="relative min-h-[500px] rounded-2xl border border-brand-dark/10 bg-bg-light p-6 pt-8 shadow-sm">
+            <div className="mx-auto grid max-w-md items-stretch gap-4 lg:max-w-none lg:gap-x-5 lg:grid-cols-[1fr_auto_1fr_1fr]">
+              <div className="relative rounded-2xl border border-brand-dark/10 bg-bg-light p-6 pt-8 shadow-sm lg:min-h-[500px]">
                 <p className="absolute -top-6 left-1/2 -translate-x-1/2 bg-bg-offwhite px-3 text-sm font-semibold text-brand-dark/60">
                   Mevcut
                 </p>
@@ -498,7 +509,7 @@ export default function LandingPage() {
                 <p className="text-lg font-semibold text-brand-dark/80">Potansiyel</p>
               </div>
 
-              <div className="relative min-h-[500px] rounded-2xl border border-brand-dark/15 bg-bg-light p-6 pt-8 shadow-sm">
+              <div className="relative rounded-2xl border border-brand-dark/15 bg-bg-light p-6 pt-8 shadow-sm lg:min-h-[500px]">
                 <p className="absolute -top-6 left-1/2 -translate-x-1/2 bg-bg-offwhite px-3 text-sm font-semibold text-brand-dark/70">
                   Önerilen
                 </p>
@@ -516,7 +527,7 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="min-h-[500px] rounded-2xl border border-brand-dark/10 bg-bg-light p-6 shadow-sm lg:ml-3">
+              <div className="rounded-2xl border border-brand-dark/10 bg-bg-light p-6 shadow-sm lg:ml-3 lg:min-h-[500px]">
                 <p className="text-xl font-bold text-brand-dark">Önerilen İyileştirmeler</p>
                 <ul className="mt-5 space-y-4.5">
                   {[
@@ -651,9 +662,10 @@ export default function LandingPage() {
                   ))}
                 </div>
               </div>
-              <div className="mx-auto flex h-full w-full max-w-2xl items-center lg:max-w-none">
+              <div className="flex h-full items-center justify-center">
                 <DashboardScreenshot
                   variant="section"
+                  className="mx-auto max-w-xl"
                   src={DASHBOARD_SCREENSHOTS.brandBrain}
                   alt="Score AI Brand Brain ekranı"
                 />
@@ -664,9 +676,10 @@ export default function LandingPage() {
           {/* Benchmark */}
           <FadeIn>
             <div className="grid items-stretch gap-10 lg:grid-cols-2">
-              <div className="order-2 mx-auto flex h-full w-full max-w-2xl items-center lg:order-1 lg:max-w-none">
+              <div className="order-2 flex h-full items-center justify-center lg:order-1">
                 <DashboardScreenshot
                   variant="section"
+                  className="mx-auto max-w-xl"
                   src={DASHBOARD_SCREENSHOTS.benchmark}
                   alt="Score AI Benchmark ekranı"
                 />
@@ -728,9 +741,10 @@ export default function LandingPage() {
                   ))}
                 </div>
               </div>
-              <div className="mx-auto flex h-full w-full max-w-2xl items-center lg:max-w-none">
+              <div className="flex h-full items-center justify-center">
                 <DashboardScreenshot
                   variant="section"
+                  className="mx-auto max-w-xl"
                   src={DASHBOARD_SCREENSHOTS.creativeMemory}
                   alt="Score AI Creative Memory ekranı"
                 />
@@ -744,7 +758,7 @@ export default function LandingPage() {
               {featurePills.map(({ title, desc }, i) => (
                 <div
                   key={title}
-                  className="flex min-h-[128px] gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-brand-neon/30"
+                  className="flex gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-brand-neon/30 sm:min-h-[128px]"
                 >
                   <div className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-neon/15">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -784,8 +798,8 @@ export default function LandingPage() {
           </FadeIn>
 
           <div className="mt-12 grid items-center gap-12 lg:grid-cols-[1.4fr_1fr] lg:gap-10">
-            <FadeIn delay={0.1}>
-              <div className="mx-auto w-full max-w-[720px] lg:mx-0">
+            <FadeIn delay={0.1} className="flex justify-center lg:justify-start">
+0              <div className="w-full max-w-[720px]">
                 <MacbookFrame>
                   <div className="relative">
                     <DashboardScreenshot
