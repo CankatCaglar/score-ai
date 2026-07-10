@@ -415,7 +415,7 @@ export default function LandingPage() {
                 <Sparkles className="size-3.5" />
                 Yapay Zeka Destekli İçerik Analizi
               </span>
-              <h1 className="text-[1.5rem] font-bold leading-tight tracking-tight text-brand-dark sm:text-[2.35rem] md:text-[2.8rem] lg:text-[2.6rem]">
+              <h1 className="text-[1.65rem] font-bold leading-tight tracking-tight text-brand-dark sm:text-[2.35rem] md:text-[2.8rem] lg:text-[2.6rem]">
                 <span className="block sm:hidden">
                   İçerikleriniz neden performans
                   <br />
@@ -482,7 +482,7 @@ export default function LandingPage() {
           </FadeIn>
 
           <FadeIn delay={0.1} className="mt-12">
-            <div className="mx-auto grid max-w-md items-stretch gap-4 lg:max-w-none lg:gap-x-5 lg:grid-cols-[1fr_auto_1fr_1fr]">
+            <div className="mx-auto grid max-w-md items-stretch gap-10 lg:max-w-none lg:gap-4 lg:gap-x-5 lg:grid-cols-[1fr_auto_1fr_1fr]">
               <div className="relative rounded-2xl border border-brand-dark/10 bg-bg-light p-6 pt-8 shadow-sm lg:min-h-[500px]">
                 <p className="absolute -top-6 left-1/2 -translate-x-1/2 bg-bg-offwhite px-3 text-sm font-semibold text-brand-dark/60">
                   Mevcut
@@ -799,7 +799,7 @@ export default function LandingPage() {
 
           <div className="mt-12 grid items-center gap-12 lg:grid-cols-[1.4fr_1fr] lg:gap-10">
             <FadeIn delay={0.1} className="flex justify-center lg:justify-start">
-0              <div className="w-full max-w-[720px]">
+              <div className="w-full max-w-[720px]">
                 <MacbookFrame>
                   <div className="relative">
                     <DashboardScreenshot
