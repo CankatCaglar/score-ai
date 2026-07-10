@@ -14,7 +14,7 @@ export const DASHBOARD_SCREENSHOTS = {
 const variantStyles = {
   hero: "aspect-[15/10] min-h-[280px] rounded-2xl border border-white/10 bg-bg-offwhite shadow-2xl",
   section: "h-full min-h-[480px] rounded-xl border border-white/10 bg-white",
-  video: "aspect-[16/8] w-full rounded-t-lg border border-white/10 bg-bg-offwhite",
+  video: "aspect-[16/9] w-full rounded-t-lg border border-white/10 bg-bg-offwhite",
 } as const;
 
 type DashboardScreenshotProps = {

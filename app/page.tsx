@@ -23,11 +23,13 @@ import {
   Zap,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   DASHBOARD_SCREENSHOTS,
   DashboardScreenshot,
   MacbookFrame,
 } from "@/components/landing/DashboardScreenshot";
+import { joinWaitlist } from "@/actions/waitlist";
 
 const PAGE_CONTAINER =
   "mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12";
@@ -70,8 +72,7 @@ const UPLOAD_SOURCE_ICONS = [
 ] as const;
 
 const FOOTER_QUOTE_IMAGE = "/screenshots/footer-quote-image.png";
-const PRODUCT_VIDEO_EMBED_URL = "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0";
-const PRODUCT_VIDEO_WATCH_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+const PRODUCT_VIDEO_EMBED_URL = "https://www.youtube.com/embed/ALk-ws_XffI?autoplay=1&rel=0";
 
 const menuItems: { label: string; id: string; disabled?: boolean }[] = [
   { label: "Özellikler", id: "ozellikler" },
@@ -211,12 +212,16 @@ function WaitlistForm({
   email,
   setEmail,
   isValid,
+  isPending = false,
+  onSubmit,
   id,
   showSecurityNote = true,
 }: {
   email: string;
   setEmail: (v: string) => void;
   isValid: boolean;
+  isPending?: boolean;
+  onSubmit: () => Promise<void>;
   id: string;
   showSecurityNote?: boolean;
 }) {
@@ -236,11 +241,12 @@ function WaitlistForm({
         </div>
         <button
           type="button"
-          disabled={!isValid}
+          disabled={!isValid || isPending}
+          onClick={onSubmit}
           className="flex h-12 items-center justify-center gap-2 rounded-xl bg-brand-neon px-6 text-sm font-bold text-brand-dark transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Waitlist&apos;e Katıl
-          <ArrowRight className="size-4" />
+          {isPending ? "Ekleniyor..." : "Waitlist'e Katıl"}
+          {!isPending && <ArrowRight className="size-4" />}
         </button>
       </div>
       {showSecurityNote && (
@@ -258,6 +264,8 @@ export default function LandingPage() {
   const [footerEmail, setFooterEmail] = useState("");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [isHeroSubmitting, setIsHeroSubmitting] = useState(false);
+  const [isFooterSubmitting, setIsFooterSubmitting] = useState(false);
 
   const isHeroValid = useMemo(
     () => heroEmail.includes("@") && heroEmail.includes(".com"),
@@ -274,6 +282,37 @@ export default function LandingPage() {
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleJoinWaitlist = async (
+    email: string,
+    clearEmail: () => void,
+    setPending: (v: boolean) => void,
+  ) => {
+    if (!email.includes("@") || !email.includes(".com")) {
+      toast.error("Lütfen geçerli bir e-posta girin.");
+      return;
+    }
+
+    setPending(true);
+    try {
+      await joinWaitlist(email);
+      clearEmail();
+      toast.success("Bekleme listesine eklendiniz!");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message.includes("permission-denied")) {
+        toast.error("Firestore izinleri eksik. Firebase kurallarını güncelleyin.");
+      } else if (message.includes("MAIL_REJECTED")) {
+        toast.error("Mail sunucusu alıcı adresi reddetti. DNS/SPF ayarlarını kontrol edin.");
+      } else if (message.includes("INVALID_EMAIL")) {
+        toast.error("Lütfen geçerli bir e-posta girin.");
+      } else {
+        toast.error("Bir sorun oluştu. Lütfen tekrar deneyin.");
+      }
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -325,7 +364,7 @@ export default function LandingPage() {
       {/* 1. HERO */}
       <section className="bg-bg-light pt-24 pb-20">
         <div
-          className={`grid items-center gap-12 lg:grid-cols-[1fr_2fr] lg:gap-16 xl:gap-20 ${PAGE_CONTAINER}`}
+          className={`grid items-center gap-12 lg:grid-cols-[1fr_2fr] lg:gap-16 xl:gap-16 ${PAGE_CONTAINER}`}
         >
           <FadeIn>
             <div className="space-y-6">
@@ -351,6 +390,10 @@ export default function LandingPage() {
                 email={heroEmail}
                 setEmail={setHeroEmail}
                 isValid={isHeroValid}
+                isPending={isHeroSubmitting}
+                onSubmit={() =>
+                  handleJoinWaitlist(heroEmail, () => setHeroEmail(""), setIsHeroSubmitting)
+                }
                 id="hero-email"
               />
               <p className="flex items-center gap-1.5 pt-1 text-sm leading-snug text-brand-dark/80">
@@ -700,27 +743,29 @@ export default function LandingPage() {
             </p>
           </FadeIn>
 
-          <div className="mt-12 grid items-center gap-10 lg:grid-cols-[1.4fr_1fr]">
+          <div className="mt-12 grid items-center gap-1 lg:grid-cols-[1.4fr_1fr]">
             <FadeIn delay={0.1}>
-              <MacbookFrame>
-                <div className="relative">
-                  <DashboardScreenshot
-                    variant="video"
-                    src={DASHBOARD_SCREENSHOTS.video}
-                    alt="Score AI ürün demosu"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-brand-dark/20">
-                    <button
-                      type="button"
-                      onClick={() => setIsVideoModalOpen(true)}
-                      aria-label="Ürün videosunu aç"
-                      className="flex size-16 items-center justify-center rounded-full bg-brand-neon shadow-xl transition hover:scale-105"
-                    >
-                      <Play className="ml-1 size-7 fill-brand-dark text-brand-dark" />
-                    </button>
+              <div className="w-full max-w-[720px]">
+                <MacbookFrame>
+                  <div className="relative">
+                    <DashboardScreenshot
+                      variant="video"
+                      src={DASHBOARD_SCREENSHOTS.video}
+                      alt="Score AI ürün demosu"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-brand-dark/20">
+                      <button
+                        type="button"
+                        onClick={() => setIsVideoModalOpen(true)}
+                        aria-label="Ürün videosunu aç"
+                        className="flex size-16 items-center justify-center rounded-full bg-brand-neon shadow-xl transition hover:scale-105"
+                      >
+                        <Play className="ml-1 size-7 fill-brand-dark text-brand-dark" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </MacbookFrame>
+                </MacbookFrame>
+              </div>
             </FadeIn>
 
             <FadeIn delay={0.2} className="space-y-4">
@@ -773,16 +818,6 @@ export default function LandingPage() {
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
               />
-            </div>
-            <div className="mt-3 flex justify-end">
-              <a
-                href={PRODUCT_VIDEO_WATCH_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-lg bg-brand-dark px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
-              >
-                YouTube&apos;da Aç
-              </a>
             </div>
           </div>
         </div>
@@ -1062,6 +1097,10 @@ export default function LandingPage() {
               email={footerEmail}
               setEmail={setFooterEmail}
               isValid={isFooterValid}
+              isPending={isFooterSubmitting}
+              onSubmit={() =>
+                handleJoinWaitlist(footerEmail, () => setFooterEmail(""), setIsFooterSubmitting)
+              }
               id="footer-email"
               showSecurityNote={false}
             />
