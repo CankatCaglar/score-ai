@@ -1,0 +1,20 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Waitlist: herkes kayit olusturabilir (landing formu), ancak
+    // istemci tarafindan OKUMA / GUNCELLEME / SILME kapalidir.
+    // Admin panel bu koleksiyona yalnizca Firebase Admin SDK (server)
+    // uzerinden erisir ve guvenlik kurallarini bypass eder.
+    match /waitlist/{docId} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
+
+    // Diger tum koleksiyonlar varsayilan olarak kapali.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
