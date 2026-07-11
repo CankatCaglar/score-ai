@@ -43,9 +43,9 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-brand-dark px-4 py-12">
+    <div className="flex min-h-screen items-start justify-center bg-brand-dark px-4 pt-14 pb-10 sm:items-center sm:py-12">
       <div className="w-full max-w-md">
-        <div className="mb-8 flex flex-col items-center text-center">
+        <div className="mb-6 flex flex-col items-center text-center sm:mb-8">
           <Logo className="h-8 w-auto text-white" />
           <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 text-xs font-medium text-brand-neon">
             <ShieldCheck className="size-3.5" />
