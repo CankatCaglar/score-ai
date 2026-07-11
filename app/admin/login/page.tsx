@@ -43,7 +43,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-start justify-center bg-brand-dark px-4 pt-14 pb-10 sm:items-center sm:py-12">
+    <div className="flex min-h-screen items-start justify-center bg-brand-dark px-4 pt-18 pb-10 sm:items-center sm:py-12">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center sm:mb-8">
           <Logo className="h-8 w-auto text-white" />
@@ -79,7 +79,7 @@ export default function AdminLoginPage() {
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
-                  className="h-11 w-full rounded-xl border border-white/10 bg-brand-dark/60 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-white/25 focus:border-brand-neon focus:ring-2 focus:ring-brand-neon/20"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-brand-dark/60 pl-10 pr-4 text-[16px] text-white outline-none transition placeholder:text-white/25 focus:border-brand-neon focus:ring-2 focus:ring-brand-neon/20 sm:text-sm"
                 />
               </div>
             </div>
@@ -100,7 +100,7 @@ export default function AdminLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Şifre"
-                  className="h-11 w-full rounded-xl border border-white/10 bg-brand-dark/60 pl-10 pr-11 text-sm text-white outline-none transition placeholder:text-white/25 focus:border-brand-neon focus:ring-2 focus:ring-brand-neon/20"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-brand-dark/60 pl-10 pr-11 text-[16px] text-white outline-none transition placeholder:text-white/25 focus:border-brand-neon focus:ring-2 focus:ring-brand-neon/20 sm:text-sm"
                 />
                 <button
                   type="button"
