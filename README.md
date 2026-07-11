@@ -2,6 +2,13 @@
 
 Score AI, sosyal medya ve dijital pazarlama içeriklerini yapay zeka ile analiz edip puanlayan (scoring) ve iyileştirme önerileri sunan bir B2B SaaS platformudur. Amaç, içerik üretim ve optimizasyon sürecini veriye dayalı, ölçülebilir ve hızlı hale getirmektir.
 
+## Mevcut Durum (Temmuz 2026)
+
+- Landing page aktif ve kapsamlı responsive iyileştirmeler tamamlandı (mobil header/hamburger, kart ve spacing düzenleri).
+- Waitlist akışı canlı: Server Action ile Firestore `waitlist` koleksiyonuna kayıt yapılıyor.
+- SMTP değişkenleri tanımlıysa kullanıcıya hoş geldin e-postası gönderiliyor (opsiyonel).
+- Dashboard şu an UI iskeleti + mock verilerle çalışıyor; alt sayfalar placeholder.
+
 ## Amaç
 
 - Dijital içeriklerin performansını yapay zeka ile analiz etmek ve nesnel bir puan (score) üretmek.
@@ -21,18 +28,22 @@ Score AI, sosyal medya ve dijital pazarlama içeriklerini yapay zeka ile analiz 
 
 ### Frontend
 
-- **Next.js (App Router)** - Modern routing ve sunucu bileşenleri mimarisi.
+- **Next.js (App Router)** - Routing ve sayfa/layout mimarisi.
 - **React** - Bileşen tabanlı arayüz geliştirme.
-- **Tailwind CSS** - Utility-first, tutarlı ve hızlı stillendirme.
+- **Tailwind CSS v4** - Utility-first, tutarlı ve hızlı stillendirme.
+- **TypeScript** - Tip güvenliği.
+- **Framer Motion** - Landing sayfası geçiş animasyonları.
 
 
 
 ### Backend & Veritabanı
 
 - **Firebase**
-  - **Authentication** - Üyelik, giriş/kayıt ve oturum yönetimi.
-  - **Firestore** - Gerçek zamanlı, ölçeklenebilir NoSQL veritabanı.
-  - **Storage** - Medya ve dosya depolama.
+  - **Firestore** - Waitlist kayıtları için aktif kullanımda.
+  - **Authentication** - Planlanan (henüz aktif değil).
+  - **Storage** - Planlanan (henüz aktif değil).
+- **Next.js Server Actions** - Waitlist kayıt akışı.
+- **Nodemailer (opsiyonel)** - SMTP varsa hoş geldin e-postası.
 
 
 
@@ -44,7 +55,9 @@ Score AI, sosyal medya ve dijital pazarlama içeriklerini yapay zeka ile analiz 
 
 ## Mimari
 
-Score AI, **üyelik gerektiren (Login / Signup) bir B2B SaaS** modeli üzerine kuruludur. Platformun tüm çekirdek özellikleri kimlik doğrulaması yapılmış kullanıcılar için erişilebilirdir.
+Score AI, fazlı ilerleyen bir B2B SaaS mimarisiyle geliştirilmektedir.
+
+Mevcut fazda odak, landing + waitlist toplama + dashboard UI iskeletidir. Kimlik doğrulama (Login / Signup), gerçek içerik yükleme akışı ve tam analiz motoru bir sonraki fazlarda devreye alınacaktır.
 
 İlerleyen fazlarda, kullanıcıların **sosyal medya hesaplarını OAuth ile bağlayabileceği** bir sistem kurgulanmıştır. Bu sayede içeriklerin doğrudan bağlı hesaplar üzerinden analiz edilmesi ve performans verileriyle zenginleştirilmesi hedeflenmektedir.
 
@@ -61,5 +74,5 @@ Tüm sayfaların arayüz dili **temiz, sade ve premium** olacak şekilde tasarla
 ## Not
 
 > Bu README, proje vizyonunu ve uzun vadeli hedefleri anlatır.  
-> **Güncel teknik durum ve yapılan işler** için bkz. `[ILERLEME.md](./ILERLEME.md)` — her anlamlı geliştirmeden sonra güncellenir.
+> **Güncel teknik durum, tamamlanan işler ve günlük değişiklikler** için bkz. `[ILERLEME.md](./ILERLEME.md)` — her anlamlı geliştirmeden sonra güncellenir.
 

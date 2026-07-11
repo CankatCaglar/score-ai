@@ -4,8 +4,8 @@
 > Her anlamlı geliştirmeden sonra güncellenmelidir.
 > Ürün vizyonu ve uzun vadeli hedefler için bkz. [README.md](./README.md)
 
-**Son güncelleme:** 8 Temmuz 2026
-**Mevcut faz:** Faz 0 — Landing Page + Dashboard UI iskeleti
+**Son güncelleme:** 10 Temmuz 2026
+**Mevcut faz:** Faz 0 — Landing Page + Dashboard UI iskeleti (responsive hardening + waitlist backend v1)
 
 ---
 
@@ -14,14 +14,14 @@
 
 | Alan                                       | Durum                         |
 | ------------------------------------------ | ----------------------------- |
-| Landing page (waitlist)                    | Tamamlandı (UI)               |
+| Landing page (waitlist)                    | Tamamlandı (UI + responsive)  |
 | Dashboard iskeleti + Genel Bakış           | Tamamlandı (mock veri)        |
 | Dashboard alt sayfaları                    | İskelet (placeholder)         |
 | Upload modal (UI)                          | Tamamlandı (mantık yok)       |
 | Screenshot sistemi (`public/screenshots/`) | Tamamlandı                    |
-| Firebase entegrasyonu                      | Başlanmadı                    |
+| Firebase entegrasyonu                      | Kısmi (Firestore waitlist)    |
 | Auth (Login / Signup)                      | Başlanmadı (landing'de pasif) |
-| Waitlist backend                           | Başlanmadı (form mock)        |
+| Waitlist backend                           | Tamamlandı (Server Action v1) |
 | OpenAI analiz motoru                       | Başlanmadı                    |
 | OAuth (sosyal medya bağlama)               | Planlandı (ileri faz)         |
 
@@ -145,7 +145,7 @@ Görsel değiştirdikten sonra tarayıcıda hard refresh (`Cmd+Shift+R`) yeterli
 
 - Landing: koyu/açık bölüm alternansı, neon vurgular, framer-motion fade-in
 - Dashboard: Apple / Linear tarzı — sade, bol boşluk, yuvarlatılmış kartlar
-- Layout genişliği: `max-w-[1580px]` + responsive yatay padding (`PAGE_CONTAINER`)
+- Layout genişliği: `max-w-[1780px]` + responsive yatay padding (`PAGE_CONTAINER`)
 
 ---
 
@@ -192,7 +192,8 @@ score-ai/
 
 **Header (sabit)**
 
-- 3 sütunlu grid: logo (sol) · nav (orta) · Waitlist CTA (sağ)
+- Desktop: 3 sütunlu grid (logo · nav · Waitlist CTA)
+- Mobil: hamburger menü + açılır nav paneli + mobil Waitlist CTA
 - Logo tıklanabilir → sayfa başına smooth scroll
 - Login / Signup kaldırıldı (pasif mock yok)
 - Fiyatlandırma nav linki pasif (disabled)
@@ -216,23 +217,33 @@ score-ai/
 
 **Hero metinleri (güncel)**
 
-- Başlık: *İçeriğinizin kalitesini ölçün. Otomatik geliştirin.*
-- Alt başlık: 45 mikro kriter, marka öğrenimi, otomatik öneriler
-- Sosyal kanıt: 1.000+ içerik üreticisi, pazarlama ekibi ve ajans...
+- Başlık: *İçerikleriniz neden performans göstermiyor? Score AI bunu size saniyeler içinde söylesin.*
+- Alt başlık: 40 mikro kriter, marka öğrenimi, otomatik öneriler
+- Sosyal kanıt: 1.042 kişi bekleme listesinde
 
 **Waitlist formu**
 
 - E-posta validasyonu (client-side, `@` + `.com`)
-- Henüz backend yok — buton mock
+- Server Action (`joinWaitlist`) ile Firestore `waitlist` koleksiyonuna kayıt
+- Opsiyonel SMTP (Nodemailer) varsa hoş geldin e-postası gönderimi
 
 
 
 ### 2. `DashboardScreenshot` bileşeni
 
-- `variant`: `hero` | `section` | `video` — sabit aspect ratio container
-- `section` için `object-contain`, diğerleri `object-fill`
+- `variant`: `hero` | `section` | `video`
+- `section` için kırpmasız doğal oran (`h-auto w-full`), arka plansız render
+- `hero` ve `video` için sabit oranlı container + `object-fill`
 - Native `<img>` — dosya değişince anında yansır
 - `MacbookFrame` — video bölümü için laptop çerçevesi
+
+### 2.2 Landing responsive iyileştirmeleri (10 Tem)
+
+- Global yatay taşma koruması: `html, body { overflow-x: hidden; max-width: 100%; }`
+- Mobil header menüsü, hero başlık satır akışı ve section bazlı tipografi revize edildi
+- "AI Sadece Puan Vermez" karşılaştırma alanı mobilde yeniden ölçeklendirildi (`max-w-md`, adaptif boşluklar)
+- Özellik kartlarında mobilde gereksiz dikey boşluklar azaltıldı (`sm:min-h-[128px]`)
+- Footer iletişim alanı tıklanabilir hale geldi (`mailto:` + Google Maps linki)
 
 
 
@@ -292,9 +303,7 @@ score-ai/
 
 ### Landing
 
-- [ ] Waitlist form backend (e-posta kayıt API / Firebase)
 - [ ] Fiyatlandırma bölümü (şu an nav pasif)
-- [ ] Video demo gerçek embed (Play butonu mock)
 - [ ] Login / Signup sayfaları (ileride)
 
 
@@ -344,6 +353,10 @@ score-ai/
 | 8 Tem 2026 | "Nasıl Çalışıyor" kartları referans tasarıma göre detay bloklarla genişletildi          |
 | 8 Tem 2026 | "Kimler Kullanmalı", "Son Adım" ve 6'lı feature pill ikonları PNG slotlarına taşındı    |
 | 8 Tem 2026 | Footer üstü koyu quote blokta sol kart kaldırıldı, yerine görsel alanı eklendi          |
+| 10 Tem 2026 | Waitlist backend v1 eklendi (Server Action + Firestore + opsiyonel SMTP e-posta)       |
+| 10 Tem 2026 | Footer iletişim alanı etkileşimli hale getirildi (`mailto` + Google Maps lokasyon)      |
+| 10 Tem 2026 | Mobil responsive hardening: header/hamburger, hero satır akışı, kart ve spacing düzeltmeleri |
+| 10 Tem 2026 | Dashboard screenshot `section` varyantı kırpmasız/doğal oran render'a geçirildi         |
 
 
 ---

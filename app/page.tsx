@@ -1179,7 +1179,7 @@ export default function LandingPage() {
               {[
                 { val: "1.000+", lbl: "Kişi waitlist'te", sub: "Her geçen gün büyüyoruz." },
                 { val: "84", lbl: "Ortalama Score", sub: "İlk analiz sonrası ortalama." },
-                { val: "45", lbl: "Mikro Kriter", sub: "Detaylı kalite analizi." },
+                { val: "40", lbl: "Mikro Kriter", sub: "Detaylı kalite analizi." },
                 { val: "3 dk", lbl: "İlk Analiz", sub: "Hızlı, kolay ve otomatik." },
               ].map(({ val, lbl, sub }, i) => (
                 <div key={lbl} className="flex h-full flex-col items-center text-center">
