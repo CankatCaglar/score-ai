@@ -83,12 +83,12 @@ export async function joinWaitlist(email: string, locale?: string) {
     ? "Welcome to the Score AI waitlist"
     : "Score AI bekleme listesine hos geldiniz";
   const textBody = isEnglish
-    ? "Hi,\n\nThank you for joining the Score AI early access waitlist. We will share launch details with you soon.\n\nScore AI\ninfo@usescore.net"
-    : "Merhaba,\n\nScore AI erken erisim listesine katildiginiz icin tesekkur ederiz. Lansman detaylarini yakinda sizinle paylasacagiz.\n\nScore AI\ninfo@usescore.net";
+    ? "Hi,\n\nYou have successfully joined the Score Waitlist.\nWhen Score is ready, you will be among the first users to get early access.\nWe will share important product updates with you during this process.\n\nScore AI\ninfo@usescore.net"
+    : "Merhaba,\n\nScore Waitlist'e basariyla katildiniz.\nScore hazir oldugunda erken erisim hakki kazanan ilk kullanicilar arasinda olacaksiniz.\nBu surecte onemli urun guncellemelerini sizinle paylasacagiz.\n\nScore AI\ninfo@usescore.net";
   const htmlTitle = isEnglish ? "Hi," : "Merhaba,";
   const htmlParagraph = isEnglish
-    ? "Thank you for joining the Score AI early access waitlist. We will share launch details with you soon."
-    : "Score AI erken erisim listesine katildiginiz icin tesekkur ederiz. Lansman detaylarini yakinda sizinle paylasacagiz.";
+    ? "You have successfully joined the Score Waitlist.<br/>When Score is ready, you will be among the first users to get early access.<br/>We will share important product updates with you during this process."
+    : "Score Waitlist'e basariyla katildiniz.<br/>Score hazir oldugunda erken erisim hakki kazanan ilk kullanicilar arasinda olacaksiniz.<br/>Bu surecte onemli urun guncellemelerini sizinle paylasacagiz.";
 
   const mailResult = await transporter.sendMail({
     from: {
