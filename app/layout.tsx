@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -45,6 +46,7 @@ export default function RootLayout({
           </div>
         </noscript>
         {children}
+        <Analytics />
         <Toaster richColors position="top-right" />
       </body>
     </html>
