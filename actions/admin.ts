@@ -13,6 +13,7 @@ import { getAdminDb } from "@/lib/firebase-admin";
 export type WaitlistEntry = {
   id: string;
   email: string;
+  locale: "tr" | "en";
   createdAt: number | null;
 };
 
@@ -77,11 +78,13 @@ export async function listWaitlist(
   return snapshot.docs.map((doc) => {
     const data = doc.data() as {
       email?: string;
+      locale?: string;
       createdAt?: { toMillis?: () => number };
     };
     return {
       id: doc.id,
       email: data.email ?? "—",
+      locale: data.locale === "en" ? "en" : "tr",
       createdAt: data.createdAt?.toMillis?.() ?? null,
     };
   });

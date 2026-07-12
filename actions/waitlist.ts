@@ -1,29 +1,55 @@
 "use server";
 
 import nodemailer from "nodemailer";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { FieldValue } from "firebase-admin/firestore";
+import { getAdminDb } from "@/lib/firebase-admin";
 
-export async function joinWaitlist(email: string) {
+type WaitlistLocale = "tr" | "en";
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function normalizeLocale(locale?: string): WaitlistLocale {
+  return locale?.toLowerCase() === "en" ? "en" : "tr";
+}
+
+export async function joinWaitlist(email: string, locale?: string) {
   const normalizedEmail = email.trim().toLowerCase();
+  const normalizedLocale = normalizeLocale(locale);
 
-  if (!normalizedEmail.includes("@") || !normalizedEmail.includes(".")) {
+  if (!isValidEmail(normalizedEmail)) {
     throw new Error("INVALID_EMAIL");
   }
 
   // Deterministic ID: aynı e-posta tekrar gelirse aynı doküman güncellenir.
   const waitlistId = Buffer.from(normalizedEmail).toString("base64url");
-  const waitlistDocRef = doc(db, "waitlist", waitlistId);
-  await setDoc(
-    waitlistDocRef,
+  const db = getAdminDb();
+  const waitlistDocRef = db.collection("waitlist").doc(waitlistId);
+  const waitlistSnapshot = await waitlistDocRef.get();
+  const alreadyJoined = waitlistSnapshot.exists;
+
+  await waitlistDocRef.set(
     {
       waitlistId,
       email: normalizedEmail,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      locale: normalizedLocale,
+      ...(alreadyJoined ? {} : { createdAt: FieldValue.serverTimestamp() }),
+      updatedAt: FieldValue.serverTimestamp(),
     },
     { merge: true },
   );
+
+  // Ayni e-posta daha once kayitliyse tekrar hos geldin maili gonderme.
+  if (alreadyJoined) {
+    return {
+      ok: true,
+      status: "already_joined" as const,
+      waitlistId,
+      recipient: normalizedEmail,
+      accepted: [] as string[],
+    };
+  }
 
   const smtpHost = process.env.SMTP_HOST;
   const smtpUser = process.env.SMTP_USER;
@@ -33,6 +59,7 @@ export async function joinWaitlist(email: string) {
   if (!smtpHost || !smtpUser || !smtpPass) {
     return {
       ok: true,
+      status: "added" as const,
       waitlistId,
       recipient: normalizedEmail,
       accepted: [] as string[],
@@ -51,9 +78,17 @@ export async function joinWaitlist(email: string) {
     },
   });
 
-  const subject = "Score AI bekleme listesine hoş geldiniz";
-  const textBody =
-    "Merhaba,\n\nScore AI erken erişim listesine katıldığınız için teşekkür ederiz. Lansman detaylarını yakında sizinle paylaşacağız.\n\nScore AI\ninfo@usescore.net";
+  const isEnglish = normalizedLocale === "en";
+  const subject = isEnglish
+    ? "Welcome to the Score AI waitlist"
+    : "Score AI bekleme listesine hos geldiniz";
+  const textBody = isEnglish
+    ? "Hi,\n\nThank you for joining the Score AI early access waitlist. We will share launch details with you soon.\n\nScore AI\ninfo@usescore.net"
+    : "Merhaba,\n\nScore AI erken erisim listesine katildiginiz icin tesekkur ederiz. Lansman detaylarini yakinda sizinle paylasacagiz.\n\nScore AI\ninfo@usescore.net";
+  const htmlTitle = isEnglish ? "Hi," : "Merhaba,";
+  const htmlParagraph = isEnglish
+    ? "Thank you for joining the Score AI early access waitlist. We will share launch details with you soon."
+    : "Score AI erken erisim listesine katildiginiz icin tesekkur ederiz. Lansman detaylarini yakinda sizinle paylasacagiz.";
 
   const mailResult = await transporter.sendMail({
     from: {
@@ -66,10 +101,9 @@ export async function joinWaitlist(email: string) {
     text: textBody,
     html: `
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 24px;">
-        <p style="font-size: 16px; margin: 0 0 16px;">Merhaba,</p>
+        <p style="font-size: 16px; margin: 0 0 16px;">${htmlTitle}</p>
         <p style="font-size: 16px; margin: 0 0 16px;">
-          Score AI erken erişim listesine katıldığınız için teşekkür ederiz.
-          Lansman detaylarını yakında sizinle paylaşacağız.
+          ${htmlParagraph}
         </p>
         <p style="font-size: 14px; margin: 0; color: #4b5563;">Score AI · info@usescore.net</p>
       </div>
@@ -85,6 +119,7 @@ export async function joinWaitlist(email: string) {
 
   return {
     ok: true,
+    status: "added" as const,
     waitlistId,
     recipient: normalizedEmail,
     accepted: mailResult.accepted,

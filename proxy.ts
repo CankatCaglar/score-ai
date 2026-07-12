@@ -1,5 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ADMIN_COOKIE_NAME, verifySessionToken } from "@/lib/admin-auth";
+import {
+  EARLY_ACCESS_COOKIE_NAME,
+  verifyEarlyAccessToken,
+} from "@/lib/early-access-auth";
+
+const APP_MODE = (process.env.APP_ACCESS_MODE ?? "waitlist").toLowerCase();
 
 /**
  * /admin altındaki tüm rotaları korur.
@@ -10,6 +16,39 @@ import { ADMIN_COOKIE_NAME, verifySessionToken } from "@/lib/admin-auth";
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const isDashboardRoute =
+    pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+  const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
+
+  if (isDashboardRoute) {
+    if (APP_MODE === "waitlist") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.searchParams.set("access", "waitlist");
+      return NextResponse.redirect(url);
+    }
+
+    if (APP_MODE === "early_access") {
+      const currentAccessCookie = request.cookies.get(
+        EARLY_ACCESS_COOKIE_NAME,
+      )?.value;
+      const hasValidSession = Boolean(
+        verifyEarlyAccessToken(currentAccessCookie),
+      );
+
+      if (!hasValidSession) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/";
+        url.searchParams.set("access", "invite_required");
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
+  if (!isAdminRoute) {
+    return NextResponse.next();
+  }
+
   const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
   const session = verifySessionToken(token);
   const isLoginPage = pathname === "/admin/login";
@@ -30,5 +69,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*"],
+  matcher: ["/admin", "/admin/:path*", "/dashboard", "/dashboard/:path*"],
 };

@@ -33,6 +33,10 @@ const dateFormatter = new Intl.DateTimeFormat("tr-TR", {
   minute: "2-digit",
 });
 
+function formatLocale(locale: "tr" | "en"): string {
+  return locale === "en" ? "EN" : "TR";
+}
+
 function formatDate(ms: number | null): string {
   if (!ms) return "—";
   return dateFormatter.format(new Date(ms));
@@ -161,6 +165,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
   const exportRows = filtered.map((entry, index) => ({
     sira: index + 1,
     email: entry.email,
+    dil: formatLocale(entry.locale),
     id: entry.id,
     eklenme: formatDate(entry.createdAt),
   }));
@@ -171,14 +176,16 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
       toast.error("Dışa aktarılacak kayıt bulunamadı.");
       return;
     }
-    const headers = ["Sıra", "E-posta", "ID", "Eklenme"];
+    const headers = ["Sıra", "E-posta", "Dil", "ID", "Eklenme"];
     const escapeCsv = (value: string | number) =>
       `"${String(value).replaceAll('"', '""')}"`;
 
     const lines = [
       headers.map(escapeCsv).join(","),
       ...exportRows.map((row) =>
-        [row.sira, row.email, row.id, row.eklenme].map(escapeCsv).join(","),
+        [row.sira, row.email, row.dil, row.id, row.eklenme]
+          .map(escapeCsv)
+          .join(","),
       ),
     ];
 
@@ -198,6 +205,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
           <tr>
             <td>${row.sira}</td>
             <td>${row.email}</td>
+            <td>${row.dil}</td>
             <td>${row.id}</td>
             <td>${row.eklenme}</td>
           </tr>`,
@@ -226,6 +234,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
       <tr>
         <th>Sıra</th>
         <th>E-posta</th>
+        <th>Dil</th>
         <th>ID</th>
         <th>Eklenme</th>
       </tr>
@@ -272,10 +281,11 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
 
     autoTable(doc, {
       startY: 76,
-      head: [["Sira", "E-posta", "ID", "Eklenme"]],
+      head: [["Sira", "E-posta", "Dil", "ID", "Eklenme"]],
       body: exportRows.map((row) => [
         row.sira,
         row.email,
+        row.dil,
         row.id,
         row.eklenme.replaceAll("ı", "i"),
       ]),
@@ -292,9 +302,10 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
       },
       columnStyles: {
         0: { cellWidth: 36 },
-        1: { cellWidth: 150 },
-        2: { cellWidth: 230 },
-        3: { cellWidth: 110 },
+        1: { cellWidth: 130 },
+        2: { cellWidth: 44 },
+        3: { cellWidth: 210 },
+        4: { cellWidth: 110 },
       },
       margin: { left: 40, right: 40 },
     });
@@ -458,6 +469,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                     <tr className="border-b border-brand-dark/10 text-xs uppercase tracking-wider text-brand-dark/50">
                       <th className="px-4 py-3 font-semibold">#</th>
                       <th className="px-4 py-3 font-semibold">E-posta</th>
+                      <th className="px-4 py-3 font-semibold">Dil</th>
                       <th className="px-4 py-3 font-semibold">ID</th>
                       <th className="px-4 py-3 font-semibold">Eklenme</th>
                       <th className="px-4 py-3 text-right font-semibold">İşlem</th>
@@ -482,6 +494,11 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                             {entry.email}
                             <Copy className="size-3 text-brand-dark/30" />
                           </button>
+                        </td>
+                        <td className="px-4 py-3 text-brand-dark/70">
+                          <span className="rounded-full border border-brand-dark/10 px-2 py-1 text-xs font-semibold">
+                            {formatLocale(entry.locale)}
+                          </span>
                         </td>
                         <td className="px-4 py-3">
                           <button
@@ -559,7 +576,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                       </div>
 
                       <p className="mt-2 text-xs text-brand-dark/55">
-                        Eklenme: {formatDate(entry.createdAt)}
+                        Dil: {formatLocale(entry.locale)} · Eklenme: {formatDate(entry.createdAt)}
                       </p>
                     </article>
                   ))}

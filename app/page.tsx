@@ -24,7 +24,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   DASHBOARD_SCREENSHOTS,
@@ -75,6 +75,70 @@ const UPLOAD_SOURCE_ICONS = [
 
 const FOOTER_QUOTE_IMAGE = "/screenshots/footer-quote-image.png";
 const PRODUCT_VIDEO_EMBED_URL = "https://www.youtube.com/embed/ALk-ws_XffI?autoplay=1&rel=0";
+
+type Locale = "tr" | "en";
+
+const WAITLIST_COPY: Record<
+  Locale,
+  {
+    emailPlaceholder: string;
+    joinLabel: string;
+    joiningLabel: string;
+    securityNote: string;
+    invalidEmail: string;
+    joinSuccess: string;
+    alreadyJoined: string;
+    genericError: string;
+    permissionError: string;
+    mailRejectedError: string;
+    accessWaitlist: string;
+    accessInviteRequired: string;
+    accessInviteInvalid: string;
+    accessInviteExpired: string;
+  }
+> = {
+  tr: {
+    emailPlaceholder: "E-posta adresinizi girin",
+    joinLabel: "Waitlist'e Katıl",
+    joiningLabel: "Ekleniyor...",
+    securityNote: "Spam yok. Dilediğiniz zaman çıkabilirsiniz.",
+    invalidEmail: "Lütfen geçerli bir e-posta girin.",
+    joinSuccess: "Bekleme listesine eklendiniz!",
+    alreadyJoined: "Bu e-posta zaten waitlist'te kayıtlı.",
+    genericError: "Bir sorun oluştu. Lütfen tekrar deneyin.",
+    permissionError: "Firestore izinleri eksik. Firebase kurallarını güncelleyin.",
+    mailRejectedError: "Mail sunucusu alıcı adresi reddetti. DNS/SPF ayarlarını kontrol edin.",
+    accessWaitlist: "Uygulama şu an waitlist modunda. Erken erişim için waitlist'e katılın.",
+    accessInviteRequired: "Bu ekran erken erişimde. Giriş için davet linki gerekiyor.",
+    accessInviteInvalid: "Davet linki geçersiz veya daha önce kullanılmış.",
+    accessInviteExpired: "Davet linkinin süresi dolmuş.",
+  },
+  en: {
+    emailPlaceholder: "Enter your email address",
+    joinLabel: "Join Waitlist",
+    joiningLabel: "Joining...",
+    securityNote: "No spam. You can unsubscribe anytime.",
+    invalidEmail: "Please enter a valid email address.",
+    joinSuccess: "You have joined the waitlist!",
+    alreadyJoined: "This email is already on the waitlist.",
+    genericError: "Something went wrong. Please try again.",
+    permissionError: "Missing Firestore permissions. Please update Firebase rules.",
+    mailRejectedError: "Mail server rejected the recipient. Check DNS/SPF settings.",
+    accessWaitlist: "The app is currently in waitlist mode. Join the waitlist for early access.",
+    accessInviteRequired: "This area is in early access. An invite link is required.",
+    accessInviteInvalid: "Invite link is invalid or already used.",
+    accessInviteExpired: "Invite link has expired.",
+  },
+};
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function getDefaultLocale(): Locale {
+  if (typeof window === "undefined") return "tr";
+  return window.navigator.language.toLowerCase().startsWith("en") ? "en" : "tr";
+}
 
 const menuItems: { label: string; id: string; disabled?: boolean }[] = [
   { label: "Özellikler", id: "ozellikler" },
@@ -213,6 +277,7 @@ function SectionBadge({ children }: { children: React.ReactNode }) {
 function WaitlistForm({
   email,
   setEmail,
+  localeCopy,
   isValid,
   isPending = false,
   onSubmit,
@@ -221,6 +286,7 @@ function WaitlistForm({
 }: {
   email: string;
   setEmail: (v: string) => void;
+  localeCopy: (typeof WAITLIST_COPY)["tr"];
   isValid: boolean;
   isPending?: boolean;
   onSubmit: () => Promise<void>;
@@ -237,7 +303,7 @@ function WaitlistForm({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="E-posta adresinizi girin"
+            placeholder={localeCopy.emailPlaceholder}
             className="h-12 w-full rounded-xl border border-brand-dark/20 bg-bg-light py-3 pl-11 pr-4 text-sm text-brand-dark outline-none transition focus:border-brand-neon focus:ring-2 focus:ring-brand-neon/20"
           />
         </div>
@@ -247,14 +313,14 @@ function WaitlistForm({
           onClick={onSubmit}
           className="flex h-12 items-center justify-center gap-2 rounded-xl bg-brand-neon px-6 text-sm font-bold text-brand-dark transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {isPending ? "Ekleniyor..." : "Waitlist'e Katıl"}
+          {isPending ? localeCopy.joiningLabel : localeCopy.joinLabel}
           {!isPending && <ArrowRight className="size-4" />}
         </button>
       </div>
       {showSecurityNote && (
         <p className="flex items-center gap-1.5 text-xs text-brand-dark/50">
           <Lock className="size-3" />
-          Spam yok. Dilediğiniz zaman çıkabilirsiniz.
+          {localeCopy.securityNote}
         </p>
       )}
     </div>
@@ -262,6 +328,7 @@ function WaitlistForm({
 }
 
 export default function LandingPage() {
+  const [locale, setLocale] = useState<Locale>(() => getDefaultLocale());
   const [heroEmail, setHeroEmail] = useState("");
   const [footerEmail, setFooterEmail] = useState("");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -269,13 +336,38 @@ export default function LandingPage() {
   const [isHeroSubmitting, setIsHeroSubmitting] = useState(false);
   const [isFooterSubmitting, setIsFooterSubmitting] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const accessToastShownRef = useRef(false);
+  const localeCopy = WAITLIST_COPY[locale];
+
+  useEffect(() => {
+    if (accessToastShownRef.current) return;
+    const accessStatus = new URLSearchParams(window.location.search).get("access");
+    if (accessStatus === "waitlist") {
+      toast.info(localeCopy.accessWaitlist);
+      accessToastShownRef.current = true;
+    } else if (accessStatus === "invite_required") {
+      toast.info(localeCopy.accessInviteRequired);
+      accessToastShownRef.current = true;
+    } else if (accessStatus === "invite_invalid") {
+      toast.error(localeCopy.accessInviteInvalid);
+      accessToastShownRef.current = true;
+    } else if (accessStatus === "invite_expired") {
+      toast.error(localeCopy.accessInviteExpired);
+      accessToastShownRef.current = true;
+    }
+  }, [
+    localeCopy.accessInviteExpired,
+    localeCopy.accessInviteInvalid,
+    localeCopy.accessInviteRequired,
+    localeCopy.accessWaitlist,
+  ]);
 
   const isHeroValid = useMemo(
-    () => heroEmail.includes("@") && heroEmail.includes(".com"),
+    () => isValidEmail(heroEmail),
     [heroEmail],
   );
   const isFooterValid = useMemo(
-    () => footerEmail.includes("@") && footerEmail.includes(".com"),
+    () => isValidEmail(footerEmail),
     [footerEmail],
   );
 
@@ -294,26 +386,30 @@ export default function LandingPage() {
     clearEmail: () => void,
     setPending: (v: boolean) => void,
   ) => {
-    if (!email.includes("@") || !email.includes(".com")) {
-      toast.error("Lütfen geçerli bir e-posta girin.");
+    if (!isValidEmail(email)) {
+      toast.error(localeCopy.invalidEmail);
       return;
     }
 
     setPending(true);
     try {
-      await joinWaitlist(email);
+      const result = await joinWaitlist(email, locale);
       clearEmail();
-      toast.success("Bekleme listesine eklendiniz!");
+      if (result.status === "already_joined") {
+        toast.info(localeCopy.alreadyJoined);
+      } else {
+        toast.success(localeCopy.joinSuccess);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       if (message.includes("permission-denied")) {
-        toast.error("Firestore izinleri eksik. Firebase kurallarını güncelleyin.");
+        toast.error(localeCopy.permissionError);
       } else if (message.includes("MAIL_REJECTED")) {
-        toast.error("Mail sunucusu alıcı adresi reddetti. DNS/SPF ayarlarını kontrol edin.");
+        toast.error(localeCopy.mailRejectedError);
       } else if (message.includes("INVALID_EMAIL")) {
-        toast.error("Lütfen geçerli bir e-posta girin.");
+        toast.error(localeCopy.invalidEmail);
       } else {
-        toast.error("Bir sorun oluştu. Lütfen tekrar deneyin.");
+        toast.error(localeCopy.genericError);
       }
     } finally {
       setPending(false);
@@ -355,12 +451,36 @@ export default function LandingPage() {
           </nav>
 
           <div className="flex items-center justify-end gap-2">
+            <div className="hidden items-center gap-1 rounded-lg border border-white/15 p-1 md:flex">
+              <button
+                type="button"
+                onClick={() => setLocale("tr")}
+                className={`rounded-md px-2 py-1 text-xs font-semibold transition ${
+                  locale === "tr"
+                    ? "bg-brand-neon text-brand-dark"
+                    : "text-white/70 hover:text-brand-neon"
+                }`}
+              >
+                TR
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocale("en")}
+                className={`rounded-md px-2 py-1 text-xs font-semibold transition ${
+                  locale === "en"
+                    ? "bg-brand-neon text-brand-dark"
+                    : "text-white/70 hover:text-brand-neon"
+                }`}
+              >
+                EN
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => scrollTo("son-adim")}
               className="hidden h-10 items-center rounded-xl border border-brand-neon bg-brand-neon px-4 text-sm font-bold text-brand-dark transition hover:brightness-105 md:inline-flex"
             >
-              Waitlist&apos;e Katıl
+              {localeCopy.joinLabel}
             </button>
             <button
               type="button"
@@ -397,7 +517,7 @@ export default function LandingPage() {
                 onClick={() => scrollTo("son-adim")}
                 className="mt-2 inline-flex h-11 items-center justify-center rounded-xl bg-brand-neon px-4 text-sm font-bold text-brand-dark transition hover:brightness-105"
               >
-                Waitlist&apos;e Katıl
+                {localeCopy.joinLabel}
               </button>
             </nav>
           </div>
@@ -443,6 +563,7 @@ export default function LandingPage() {
               <WaitlistForm
                 email={heroEmail}
                 setEmail={setHeroEmail}
+                localeCopy={localeCopy}
                 isValid={isHeroValid}
                 isPending={isHeroSubmitting}
                 onSubmit={() =>
@@ -1150,6 +1271,7 @@ export default function LandingPage() {
             <WaitlistForm
               email={footerEmail}
               setEmail={setFooterEmail}
+              localeCopy={localeCopy}
               isValid={isFooterValid}
               isPending={isFooterSubmitting}
               onSubmit={() =>
