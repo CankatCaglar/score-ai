@@ -38,8 +38,9 @@ export function proxy(request: NextRequest) {
   }
 
   if (isDashboardRoute) {
-    // Admin panel oturumu olan kullanıcılar, waitlist/early-access modundan
-    // bağımsız olarak dashboard içinde gezinebilsin.
+    // Admin oturumu varsa dashboard'a tam erişim verilir. Bu sayede
+    // /admin-dashboard üzerinden giren admin, içindeki /dashboard/... linklerinde
+    // gezinirken erişim moduna (waitlist/early_access) takılmaz.
     if (session) {
       return NextResponse.next();
     }
