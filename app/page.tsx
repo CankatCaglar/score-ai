@@ -24,7 +24,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   DASHBOARD_SCREENSHOTS,
@@ -77,6 +77,7 @@ const FOOTER_QUOTE_IMAGE = "/screenshots/footer-quote-image.png";
 const PRODUCT_VIDEO_EMBED_URL = "https://www.youtube.com/embed/ALk-ws_XffI?autoplay=1&rel=0";
 
 type Locale = "tr" | "en";
+const LOCALE_STORAGE_KEY = "scoreai_locale";
 
 const WAITLIST_COPY: Record<
   Locale,
@@ -137,119 +138,116 @@ function isValidEmail(value: string): boolean {
 
 function getDefaultLocale(): Locale {
   if (typeof window === "undefined") return "tr";
+  const saved = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+  if (saved === "tr" || saved === "en") return saved;
   return window.navigator.language.toLowerCase().startsWith("en") ? "en" : "tr";
 }
 
-const menuItems: { label: string; id: string; disabled?: boolean }[] = [
-  { label: "Özellikler", id: "ozellikler" },
-  { label: "Nasıl Çalışır?", id: "nasil-calisir" },
-];
+const FEATURE_PILL_ICONS = [Target, Brain, TrendingUp, History, Lightbulb, Wand2] as const;
+const STEP_ICONS = [CloudUpload, Search, Target, Sparkles, Zap] as const;
 
-const featurePills = [
-  { icon: Target, title: "AI Content Scoring", desc: "40 mikro kritere göre içerik kalitenizi ölçün ve skorlayın." },
-  { icon: Brain, title: "Marka Öğrenimi", desc: "Markanızın dilini, tonunu ve görsel kimliğini öğrenir." },
-  { icon: TrendingUp, title: "Rakip Analizi", desc: "Sektördeki en iyi içerikleri analiz edin, öne geçin." },
-  { icon: History, title: "İçerik Geçmişi", desc: "Tüm içerik performanslarınızı tek yerde takip edin." },
-  { icon: Lightbulb, title: "Aksiyon Odaklı Öneriler", desc: "Ne yapmanız gerektiğini net ve uygulanabilir şekilde söyler." },
-  { icon: Wand2, title: "Creative Copilot", desc: "Başlık, metin, CTA ve daha fazlası için AI önerileri alın." },
-];
-
-const faqItems = [
-  {
-    question: "Score AI tam olarak ne yapar?",
-    answer:
-      "Score AI, içeriklerinizi 40 mikro kritere göre analiz eder, 0-100 arası bir skor verir ve performansı artırmak için uygulanabilir öneriler sunar. Markanızı öğrenir, geçmiş verilerinizden çıkarım yapar ve içerik üretim sürecinizi hızlandırır.",
+const PAGE_COPY = {
+  tr: {
+    menuItems: ["Özellikler", "Nasıl Çalışır?"],
+    header: { menuOpen: "Menüyü aç", menuClose: "Menüyü kapat", toTop: "Sayfanın başına dön" },
+    hero: {
+      badge: "Yapay Zeka Destekli İçerik Analizi",
+      titleMobile: [
+        "İçerikleriniz neden",
+        "performans göstermiyor?",
+        "Score AI bunu size saniyeler",
+        "içinde söylesin.",
+      ],
+      titleDesktopLine1: "İçerikleriniz neden performans\u00a0göstermiyor?",
+      titleDesktopLine2: "Score AI bunu size saniyeler içinde\u00a0söylesin.",
+      desc: "Score AI, içeriklerinizi 40 mikro kriterle analiz eder, markanızı anlar ve daha iyi sonuçlar için otomatik olarak uygulanabilir öneriler sunar.",
+      subtitle: "Waitlist'e katılın, lansmana özel avantajlardan ilk siz haberdar olun.",
+      waitlistCountLabel: "kişi bekleme listesinde.",
+      screenshotAlt: "Score AI Dashboard — içerik skor karşılaştırması",
+    },
+    steps: [
+      { title: "İçeriğinizi Yükleyin", desc: "Görsel, video, metin veya link ile içeriğinizi platforma alın." },
+      { title: "40 Mikro Kriter ile Analiz Edilir", desc: "İçeriğiniz 40 mikro kriter ile detaylı olarak incelenir." },
+      { title: "Score'unuzu Görün", desc: "İçeriğinizin genel skorunu görün ve gelişim alanlarını keşfedin." },
+      { title: "AI Önerilerini Alın", desc: "AI, içeriğinizi iyileştirmek için size özel öneriler sunar." },
+      { title: "Tek Tıkla Uygula ve Yayınla", desc: "Önerileri Canva'da uygulayın, tasarımınızı yapın ve paylaşın." },
+    ],
+    featurePills: [
+      { title: "AI Content Scoring", desc: "40 mikro kritere göre içerik kalitenizi ölçün ve skorlayın." },
+      { title: "Marka Öğrenimi", desc: "Markanızın dilini, tonunu ve görsel kimliğini öğrenir." },
+      { title: "Rakip Analizi", desc: "Sektördeki en iyi içerikleri analiz edin, öne geçin." },
+      { title: "İçerik Geçmişi", desc: "Tüm içerik performanslarınızı tek yerde takip edin." },
+      { title: "Aksiyon Odaklı Öneriler", desc: "Ne yapmanız gerektiğini net ve uygulanabilir şekilde söyler." },
+      { title: "Creative Copilot", desc: "Başlık, metin, CTA ve daha fazlası için AI önerileri alın." },
+    ],
+    audienceItems: [
+      { title: "Pazarlama ekibi olmayan küçük işletmeler", desc: "Profesyonel içerik desteği almadan sosyal medyada etkili olun." },
+      { title: "Düzenli sosyal medya kullanan işletmeler", desc: "Düzenli paylaşımlarınızın performansını artırın ve daha fazla etkileşim alın." },
+      { title: "Yerel hizmet işletmeleri", desc: "Güven oluşturan, profesyonel ve etkili içeriklerle öne çıkın." },
+      { title: "Kişisel marka sahipleri", desc: "Kişisel markanızı güçlendirin, daha geniş kitlelere ulaşın." },
+      { title: "E-ticaret işletmeleri", desc: "Ürünlerinizi doğru içeriklerle tanıtın, satışlarınızı artırın." },
+    ],
+    faqItems: [
+      { question: "Score AI tam olarak ne yapar?", answer: "Score AI, içeriklerinizi 40 mikro kritere göre analiz eder, 0-100 arası bir skor verir ve performansı artırmak için uygulanabilir öneriler sunar. Markanızı öğrenir, geçmiş verilerinizden çıkarım yapar ve içerik üretim sürecinizi hızlandırır." },
+      { question: "Hangi platformları destekliyor?", answer: "Instagram, TikTok, LinkedIn, YouTube Shorts ve benzeri sosyal medya formatlarını destekler. Görsel, video, metin ve URL ile içerik yükleyebilirsiniz." },
+      { question: "İçeriklerim güvende mi?", answer: "Evet. İçerikleriniz şifreli olarak saklanır, üçüncü taraflarla paylaşılmaz. KVKK uyumlu veri işleme politikaları uygulanır." },
+      { question: "Score AI ücretsiz mi?", answer: "Beta döneminde waitlist'e katılan kullanıcılara özel erken erişim ve indirimli fiyatlandırma sunulacaktır. Detaylar lansman öncesinde paylaşılacak." },
+      { question: "Ne zaman erişime açılacak?", answer: "Waitlist sırasına göre kademeli olarak erişim verilecektir. Kayıt olduğunuzda sıranızı ve tahmini erişim tarihinizi e-posta ile bildireceğiz." },
+    ],
+    footer: { rights: "© 2026 Score AI. Tüm Hakları Saklıdır.", mapsAria: "Tallinn, Estonya konumunu Google Maps'te aç", mailAria: "Score AI ekibine e-posta gönder" },
   },
-  {
-    question: "Hangi platformları destekliyor?",
-    answer:
-      "Instagram, TikTok, LinkedIn, YouTube Shorts ve benzeri sosyal medya formatlarını destekler. Görsel, video, metin ve URL ile içerik yükleyebilirsiniz.",
+  en: {
+    menuItems: ["Features", "How It Works?"],
+    header: { menuOpen: "Open menu", menuClose: "Close menu", toTop: "Back to top" },
+    hero: {
+      badge: "AI-Powered Content Analysis",
+      titleMobile: ["Why are your contents not", "performing? Let Score AI","tell you in seconds."],
+      titleDesktopLine1: "Why are your contents not performing?",
+      titleDesktopLine2: "Let Score AI tell you in seconds.",
+      desc: "Score AI analyzes your content across 40 micro criteria, understands your brand, and provides actionable recommendations for better results.",
+      subtitle: "Join the waitlist and be the first to hear about launch-only advantages.",
+      waitlistCountLabel: "people on the waitlist.",
+      screenshotAlt: "Score AI Dashboard — content score comparison",
+    },
+    steps: [
+      { title: "Upload Your Content", desc: "Add your content with image, video, text, or URL." },
+      { title: "Analyzed with 40 Micro Criteria", desc: "Your content is deeply analyzed with 40 micro criteria." },
+      { title: "See Your Score", desc: "View your overall score and discover improvement opportunities." },
+      { title: "Get AI Suggestions", desc: "AI gives you tailored suggestions to improve your content." },
+      { title: "Apply and Publish in One Click", desc: "Apply suggestions in Canva, design, and publish." },
+    ],
+    featurePills: [
+      { title: "AI Content Scoring", desc: "Measure and score your content quality across 40 micro criteria." },
+      { title: "Brand Learning", desc: "Learns your brand voice, tone, and visual identity." },
+      { title: "Competitor Analysis", desc: "Analyze top content in your sector and stay ahead." },
+      { title: "Content History", desc: "Track all your content performance in one place." },
+      { title: "Actionable Suggestions", desc: "Clearly tells you what to do next with practical recommendations." },
+      { title: "Creative Copilot", desc: "Get AI suggestions for headlines, copy, CTAs, and more." },
+    ],
+    audienceItems: [
+      { title: "Small businesses without a marketing team", desc: "Grow on social media without needing a professional content team." },
+      { title: "Businesses active on social media", desc: "Improve your regular posts and get higher engagement." },
+      { title: "Local service businesses", desc: "Stand out with trustworthy, professional, and effective content." },
+      { title: "Personal brands", desc: "Strengthen your personal brand and reach wider audiences." },
+      { title: "E-commerce businesses", desc: "Promote your products with better content and increase sales." },
+    ],
+    faqItems: [
+      { question: "What exactly does Score AI do?", answer: "Score AI analyzes your content with 40 micro criteria, gives a 0-100 score, and provides actionable suggestions to improve performance. It learns your brand, derives insights from past data, and speeds up your content workflow." },
+      { question: "Which platforms are supported?", answer: "It supports Instagram, TikTok, LinkedIn, YouTube Shorts, and similar social formats. You can upload images, videos, text, and URLs." },
+      { question: "Is my content secure?", answer: "Yes. Your content is stored securely and is not shared with third parties." },
+      { question: "Is Score AI free?", answer: "During beta, users on the waitlist will get early access and special pricing. Details will be shared before launch." },
+      { question: "When will it be available?", answer: "Access will be granted gradually based on waitlist order." },
+    ],
+    footer: { rights: "© 2026 Score AI. All rights reserved.", mapsAria: "Open Tallinn, Estonia in Google Maps", mailAria: "Send email to Score AI team" },
   },
-  {
-    question: "İçeriklerim güvende mi?",
-    answer:
-      "Evet. İçerikleriniz şifreli olarak saklanır, üçüncü taraflarla paylaşılmaz. KVKK uyumlu veri işleme politikaları uygulanır.",
-  },
-  {
-    question: "Score AI ücretsiz mi?",
-    answer:
-      "Beta döneminde waitlist'e katılan kullanıcılara özel erken erişim ve indirimli fiyatlandırma sunulacaktır. Detaylar lansman öncesinde paylaşılacak.",
-  },
-  {
-    question: "Ne zaman erişime açılacak?",
-    answer:
-      "Waitlist sırasına göre kademeli olarak erişim verilecektir. Kayıt olduğunuzda sıranızı ve tahmini erişim tarihinizi e-posta ile bildireceğiz.",
-  },
-];
-
-const audienceItems = [
-  {
-    title: "Pazarlama ekibi olmayan küçük işletmeler",
-    desc: "Profesyonel içerik desteği almadan sosyal medyada etkili olun.",
-    icon: "🏪",
-  },
-  {
-    title: "Düzenli sosyal medya kullanan işletmeler",
-    desc: "Düzenli paylaşımlarınızın performansını artırın ve daha fazla etkileşim alın.",
-    icon: "📱",
-  },
-  {
-    title: "Yerel hizmet işletmeleri",
-    desc: "Güven oluşturan, profesyonel ve etkili içeriklerle öne çıkın.",
-    icon: "💼",
-  },
-  {
-    title: "Kişisel marka sahipleri",
-    desc: "Kişisel markanızı güçlendirin, daha geniş kitlelere ulaşın.",
-    icon: "⭐",
-  },
-  {
-    title: "E-ticaret işletmeleri",
-    desc: "Ürünlerinizi doğru içeriklerle tanıtın, satışlarınızı artırın.",
-    icon: "🛒",
-  },
-];
-
-const steps = [
-  {
-    num: 1,
-    title: "İçeriğinizi Yükleyin",
-    desc: "Görsel, video, metin veya link ile içeriğinizi platforma alın.",
-    icon: CloudUpload,
-  },
-  {
-    num: 2,
-    title: "40 Mikro Kriter ile Analiz Edilir",
-    desc: "İçeriğiniz 40 mikro kriter ile detaylı olarak incelenir.",
-    icon: Search,
-  },
-  {
-    num: 3,
-    title: "Score'unuzu Görün",
-    desc: "İçeriğinizin genel skorunu görün ve gelişim alanlarını keşfedin.",
-    icon: Target,
-    highlight: true,
-  },
-  {
-    num: 4,
-    title: "AI Önerilerini Alın",
-    desc: "AI, içeriğinizi iyileştirmek için size özel öneriler sunar.",
-    icon: Sparkles,
-  },
-  {
-    num: 5,
-    title: "Tek Tıkla Uygula ve Yayınla",
-    desc: "Önerileri Canva'da uygulayın, tasarımınızı yapın ve paylaşın.",
-    icon: Zap,
-  },
-];
+} as const;
 
 function FadeIn({
   children,
   delay = 0,
   className = "",
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   delay?: number;
   className?: string;
 }) {
@@ -266,7 +264,7 @@ function FadeIn({
   );
 }
 
-function SectionBadge({ children }: { children: React.ReactNode }) {
+function SectionBadge({ children }: { children: ReactNode }) {
   return (
     <span className="inline-flex rounded-full bg-brand-neon px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-brand-dark">
       {children}
@@ -304,7 +302,7 @@ function WaitlistForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder={localeCopy.emailPlaceholder}
-            className="h-12 w-full rounded-xl border border-brand-dark/20 bg-bg-light py-3 pl-11 pr-4 text-sm text-brand-dark outline-none transition focus:border-brand-neon focus:ring-2 focus:ring-brand-neon/20"
+            className="h-12 w-full rounded-xl border border-brand-dark/20 bg-bg-light py-3 pl-11 pr-4 text-base text-brand-dark outline-none transition focus:border-brand-neon focus:ring-2 focus:ring-brand-neon/20 sm:text-sm"
           />
         </div>
         <button
@@ -328,7 +326,8 @@ function WaitlistForm({
 }
 
 export default function LandingPage() {
-  const [locale, setLocale] = useState<Locale>(() => getDefaultLocale());
+  const [locale, setLocale] = useState<Locale>("tr");
+  const [localeReady, setLocaleReady] = useState(false);
   const [heroEmail, setHeroEmail] = useState("");
   const [footerEmail, setFooterEmail] = useState("");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -338,8 +337,47 @@ export default function LandingPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const accessToastShownRef = useRef(false);
   const localeCopy = WAITLIST_COPY[locale];
+  const pageCopy = PAGE_COPY[locale];
+  const menuItems = useMemo(
+    () =>
+      pageCopy.menuItems.map((label, index) => ({
+        label,
+        id: index === 0 ? "ozellikler" : "nasil-calisir",
+        disabled: false,
+      })),
+    [pageCopy.menuItems],
+  );
+  const featurePills = useMemo(
+    () =>
+      pageCopy.featurePills.map((item, index) => ({
+        ...item,
+        icon: FEATURE_PILL_ICONS[index] ?? Target,
+      })),
+    [pageCopy.featurePills],
+  );
+  const steps = useMemo(
+    () =>
+      pageCopy.steps.map((item, index) => ({
+        num: index + 1,
+        icon: STEP_ICONS[index] ?? Target,
+        ...item,
+      })),
+    [pageCopy.steps],
+  );
+  const faqItems = pageCopy.faqItems;
+  const audienceItems = pageCopy.audienceItems;
 
   useEffect(() => {
+    const detectedLocale = getDefaultLocale();
+    const timer = window.setTimeout(() => {
+      setLocale(detectedLocale);
+      setLocaleReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!localeReady) return;
     if (accessToastShownRef.current) return;
     const accessStatus = new URLSearchParams(window.location.search).get("access");
     if (accessStatus === "waitlist") {
@@ -356,11 +394,18 @@ export default function LandingPage() {
       accessToastShownRef.current = true;
     }
   }, [
+    localeReady,
     localeCopy.accessInviteExpired,
     localeCopy.accessInviteInvalid,
     localeCopy.accessInviteRequired,
     localeCopy.accessWaitlist,
   ]);
+
+  useEffect(() => {
+    if (!localeReady) return;
+    document.documentElement.lang = locale;
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+  }, [locale, localeReady]);
 
   const isHeroValid = useMemo(
     () => isValidEmail(heroEmail),
@@ -426,7 +471,7 @@ export default function LandingPage() {
               type="button"
               onClick={scrollToTop}
               className="cursor-pointer border-0 bg-transparent p-0"
-              aria-label="Sayfanın başına dön"
+              aria-label={pageCopy.header.toTop}
             >
               <Logo className="h-7 w-auto text-white" />
             </button>
@@ -475,6 +520,30 @@ export default function LandingPage() {
                 EN
               </button>
             </div>
+            <div className="flex items-center gap-1 rounded-lg border border-white/15 p-1 md:hidden">
+              <button
+                type="button"
+                onClick={() => setLocale("tr")}
+                className={`rounded-md px-2 py-1 text-xs font-semibold transition ${
+                  locale === "tr"
+                    ? "bg-brand-neon text-brand-dark"
+                    : "text-white/70 hover:text-brand-neon"
+                }`}
+              >
+                TR
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocale("en")}
+                className={`rounded-md px-2 py-1 text-xs font-semibold transition ${
+                  locale === "en"
+                    ? "bg-brand-neon text-brand-dark"
+                    : "text-white/70 hover:text-brand-neon"
+                }`}
+              >
+                EN
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => scrollTo("son-adim")}
@@ -485,7 +554,9 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-              aria-label={isMobileMenuOpen ? "Menüyü kapat" : "Menüyü aç"}
+              aria-label={
+                isMobileMenuOpen ? pageCopy.header.menuClose : pageCopy.header.menuOpen
+              }
               aria-expanded={isMobileMenuOpen}
               className="inline-flex size-10 items-center justify-center rounded-xl border border-white/15 text-white transition hover:border-brand-neon hover:text-brand-neon md:hidden"
             >
@@ -533,32 +604,29 @@ export default function LandingPage() {
             <div className="space-y-6">
               <span className="inline-flex items-center gap-2 rounded-full bg-brand-neon px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-brand-dark">
                 <Sparkles className="size-3.5" />
-                Yapay Zeka Destekli İçerik Analizi
+                {pageCopy.hero.badge}
               </span>
-              <h1 className="text-[1.65rem] font-bold leading-tight tracking-tight text-brand-dark sm:text-[2.35rem] md:text-[2.8rem] lg:text-[2.6rem]">
-                <span className="block sm:hidden">
-                  İçerikleriniz neden performans
+              <h1 className="text-[1.65rem] font-bold leading-tight tracking-tight text-brand-dark sm:text-[2.35rem] md:text-[2.6rem] lg:text-[2.6rem]">
+                <span className="block md:hidden">
+                  {pageCopy.hero.titleMobile[0]}
                   <br />
-                  göstermiyor?
+                  {pageCopy.hero.titleMobile[1]}
                   <br />
-                  Score AI bunu size saniyeler
+                  {pageCopy.hero.titleMobile[2]}
                   <br />
-                  içinde söylesin.
+                  {pageCopy.hero.titleMobile[3]}
                 </span>
-                <span className="hidden sm:block">
-                  İçerikleriniz neden performans{"\u00a0"}göstermiyor?
+                <span className="hidden md:block">
+                  {pageCopy.hero.titleDesktopLine1}
                   <br />
-                  Score AI bunu size saniyeler içinde{"\u00a0"}söylesin.
+                  {pageCopy.hero.titleDesktopLine2}
                 </span>
               </h1>
               <p className="max-w-md text-base leading-relaxed text-brand-dark/80">
-                Score AI, içeriklerinizi 40 mikro kriterle analiz eder, markanızı
-                anlar ve daha iyi sonuçlar için otomatik olarak uygulanabilir
-                öneriler sunar.
+                {pageCopy.hero.desc}
               </p>
               <p className="text-sm font-medium text-brand-dark">
-                Waitlist&apos;e katılın, lansmana özel avantajlardan ilk siz
-                haberdar olun.
+                {pageCopy.hero.subtitle}
               </p>
               <WaitlistForm
                 email={heroEmail}
@@ -574,7 +642,7 @@ export default function LandingPage() {
               <p className="flex items-center gap-1.5 text-sm leading-snug text-brand-dark/80">
                 <span aria-hidden="true">🎉</span>
                 <span className="font-bold text-brand-dark">1.042</span>{" "}
-                kişi bekleme listesinde.
+                {pageCopy.hero.waitlistCountLabel}
               </p>
             </div>
           </FadeIn>
@@ -584,7 +652,7 @@ export default function LandingPage() {
               <DashboardScreenshot
                 variant="hero"
                 src={DASHBOARD_SCREENSHOTS.hero}
-                alt="Score AI Dashboard — içerik skor karşılaştırması"
+                alt={pageCopy.hero.screenshotAlt}
                 priority
               />
             </div>
@@ -596,9 +664,13 @@ export default function LandingPage() {
       <section className="bg-bg-offwhite py-24">
         <div className={PAGE_CONTAINER}>
           <FadeIn className="text-center">
-            <SectionBadge>AI Sadece Puan Vermez</SectionBadge>
+            <SectionBadge>
+              {locale === "en" ? "AI Does More Than Scoring" : "AI Sadece Puan Vermez"}
+            </SectionBadge>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-brand-dark md:text-5xl">
-              İçeriğinizi daha iyi hale getirir.
+              {locale === "en"
+                ? "It makes your content better."
+                : "İçeriğinizi daha iyi hale getirir."}
             </h2>
           </FadeIn>
 
@@ -606,7 +678,7 @@ export default function LandingPage() {
             <div className="mx-auto grid max-w-md items-stretch gap-10 lg:max-w-none lg:gap-4 lg:gap-x-5 lg:grid-cols-[1fr_auto_1fr_1fr]">
               <div className="relative rounded-2xl border border-brand-dark/10 bg-bg-light p-6 pt-8 shadow-sm lg:min-h-[500px]">
                 <p className="absolute -top-6 left-1/2 -translate-x-1/2 bg-bg-offwhite px-3 text-sm font-semibold text-brand-dark/60">
-                  Mevcut
+                  {locale === "en" ? "Current" : "Mevcut"}
                 </p>
                 <p className="mt-2 text-center text-5xl leading-none font-bold text-brand-dark">
                   78<span className="text-xl text-brand-dark/35">/100</span>
@@ -615,7 +687,7 @@ export default function LandingPage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={ANALYSIS_PREVIEW_IMAGES.current}
-                    alt="Mevcut içerik önizlemesi"
+                    alt={locale === "en" ? "Current content preview" : "Mevcut içerik önizlemesi"}
                     className="h-auto w-full object-contain"
                     decoding="async"
                   />
@@ -627,12 +699,14 @@ export default function LandingPage() {
                   <ArrowRight className="size-6 text-brand-dark" />
                 </div>
                 <p className="text-4xl leading-none font-bold text-brand-dark">+8</p>
-                <p className="text-lg font-semibold text-brand-dark/80">Potansiyel</p>
+                <p className="text-lg font-semibold text-brand-dark/80">
+                  {locale === "en" ? "Potential" : "Potansiyel"}
+                </p>
               </div>
 
               <div className="relative rounded-2xl border border-brand-dark/15 bg-bg-light p-6 pt-8 shadow-sm lg:min-h-[500px]">
                 <p className="absolute -top-6 left-1/2 -translate-x-1/2 bg-bg-offwhite px-3 text-sm font-semibold text-brand-dark/70">
-                  Önerilen
+                  {locale === "en" ? "Suggested" : "Önerilen"}
                 </p>
                 <p className="mt-2 text-center text-5xl leading-none font-bold text-brand-dark">
                   86<span className="text-xl text-brand-dark/35">/100</span>
@@ -641,7 +715,11 @@ export default function LandingPage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={ANALYSIS_PREVIEW_IMAGES.suggested}
-                    alt="Önerilen içerik önizlemesi"
+                    alt={
+                      locale === "en"
+                        ? "Suggested content preview"
+                        : "Önerilen içerik önizlemesi"
+                    }
                     className="h-auto w-full object-contain"
                     decoding="async"
                   />
@@ -649,15 +727,27 @@ export default function LandingPage() {
               </div>
 
               <div className="rounded-2xl border border-brand-dark/10 bg-bg-light p-6 shadow-sm lg:ml-3 lg:min-h-[500px]">
-                <p className="text-xl font-bold text-brand-dark">Önerilen İyileştirmeler</p>
+                <p className="text-xl font-bold text-brand-dark">
+                  {locale === "en" ? "Suggested Improvements" : "Önerilen İyileştirmeler"}
+                </p>
                 <ul className="mt-5 space-y-4.5">
-                  {[
-                    "Başlığı daha güçlü hale getir",
-                    "CTA ekleyerek etkileşimi artır",
-                    "Marka rengini daha görünür kullan",
-                    "Görsel hiyerarşisini iyileştir",
-                    "Metin uzunluğunu optimize et",
-                  ].map((item) => (
+                  {(
+                    locale === "en"
+                      ? [
+                          "Strengthen the headline",
+                          "Add a CTA to increase engagement",
+                          "Use brand colors more visibly",
+                          "Improve visual hierarchy",
+                          "Optimize text length",
+                        ]
+                      : [
+                          "Başlığı daha güçlü hale getir",
+                          "CTA ekleyerek etkileşimi artır",
+                          "Marka rengini daha görünür kullan",
+                          "Görsel hiyerarşisini iyileştir",
+                          "Metin uzunluğunu optimize et",
+                        ]
+                  ).map((item) => (
                     <li key={item} className="flex items-center gap-2.5 text-[1.05rem] leading-relaxed text-brand-dark/85">
                       <Check className="size-4 shrink-0 text-brand-dark" strokeWidth={2.5} />
                       {item}
@@ -668,10 +758,12 @@ export default function LandingPage() {
                   type="button"
                   className="mt-8 w-full rounded-xl bg-linear-to-r from-violet-600 to-teal-500 py-4 text-base font-semibold text-white"
                 >
-                  Canva&apos;da Güncelle
+                  {locale === "en" ? "Update in Canva" : "Canva'da Güncelle"}
                 </button>
                 <p className="mt-4 text-center text-sm text-brand-dark/55">
-                  Tek tıkla tasarımı aç ve güncelle.
+                  {locale === "en"
+                    ? "Open and update the design in one click."
+                    : "Tek tıkla tasarımı aç ve güncelle."}
                 </p>
               </div>
             </div>
@@ -680,31 +772,43 @@ export default function LandingPage() {
           <FadeIn delay={0.15} className="mt-8">
             <div className="rounded-2xl border border-brand-dark/10 bg-bg-light px-6 py-5">
               <div className="inline-flex rounded-full bg-brand-neon px-4 py-1.5 text-sm font-bold text-brand-dark">
-                Score AI ile ortalama iyileşme
+                {locale === "en" ? "Average improvement with Score AI" : "Score AI ile ortalama iyileşme"}
               </div>
               <div className="mt-5 grid items-center gap-4 md:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_2fr_auto]">
-                {[
-                  ["+12", "Puan artışı"],
-                  ["%28", "Daha fazla etkileşim"],
-                  ["%18", "Daha yüksek dönüşüm"],
-                ].map(([val, lbl]) => (
+                {(
+                  locale === "en"
+                    ? [
+                        ["+12", "Score increase"],
+                        ["%28", "More engagement"],
+                        ["%18", "Higher conversion"],
+                      ]
+                    : [
+                        ["+12", "Puan artışı"],
+                        ["%28", "Daha fazla etkileşim"],
+                        ["%18", "Daha yüksek dönüşüm"],
+                      ]
+                ).map(([val, lbl]) => (
                   <div key={lbl} className="border-brand-dark/12 py-2 lg:border-r lg:pr-5">
                     <p className="text-[2rem] leading-none font-bold text-brand-dark">{val}</p>
                     <p className="mt-1 text-sm text-brand-dark/70">{lbl}</p>
                   </div>
                 ))}
                 <p className="py-2 text-xl leading-tight text-brand-dark">
-                  İçeriklerinizi geliştirin,
+                  {locale === "en" ? "Improve your content," : "İçeriklerinizi geliştirin,"}
                   <br />
                   <span className="font-semibold text-brand-dark">
-                    daha yüksek performans elde edin.
+                    {locale === "en"
+                      ? "achieve higher performance."
+                      : "daha yüksek performans elde edin."}
                   </span>
                 </p>
                 <div className="hidden items-center justify-end lg:flex">
                   <svg
                     viewBox="0 0 160 64"
                     className="h-14 w-40"
-                    aria-label="Performans trend grafiği"
+                    aria-label={
+                      locale === "en" ? "Performance trend chart" : "Performans trend grafiği"
+                    }
                     role="img"
                   >
                     <polyline
@@ -743,14 +847,15 @@ export default function LandingPage() {
       <section id="ozellikler" className="bg-brand-dark py-24">
         <div className={`space-y-20 lg:space-y-30 ${PAGE_CONTAINER}`}>
           <FadeIn className="text-center">
-            <SectionBadge>Özellikler</SectionBadge>
+            <SectionBadge>{locale === "en" ? "Features" : "Özellikler"}</SectionBadge>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-white md:text-5xl">
-              Daha iyi içerik için ihtiyacınız olan{" "}
-              <span className="text-brand-neon">her şey.</span>
+              {locale === "en" ? "Everything you need for better content." : "Daha iyi içerik için ihtiyacınız olan "}
+              {locale !== "en" && <span className="text-brand-neon">her şey.</span>}
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-white/60">
-              Score AI, markanızı anlar, içeriklerinizi analiz eder ve size özel,
-              uygulanabilir önerilerle performansınızı artırır.
+              {locale === "en"
+                ? "Score AI understands your brand, analyzes your content, and boosts performance with personalized actionable suggestions."
+                : "Score AI, markanızı anlar, içeriklerinizi analiz eder ve size özel, uygulanabilir önerilerle performansınızı artırır."}
             </p>
           </FadeIn>
 
@@ -762,20 +867,38 @@ export default function LandingPage() {
                   Brand <span className="text-brand-neon">Brain</span>
                 </h3>
                 <p className="text-left text-xl font-semibold leading-snug text-white md:text-2xl">
-                  Score AI, markanızın nasıl iletişim kurduğunu{" "}
-                  <span className="text-brand-neon">öğrenir.</span>
+                  {locale === "en" ? (
+                    <>
+                      Score AI learns how your brand <span className="text-brand-neon">communicates.</span>
+                    </>
+                  ) : (
+                    <>
+                      Score AI, markanızın nasıl iletişim kurduğunu{" "}
+                      <span className="text-brand-neon">öğrenir.</span>
+                    </>
+                  )}
                 </p>
                 <p className="text-left text-sm text-white/75">
-                  Tonunuzu, görsel dilinizi ve başarılı içerik kalıplarınızı zamanla
-                  hafızasına kaydeder.
+                  {locale === "en"
+                    ? "It stores your tone, visual language, and successful content patterns over time."
+                    : "Tonunuzu, görsel dilinizi ve başarılı içerik kalıplarınızı zamanla hafızasına kaydeder."}
                 </p>
                 <div className="space-y-2.5">
-                  {[
-                    "Marka DNA'nızı çıkarır.",
-                    "Geçmiş içeriklerden öğrenir.",
-                    "İçgörülerle daha doğru öneriler sunar.",
-                    "Markanız için sürekli gelişen bir hafıza oluşturur.",
-                  ].map((item) => (
+                  {(
+                    locale === "en"
+                      ? [
+                          "Extracts your brand DNA.",
+                          "Learns from past content.",
+                          "Delivers more accurate suggestions with insights.",
+                          "Builds a continuously evolving memory for your brand.",
+                        ]
+                      : [
+                          "Marka DNA'nızı çıkarır.",
+                          "Geçmiş içeriklerden öğrenir.",
+                          "İçgörülerle daha doğru öneriler sunar.",
+                          "Markanız için sürekli gelişen bir hafıza oluşturur.",
+                        ]
+                  ).map((item) => (
                     <p key={item} className="flex items-start gap-2 text-left text-sm text-white/75">
                       <Check className="mt-0.5 size-4 text-brand-neon" />
                       {item}
@@ -788,7 +911,7 @@ export default function LandingPage() {
                   variant="section"
                   className="mx-auto max-w-xl"
                   src={DASHBOARD_SCREENSHOTS.brandBrain}
-                  alt="Score AI Brand Brain ekranı"
+                  alt={locale === "en" ? "Score AI Brand Brain screen" : "Score AI Brand Brain ekranı"}
                 />
               </div>
             </div>
@@ -802,7 +925,7 @@ export default function LandingPage() {
                   variant="section"
                   className="mx-auto max-w-xl"
                   src={DASHBOARD_SCREENSHOTS.benchmark}
-                  alt="Score AI Benchmark ekranı"
+                  alt={locale === "en" ? "Score AI Benchmark screen" : "Score AI Benchmark ekranı"}
                 />
               </div>
               <div className="order-1 mx-auto flex h-full w-full max-w-xl flex-col justify-center space-y-7 lg:order-2">
@@ -810,19 +933,39 @@ export default function LandingPage() {
                   Benchmark <span className="text-brand-neon">Engine</span>
                 </h3>
                 <p className="text-left text-xl font-semibold leading-snug text-white md:text-2xl">
-                  Sektörünüzdeki en iyi içeriklerle sürekli{" "}
-                  <span className="text-brand-neon">kıyaslama.</span>
+                  {locale === "en" ? (
+                    <>
+                      Continuous comparison with the top content in your{" "}
+                      <span className="text-brand-neon">industry.</span>
+                    </>
+                  ) : (
+                    <>
+                      Sektörünüzdeki en iyi içeriklerle sürekli{" "}
+                      <span className="text-brand-neon">kıyaslama.</span>
+                    </>
+                  )}
                 </p>
                 <p className="text-left text-sm text-white/75">
-                  Performansınızı görün, gelişim alanlarınızı keşfedin.
+                  {locale === "en"
+                    ? "See your performance and discover improvement opportunities."
+                    : "Performansınızı görün, gelişim alanlarınızı keşfedin."}
                 </p>
                 <div className="space-y-2.5">
-                  {[
-                    "Kendi skorunuzu sektör ortalamasıyla karşılaştırın.",
-                    "Lider markalara göre konumunuzu görün.",
-                    "Trendleri ve fırsatları yakalayın.",
-                    "Veriye dayalı stratejilerle ilerleyin.",
-                  ].map((item) => (
+                  {(
+                    locale === "en"
+                      ? [
+                          "Compare your score with industry averages.",
+                          "See your position against leading brands.",
+                          "Capture trends and opportunities.",
+                          "Move forward with data-driven strategies.",
+                        ]
+                      : [
+                          "Kendi skorunuzu sektör ortalamasıyla karşılaştırın.",
+                          "Lider markalara göre konumunuzu görün.",
+                          "Trendleri ve fırsatları yakalayın.",
+                          "Veriye dayalı stratejilerle ilerleyin.",
+                        ]
+                  ).map((item) => (
                     <p key={item} className="flex items-start gap-2 text-left text-sm text-white/75">
                       <Check className="mt-0.5 size-4 text-brand-neon" />
                       {item}
@@ -841,20 +984,39 @@ export default function LandingPage() {
                   Creative <span className="text-brand-neon">Memory</span>
                 </h3>
                 <p className="text-left text-xl font-semibold leading-snug text-white md:text-2xl">
-                  Geçmiş paylaşımlarınızdan{" "}
-                  <span className="text-brand-neon">öğrenir.</span>
+                  {locale === "en" ? (
+                    <>
+                      Learns from your past posts{" "}
+                      <span className="text-brand-neon">over time.</span>
+                    </>
+                  ) : (
+                    <>
+                      Geçmiş paylaşımlarınızdan{" "}
+                      <span className="text-brand-neon">öğrenir.</span>
+                    </>
+                  )}
                 </p>
                 <p className="text-left text-sm text-white/75">
-                  Nelerin işe yaradığını hatırlar ve gelecekte daha doğru öneriler
-                  üretir.
+                  {locale === "en"
+                    ? "Remembers what works and produces better suggestions for future content."
+                    : "Nelerin işe yaradığını hatırlar ve gelecekte daha doğru öneriler üretir."}
                 </p>
                 <div className="space-y-2.5">
-                  {[
-                    "Geçmiş verilerinizi analiz ederek kalıpları keşfeder.",
-                    "En iyi performans gösteren içeriklerinizi hatırlar.",
-                    "İçerik tercihlerinizi ve kalıplarınızı öğrenir.",
-                    "Daha isabetli, size özel öneriler sunar.",
-                  ].map((item) => (
+                  {(
+                    locale === "en"
+                      ? [
+                          "Finds patterns by analyzing your historical data.",
+                          "Remembers your best-performing content.",
+                          "Learns your content preferences and patterns.",
+                          "Provides more accurate, personalized suggestions.",
+                        ]
+                      : [
+                          "Geçmiş verilerinizi analiz ederek kalıpları keşfeder.",
+                          "En iyi performans gösteren içeriklerinizi hatırlar.",
+                          "İçerik tercihlerinizi ve kalıplarınızı öğrenir.",
+                          "Daha isabetli, size özel öneriler sunar.",
+                        ]
+                  ).map((item) => (
                     <p key={item} className="flex items-start gap-2 text-left text-sm text-white/75">
                       <Check className="mt-0.5 size-4 text-brand-neon" />
                       {item}
@@ -867,7 +1029,11 @@ export default function LandingPage() {
                   variant="section"
                   className="mx-auto max-w-xl"
                   src={DASHBOARD_SCREENSHOTS.creativeMemory}
-                  alt="Score AI Creative Memory ekranı"
+                  alt={
+                    locale === "en"
+                      ? "Score AI Creative Memory screen"
+                      : "Score AI Creative Memory ekranı"
+                  }
                 />
               </div>
             </div>
@@ -885,7 +1051,7 @@ export default function LandingPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={FEATURE_PILL_IMAGES[i]}
-                      alt={`${title} ikonu`}
+                      alt={`${title} ${locale === "en" ? "icon" : "ikonu"}`}
                       className="h-full w-full object-cover"
                       decoding="async"
                       onError={(e) => {
@@ -908,13 +1074,22 @@ export default function LandingPage() {
       <section className="bg-bg-offwhite py-24">
         <div className={PAGE_CONTAINER}>
           <FadeIn className="text-center">
-            <SectionBadge>Ürünü Keşfedin</SectionBadge>
+            <SectionBadge>{locale === "en" ? "Discover the Product" : "Ürünü Keşfedin"}</SectionBadge>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-brand-dark md:text-5xl">
-              Score AI&apos;yı{" "}
-              <span className="text-brand-dark">60 saniyede</span> izleyin.
+              {locale === "en" ? (
+                <>
+                  Watch Score AI in <span className="text-brand-dark">60 seconds</span>.
+                </>
+              ) : (
+                <>
+                  Score AI&apos;yı <span className="text-brand-dark">60 saniyede</span> izleyin.
+                </>
+              )}
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-brand-dark/60">
-              İçeriklerinizi analiz edin, geliştirin ve daha iyi sonuçlar elde edin.
+              {locale === "en"
+                ? "Analyze your content, improve it, and get better results."
+                : "İçeriklerinizi analiz edin, geliştirin ve daha iyi sonuçlar elde edin."}
             </p>
           </FadeIn>
 
@@ -926,13 +1101,13 @@ export default function LandingPage() {
                     <DashboardScreenshot
                       variant="video"
                       src={DASHBOARD_SCREENSHOTS.video}
-                      alt="Score AI ürün demosu"
+                      alt={locale === "en" ? "Score AI product demo" : "Score AI ürün demosu"}
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-brand-dark/20">
                       <button
                         type="button"
                         onClick={() => setIsVideoModalOpen(true)}
-                        aria-label="Ürün videosunu aç"
+                        aria-label={locale === "en" ? "Open product video" : "Ürün videosunu aç"}
                         className="flex size-16 items-center justify-center rounded-full bg-brand-neon shadow-xl transition hover:scale-105"
                       >
                         <Play className="ml-1 size-7 fill-brand-dark text-brand-dark" />
@@ -944,11 +1119,31 @@ export default function LandingPage() {
             </FadeIn>
 
             <FadeIn delay={0.2} className="space-y-5">
-              {[
-                { icon: BarChart3, title: "AI Destekli Analiz", desc: "40 mikro kritere göre içerik kalitenizi ölçer." },
-                { icon: TrendingUp, title: "Akıllı Öneriler", desc: "İçeriklerinizi geliştirmek için uygulanabilir öneriler sunar." },
-                { icon: Sparkles, title: "Daha İyi Sonuçlar", desc: "Performansınızı artırır, hedeflerinize daha hızlı ulaşmanızı sağlar." },
-              ].map(({ icon: Icon, title, desc }) => (
+              {(
+                locale === "en"
+                  ? [
+                      {
+                        icon: BarChart3,
+                        title: "AI-Powered Analysis",
+                        desc: "Measures your content quality across 40 micro criteria.",
+                      },
+                      {
+                        icon: TrendingUp,
+                        title: "Smart Suggestions",
+                        desc: "Provides actionable recommendations to improve your content.",
+                      },
+                      {
+                        icon: Sparkles,
+                        title: "Better Results",
+                        desc: "Improves performance and helps you reach goals faster.",
+                      },
+                    ]
+                  : [
+                      { icon: BarChart3, title: "AI Destekli Analiz", desc: "40 mikro kritere göre içerik kalitenizi ölçer." },
+                      { icon: TrendingUp, title: "Akıllı Öneriler", desc: "İçeriklerinizi geliştirmek için uygulanabilir öneriler sunar." },
+                      { icon: Sparkles, title: "Daha İyi Sonuçlar", desc: "Performansınızı artırır, hedeflerinize daha hızlı ulaşmanızı sağlar." },
+                    ]
+              ).map(({ icon: Icon, title, desc }) => (
                 <div
                   key={title}
                   className="flex gap-4 rounded-2xl border border-brand-dark/10 bg-bg-light p-5 shadow-sm"
@@ -976,19 +1171,21 @@ export default function LandingPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-brand-dark">Ürünü Keşfedin - Video</p>
+              <p className="text-sm font-semibold text-brand-dark">
+                {locale === "en" ? "Discover the Product - Video" : "Ürünü Keşfedin - Video"}
+              </p>
               <button
                 type="button"
                 onClick={() => setIsVideoModalOpen(false)}
                 className="rounded-md px-2 py-1 text-sm text-brand-dark/70 transition hover:bg-brand-dark/10 hover:text-brand-dark"
               >
-                Kapat
+                {locale === "en" ? "Close" : "Kapat"}
               </button>
             </div>
             <div className="overflow-hidden rounded-xl border border-brand-dark/10">
               <iframe
                 src={PRODUCT_VIDEO_EMBED_URL}
-                title="Score AI ürün videosu"
+                title={locale === "en" ? "Score AI product video" : "Score AI ürün videosu"}
                 className="aspect-video w-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
@@ -1002,14 +1199,24 @@ export default function LandingPage() {
       <section id="nasil-calisir" className="bg-bg-offwhite py-22">
         <div className={PAGE_CONTAINER}>
           <FadeIn className="text-center">
-            <SectionBadge>Nasıl Çalışıyor?</SectionBadge>
+            <SectionBadge>{locale === "en" ? "How It Works?" : "Nasıl Çalışıyor?"}</SectionBadge>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-brand-dark md:text-5xl">
-              İçerik üretim sürecinizi{" "}
-              <span className="text-brand-dark">5 adımda</span> optimize edin.
+              {locale === "en" ? (
+                <>
+                  Optimize your content workflow in{" "}
+                  <span className="text-brand-dark">5 steps</span>.
+                </>
+              ) : (
+                <>
+                  İçerik üretim sürecinizi{" "}
+                  <span className="text-brand-dark">5 adımda</span> optimize edin.
+                </>
+              )}
             </h2>
             <p className="mx-auto mt-3 max-w-2xl text-brand-dark/60">
-              Score AI, içeriğinizi analiz eder, markanızı öğrenir ve
-              uygulanabilir önerilerle performansınızı artırır.
+              {locale === "en"
+                ? "Score AI analyzes your content, learns your brand, and improves performance with actionable suggestions."
+                : "Score AI, içeriğinizi analiz eder, markanızı öğrenir ve uygulanabilir önerilerle performansınızı artırır."}
             </p>
           </FadeIn>
 
@@ -1034,9 +1241,11 @@ export default function LandingPage() {
                   {step.num === 1 && (
                     <div className="mt-4 space-y-4 text-sm">
                       <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-3">
-                        <p className="text-brand-dark/90">İçeriğinizi yükleyin</p>
+                        <p className="text-brand-dark/90">
+                          {locale === "en" ? "Upload your content" : "İçeriğinizi yükleyin"}
+                        </p>
                         <div className="mt-3 grid grid-cols-5 gap-2">
-                          {UPLOAD_SOURCE_ICONS.map(({ label, src, alt }) => (
+                          {UPLOAD_SOURCE_ICONS.map(({ label, src }) => (
                             <div
                               key={label}
                               className="relative flex h-10 items-center justify-center overflow-hidden rounded-md border border-brand-dark/10 bg-bg-light"
@@ -1044,7 +1253,11 @@ export default function LandingPage() {
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={src}
-                                alt={alt}
+                                alt={
+                                  locale === "en"
+                                    ? `${label} icon`
+                                    : `${label} ikonu`
+                                }
                                 className="h-5 w-5 object-contain"
                                 decoding="async"
                                 onError={(e) => {
@@ -1063,10 +1276,12 @@ export default function LandingPage() {
                         </div>
                       </div>
                       <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-3">
-                        <p className="text-brand-dark/70">veya link yapıştırın</p>
+                        <p className="text-brand-dark/70">
+                          {locale === "en" ? "or paste a link" : "veya link yapıştırın"}
+                        </p>
                         <div className="mt-2 rounded-md border border-brand-dark/10 bg-bg-light px-3 py-2 text-xs text-brand-dark/60">
                           <span className="block max-w-full truncate">
-                            https://example.com/icerik
+                            {locale === "en" ? "https://example.com/content" : "https://example.com/icerik"}
                           </span>
                         </div>
                       </div>
@@ -1074,15 +1289,27 @@ export default function LandingPage() {
                   )}
                   {step.num === 2 && (
                     <div className="mt-6 rounded-xl border border-brand-dark/10 bg-bg-light p-3">
-                      <p className="text-brand-dark/90">Analiz Kriterleri</p>
+                      <p className="text-brand-dark/90">
+                        {locale === "en" ? "Analysis Criteria" : "Analiz Kriterleri"}
+                      </p>
                       <div className="mt-3 space-y-2.5">
-                        {[
-                          ["Hook Gücü", "92"],
-                          ["CTA Etkinliği", "79"],
-                          ["Storytelling", "84"],
-                          ["Görsel Kalitesi", "93"],
-                          ["Okunabilirlik", "88"],
-                        ].map(([label, score]) => (
+                        {(
+                          locale === "en"
+                            ? [
+                                ["Hook Strength", "92"],
+                                ["CTA Effectiveness", "79"],
+                                ["Storytelling", "84"],
+                                ["Visual Quality", "93"],
+                                ["Readability", "88"],
+                              ]
+                            : [
+                                ["Hook Gücü", "92"],
+                                ["CTA Etkinliği", "79"],
+                                ["Storytelling", "84"],
+                                ["Görsel Kalitesi", "93"],
+                                ["Okunabilirlik", "88"],
+                              ]
+                        ).map(([label, score]) => (
                           <div key={label} className="grid grid-cols-[1fr_auto] items-center gap-2 text-xs">
                             <span className="text-brand-dark/75">{label}</span>
                             <span className="text-brand-dark">{score}</span>
@@ -1091,35 +1318,58 @@ export default function LandingPage() {
                             </div>
                           </div>
                         ))}
-                        <p className="text-xs text-brand-dark/70">... ve 40 kriter daha</p>
+                        <p className="text-xs text-brand-dark/70">
+                          {locale === "en" ? "... and 40 more criteria" : "... ve 40 kriter daha"}
+                        </p>
                       </div>
                     </div>
                   )}
                   {step.num === 3 && (
                     <div className="mt-6 space-y-3">
                       <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-4 text-center">
-                        <p className="text-sm font-semibold text-brand-dark">Yayınlanmaya Hazır</p>
-                        <p className="mt-1 text-xs text-brand-dark/70">Geçen aya göre +12 puan artışı</p>
+                        <p className="text-sm font-semibold text-brand-dark">
+                          {locale === "en" ? "Ready to Publish" : "Yayınlanmaya Hazır"}
+                        </p>
+                        <p className="mt-1 text-xs text-brand-dark/70">
+                          {locale === "en" ? "+12 points vs last month" : "Geçen aya göre +12 puan artışı"}
+                        </p>
                       </div>
                       <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-4 text-center">
-                        <p className="text-brand-dark/85">Gelişim Alanı</p>
+                        <p className="text-brand-dark/85">
+                          {locale === "en" ? "Improvement Area" : "Gelişim Alanı"}
+                        </p>
                         <p className="mt-1 text-4xl leading-none font-bold text-brand-dark">
-                          12 <span className="text-base font-medium text-brand-dark/75">adet</span>
+                          12{" "}
+                          <span className="text-base font-medium text-brand-dark/75">
+                            {locale === "en" ? "items" : "adet"}
+                          </span>
                         </p>
                       </div>
                     </div>
                   )}
                   {step.num === 4 && (
                     <div className="mt-6 rounded-xl border border-brand-dark/10 bg-bg-light p-3">
-                      <p className="text-brand-dark/90">Önerilen İyileştirmeler</p>
+                      <p className="text-brand-dark/90">
+                        {locale === "en" ? "Suggested Improvements" : "Önerilen İyileştirmeler"}
+                      </p>
                       <ul className="mt-3 space-y-2.5">
-                        {[
-                          "Daha güçlü bir giriş cümlesi kullan",
-                          "CTA ekleyerek etkileşimi artır",
-                          "İlk cümleyi daha dikkat çekici yap",
-                          "Görseli üstte konumlandırın",
-                          "Marka tonunu daha net yansıt",
-                        ].map((item) => (
+                        {(
+                          locale === "en"
+                            ? [
+                                "Use a stronger opening sentence",
+                                "Add a CTA to increase engagement",
+                                "Make the first line more attention-grabbing",
+                                "Position the visual at the top",
+                                "Reflect brand tone more clearly",
+                              ]
+                            : [
+                                "Daha güçlü bir giriş cümlesi kullan",
+                                "CTA ekleyerek etkileşimi artır",
+                                "İlk cümleyi daha dikkat çekici yap",
+                                "Görseli üstte konumlandırın",
+                                "Marka tonunu daha net yansıt",
+                              ]
+                        ).map((item) => (
                           <li key={item} className="flex items-center justify-between gap-2 text-xs text-brand-dark/80">
                             <span>{item}</span>
                             <span className="text-brand-dark">›</span>
@@ -1134,7 +1384,11 @@ export default function LandingPage() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={DASHBOARD_SCREENSHOTS.brandBrain}
-                          alt="Canva öneri önizlemesi"
+                          alt={
+                            locale === "en"
+                              ? "Canva suggestion preview"
+                              : "Canva öneri önizlemesi"
+                          }
                           className="block h-auto w-full object-contain"
                           decoding="async"
                         />
@@ -1143,9 +1397,11 @@ export default function LandingPage() {
                         type="button"
                         className="mt-3 w-full rounded-lg bg-brand-dark py-2 text-sm font-semibold text-white transition hover:brightness-110"
                       >
-                        Canva&apos;da Aç
+                        {locale === "en" ? "Open in Canva" : "Canva'da Aç"}
                       </button>
-                      <p className="mt-2 text-center text-xs text-brand-dark/65">Düzenle, indir ve paylaş</p>
+                      <p className="mt-2 text-center text-xs text-brand-dark/65">
+                        {locale === "en" ? "Edit, download, and share" : "Düzenle, indir ve paylaş"}
+                      </p>
                     </div>
                   )}
                   {i < steps.length - 1 && (
@@ -1162,14 +1418,16 @@ export default function LandingPage() {
       <section id="kimler" className="bg-bg-offwhite py-24">
         <div className={PAGE_CONTAINER}>
           <FadeIn className="text-center">
-            <SectionBadge>Kimler Kullanmalı?</SectionBadge>
+            <SectionBadge>{locale === "en" ? "Who Should Use It?" : "Kimler Kullanmalı?"}</SectionBadge>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-brand-dark md:text-5xl">
-              Daha iyi içerik üretmek isteyen{" "}
-              <span className="text-brand-dark">herkes için.</span>
+              {locale === "en"
+                ? "For everyone who wants to produce better content."
+                : "Daha iyi içerik üretmek isteyen herkes için."}
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-brand-dark/60">
-              Score AI, ihtiyaçlarınıza göre içeriklerinizi analiz eder ve
-              geliştirmenize yardımcı olur.
+              {locale === "en"
+                ? "Score AI analyzes your content according to your needs and helps you improve."
+                : "Score AI, ihtiyaçlarınıza göre içeriklerinizi analiz eder ve geliştirmenize yardımcı olur."}
             </p>
           </FadeIn>
 
@@ -1180,12 +1438,12 @@ export default function LandingPage() {
                   <div className="mx-auto">
                     <div className="relative size-32 overflow-hidden rounded-2xl bg-brand-dark/5">
                       <div className="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-brand-dark/40">
-                        Görsel
+                        {locale === "en" ? "Visual" : "Görsel"}
                       </div>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={AUDIENCE_CARD_IMAGES[i]}
-                        alt={`${item.title} görseli`}
+                        alt={`${item.title} ${locale === "en" ? "visual" : "görseli"}`}
                         className="relative z-10 h-full w-full object-cover"
                         decoding="async"
                         onError={(e) => {
@@ -1211,11 +1469,20 @@ export default function LandingPage() {
           <FadeIn className="text-center">
             <SectionBadge>FAQ</SectionBadge>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-white md:text-5xl">
-              Sıkça Sorulan{" "}
-              <span className="text-brand-neon">Sorular</span>
+              {locale === "en" ? (
+                <>
+                  Frequently Asked <span className="text-brand-neon">Questions</span>
+                </>
+              ) : (
+                <>
+                  Sıkça Sorulan <span className="text-brand-neon">Sorular</span>
+                </>
+              )}
             </h2>
             <p className="mt-3 text-white/60">
-              Score AI hakkında merak ettiğiniz her şey.
+              {locale === "en"
+                ? "Everything you wonder about Score AI."
+                : "Score AI hakkında merak ettiğiniz her şey."}
             </p>
           </FadeIn>
 
@@ -1257,13 +1524,16 @@ export default function LandingPage() {
       <section id="son-adim" className="bg-bg-offwhite py-24">
         <div className={`space-y-12 ${PAGE_CONTAINER}`}>
           <FadeIn className="text-center">
-            <SectionBadge>Son Adım</SectionBadge>
+            <SectionBadge>{locale === "en" ? "Final Step" : "Son Adım"}</SectionBadge>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-brand-dark md:text-5xl">
-              İçerikleriniz daha iyisini hak ediyor.
+              {locale === "en"
+                ? "Your content deserves better."
+                : "İçerikleriniz daha iyisini hak ediyor."}
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-brand-dark/60">
-              Score AI ile içeriklerinizi analiz edin, geliştirin ve her
-              paylaşımda daha iyi sonuçlar elde edin.
+              {locale === "en"
+                ? "Analyze and improve your content with Score AI, and get better results in every post."
+                : "Score AI ile içeriklerinizi analiz edin, geliştirin ve her paylaşımda daha iyi sonuçlar elde edin."}
             </p>
           </FadeIn>
 
@@ -1283,27 +1553,36 @@ export default function LandingPage() {
             <div className="mt-4 grid w-full grid-cols-1 gap-y-2 text-[11px] text-brand-dark/75 sm:grid-cols-3 sm:gap-x-6 sm:text-[12px] lg:text-sm">
               <span className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                 <Check className="size-3.5 text-green-700" />
-                Erken erişim
+                {locale === "en" ? "Early access" : "Erken erişim"}
               </span>
               <span className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                 <Check className="size-3.5 text-green-700" />
-                Ücretsiz beta
+                {locale === "en" ? "Free beta" : "Ücretsiz beta"}
               </span>
               <span className="flex items-center justify-center gap-1.5 whitespace-nowrap text-brand-dark/60">
                 <Lock className="size-3.5" />
-                Spam yok. Güvende kalın.
+                {locale === "en" ? "No spam. Stay safe." : "Spam yok. Güvende kalın."}
               </span>
             </div>
           </FadeIn>
 
           <FadeIn delay={0.15}>
             <div className="grid gap-4 rounded-2xl border border-brand-dark/10 bg-bg-light p-6 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { val: "1.000+", lbl: "Kişi waitlist'te", sub: "Her geçen gün büyüyoruz." },
-                { val: "84", lbl: "Ortalama Score", sub: "İlk analiz sonrası ortalama." },
-                { val: "40", lbl: "Mikro Kriter", sub: "Detaylı kalite analizi." },
-                { val: "3 dk", lbl: "İlk Analiz", sub: "Hızlı, kolay ve otomatik." },
-              ].map(({ val, lbl, sub }, i) => (
+              {(
+                locale === "en"
+                  ? [
+                      { val: "1,000+", lbl: "People on waitlist", sub: "We keep growing every day." },
+                      { val: "84", lbl: "Average Score", sub: "Average after first analysis." },
+                      { val: "40", lbl: "Micro Criteria", sub: "Detailed quality analysis." },
+                      { val: "3 min", lbl: "First Analysis", sub: "Fast, easy, and automatic." },
+                    ]
+                  : [
+                      { val: "1.000+", lbl: "Kişi waitlist'te", sub: "Her geçen gün büyüyoruz." },
+                      { val: "84", lbl: "Ortalama Score", sub: "İlk analiz sonrası ortalama." },
+                      { val: "40", lbl: "Mikro Kriter", sub: "Detaylı kalite analizi." },
+                      { val: "3 dk", lbl: "İlk Analiz", sub: "Hızlı, kolay ve otomatik." },
+                    ]
+              ).map(({ val, lbl, sub }, i) => (
                 <div key={lbl} className="flex h-full flex-col items-center text-center">
                   <div className="relative size-22 overflow-hidden rounded-full bg-brand-neon/20">
                     <div className="absolute inset-0 flex items-center justify-center text-[10px] text-brand-dark/35">
@@ -1312,7 +1591,7 @@ export default function LandingPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={FINAL_STATS_ICON_IMAGES[i]}
-                      alt={`${lbl} ikonu`}
+                      alt={`${lbl} ${locale === "en" ? "icon" : "ikonu"}`}
                       className="relative z-10 h-full w-full object-cover"
                       decoding="async"
                       onError={(e) => {
@@ -1337,7 +1616,7 @@ export default function LandingPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={FOOTER_QUOTE_IMAGE}
-              alt="Footer içgörü görseli"
+              alt={locale === "en" ? "Footer insight visual" : "Footer içgörü görseli"}
               className="mx-auto w-full max-w-[440px] rounded-3xl"
               decoding="async"
             />
@@ -1347,13 +1626,16 @@ export default function LandingPage() {
               <span className="text-2xl font-bold leading-none text-brand-dark">&ldquo;</span>
             </div>
             <h3 className="text-3xl font-bold text-white">
-              Sadece analiz etmez. Geliştirir.
+              {locale === "en" ? "It does more than analyze. It improves." : "Sadece analiz etmez. Geliştirir."}
             </h3>
             <p className="mt-6 max-w-[62ch] text-base leading-relaxed text-white/70">
-              İçeriğinizi 40 mikro kalite kriterine göre analiz eder, markanızı
-              öğrenir ve performansınızı artıracak uygulanabilir öneriler sunar.
+              {locale === "en"
+                ? "Analyzes your content with 40 micro quality criteria, learns your brand, and provides actionable suggestions to boost performance."
+                : "İçeriğinizi 40 mikro kalite kriterine göre analiz eder, markanızı öğrenir ve performansınızı artıracak uygulanabilir öneriler sunar."}
               <br />
-              Her paylaşım, bir öncekinden daha güçlü hale gelir.
+              {locale === "en"
+                ? "Every post becomes stronger than the previous one."
+                : "Her paylaşım, bir öncekinden daha güçlü hale gelir."}
             </p>
           </FadeIn>
         </div>
@@ -1369,15 +1651,24 @@ export default function LandingPage() {
             <div className="md:col-span-1">
               <Logo className="h-7 w-auto text-white" />
               <p className="mt-4 text-sm leading-relaxed text-white/50">
-                Yapay zeka destekli içerik analizi ile markaların daha iyi
-                sonuçlar almasını sağlıyoruz.
+                {locale === "en"
+                  ? "We help brands get better results with AI-powered content analysis."
+                  : "Yapay zeka destekli içerik analizi ile markaların daha iyi sonuçlar almasını sağlıyoruz."}
               </p>
             </div>
-            {[
-              { title: "ÜRÜN", links: ["Özellikler", "Nasıl Çalışır?", "Fiyatlandırma", "Güncellemeler"] },
-              { title: "KAYNAKLAR", links: ["Blog", "Rehberler", "Soru & Cevap", "İçerik Sözlüğü"] },
-              { title: "ŞİRKET", links: ["Hakkımızda", "İletişim", "Gizlilik Politikası", "Kullanım Koşulları"] },
-            ].map((col) => (
+            {(
+              locale === "en"
+                ? [
+                    { title: "PRODUCT", links: ["Features", "How It Works?", "Pricing", "Updates"] },
+                    { title: "RESOURCES", links: ["Blog", "Guides", "Q&A", "Content Glossary"] },
+                    { title: "COMPANY", links: ["About", "Contact", "Privacy Policy", "Terms"] },
+                  ]
+                : [
+                    { title: "ÜRÜN", links: ["Özellikler", "Nasıl Çalışır?", "Fiyatlandırma", "Güncellemeler"] },
+                    { title: "KAYNAKLAR", links: ["Blog", "Rehberler", "Soru & Cevap", "İçerik Sözlüğü"] },
+                    { title: "ŞİRKET", links: ["Hakkımızda", "İletişim", "Gizlilik Politikası", "Kullanım Koşulları"] },
+                  ]
+            ).map((col) => (
               <div key={col.title}>
                 <p className="text-xs font-bold tracking-widest text-brand-neon">
                   {col.title}
@@ -1399,11 +1690,11 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/40">
-            <p>© 2026 Score AI. Tüm Hakları Saklıdır.</p>
+            <p>{pageCopy.footer.rights}</p>
             <a
               href="mailto:info@usescore.net"
               className="flex items-center gap-1.5 transition hover:text-white"
-              aria-label="Score AI ekibine e-posta gönder"
+              aria-label={pageCopy.footer.mailAria}
             >
               <Mail className="size-3" />
               info@usescore.net
@@ -1413,10 +1704,10 @@ export default function LandingPage() {
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 transition hover:text-white"
-              aria-label="Tallinn, Estonya konumunu Google Maps'te aç"
+              aria-label={pageCopy.footer.mapsAria}
             >
               <MapPin className="size-3" />
-              Tallinn, Estonya
+              {locale === "en" ? "Tallinn, Estonia" : "Tallinn, Estonya"}
             </a>
           </div>
         </div>

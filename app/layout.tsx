@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="tr" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-bg-light font-sans font-normal text-brand-dark">
-        <Script id="yandex-metrika" strategy="beforeInteractive">
+        <Script id="yandex-metrika" strategy="afterInteractive">
           {`
             (function(m,e,t,r,i,k,a){
                 m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
