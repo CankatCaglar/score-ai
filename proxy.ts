@@ -38,6 +38,12 @@ export function proxy(request: NextRequest) {
   }
 
   if (isDashboardRoute) {
+    // Admin panel oturumu olan kullanıcılar, waitlist/early-access modundan
+    // bağımsız olarak dashboard içinde gezinebilsin.
+    if (session) {
+      return NextResponse.next();
+    }
+
     if (APP_MODE === "waitlist") {
       const url = request.nextUrl.clone();
       url.pathname = "/";
