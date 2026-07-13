@@ -1,101 +1,61 @@
 "use client";
 
+import Link from "next/link";
 import {
+  ArrowDownRight,
   ArrowUpRight,
-  CheckCircle2,
-  ImageIcon,
-  Layers,
+  Bot,
+  Brain,
+  ChevronRight,
+  Lightbulb,
+  Plus,
   Target,
   TrendingUp,
+  UploadCloud,
 } from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  Cell,
-  Line,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Area, AreaChart, ResponsiveContainer, Tooltip } from "recharts";
 
 const BRAND_DARK = "#00272c";
-const BRAND_NEON = "#e1ff51";
-
-const TOTAL_SCORE = 84;
 
 const trendData = [
-  { date: "20 May", score: 58 },
-  { date: "24 May", score: 62 },
-  { date: "28 May", score: 66 },
-  { date: "1 Haz", score: 70 },
-  { date: "5 Haz", score: 74 },
-  { date: "9 Haz", score: 78 },
-  { date: "13 Haz", score: 81 },
-  { date: "17 Haz", score: 84 },
-];
-
-const scoreRingData = [
-  { name: "score", value: TOTAL_SCORE },
-  { name: "remaining", value: 100 - TOTAL_SCORE },
-];
-
-const distributionData = [
-  { name: "80-100", value: 33, color: BRAND_DARK },
-  { name: "60-79", value: 39, color: "#1a4a50" },
-  { name: "40-59", value: 19, color: "#3d7a82" },
-  { name: "0-39", value: 9, color: BRAND_NEON },
-];
-
-const statCards = [
-  {
-    label: "Analiz Edilen İçerik",
-    value: "128",
-    change: "+32%",
-    changeLabel: "bu ay",
-    icon: Layers,
-  },
-  {
-    label: "Ortalama Score",
-    value: "84/100",
-    change: "+8%",
-    changeLabel: "bu ay",
-    icon: Target,
-  },
-  {
-    label: "En Güçlü Kategori",
-    value: "Görsel Kalite",
-    change: "26/30",
-    changeLabel: "puan",
-    icon: ImageIcon,
-  },
-  {
-    label: "İyileşme Oranı",
-    value: "+14%",
-    change: "İçerik kalitesinde",
-    changeLabel: "artış",
-    icon: TrendingUp,
-  },
+  { date: "18 May", score: 66 },
+  { date: "23 May", score: 69 },
+  { date: "28 May", score: 67 },
+  { date: "2 Haz", score: 72 },
+  { date: "7 Haz", score: 76 },
+  { date: "12 Haz", score: 74 },
+  { date: "17 Haz", score: 80 },
+  { date: "22 Haz", score: 84 },
 ];
 
 const recentAnalyses = [
-  {
-    title: "Terra Niva - Ürün Tanıtımı",
-    platform: "Instagram Gönderisi",
-    score: 78,
-  },
-  {
-    title: "Terra Niva - Lifestyle",
-    platform: "Instagram Gönderisi",
-    score: 92,
-  },
-  {
-    title: "Terra Niva - Kampanya",
-    platform: "Instagram Hikayesi",
-    score: 85,
-  },
+  { title: "Terra Niva", platform: "Instagram", date: "12 Haziran 2025, 14:32", score: 84, change: 12 },
+  { title: "Siskon", platform: "LinkedIn", date: "11 Haziran 2025, 11:20", score: 79, change: -3 },
+  { title: "Uniba", platform: "Instagram", date: "10 Haziran 2025, 16:45", score: 91, change: 15 },
+  { title: "Altınok Palet", platform: "LinkedIn", date: "9 Haziran 2025, 09:15", score: 82, change: 6 },
+];
+
+const topCategories = [
+  { label: "Görsel Kalitesi", value: 92 },
+  { label: "Dikkat Çekicilik", value: 88 },
+  { label: "CTA Gücü", value: 84 },
+  { label: "Storytelling", value: 73 },
+  { label: "Okunabilirlik", value: 71 },
+];
+
+const mostImproved = [
+  { label: "CTA Gücü", change: 18 },
+  { label: "Hook (Başlık)", change: 12 },
+  { label: "Okunabilirlik", change: 9 },
+  { label: "Duygusal Etki", change: 7 },
+  { label: "Etkileşim Potansiyeli", change: 6 },
+];
+
+const quickActions = [
+  { label: "Yeni Analiz Başlat", href: "/dashboard/yeni-analiz", icon: UploadCloud },
+  { label: "Brand DNA'yı Güncelle", href: "/dashboard/brand-brain", icon: Brain },
+  { label: "Benchmark Karşılaştır", href: "/dashboard/benchmark", icon: Target },
+  { label: "AI Önerilerini Gör", href: "/dashboard/icgoruler", icon: Lightbulb },
 ];
 
 function Card({
@@ -106,104 +66,90 @@ function Card({
   className?: string;
 }) {
   return (
-    <div
-      className={`rounded-3xl bg-bg-light p-6 shadow-sm ${className}`}
-    >
+    <div className={`rounded-3xl bg-bg-light p-6 shadow-sm ${className}`}>
       {children}
     </div>
   );
 }
 
+function ChangeBadge({ change }: { change: number }) {
+  const positive = change >= 0;
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 text-xs font-semibold ${
+        positive ? "text-brand-dark" : "text-red-500"
+      }`}
+    >
+      {positive ? (
+        <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
+      ) : (
+        <ArrowDownRight className="size-3.5" strokeWidth={2.25} />
+      )}
+      {positive ? "+" : ""}
+      {change} puan
+    </span>
+  );
+}
+
 export default function DashboardPage() {
   return (
-    <div className="space-y-6 p-8">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <h2 className="text-sm font-medium text-brand-dark/60">
-            Toplam Score
-          </h2>
-          <div className="mt-6 flex flex-col items-center">
-            <div className="relative flex h-[250px] w-full justify-center">
-              <div className="relative size-[220px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={scoreRingData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={80}
-                      outerRadius={100}
-                      startAngle={90}
-                      endAngle={-270}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      <Cell fill={BRAND_DARK} />
-                      <Cell fill="#E8EDEA" />
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <div className="flex items-baseline">
-                    <span className="text-6xl font-bold tracking-tight text-brand-dark">
-                      {TOTAL_SCORE}
-                    </span>
-                    <span className="text-xl font-medium text-brand-dark/35">
-                      /100
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+    <div className="space-y-5 px-4 pb-8 pt-2 sm:px-6 sm:space-y-6 lg:px-8 lg:pt-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
+            Günaydın Ece <span className="align-middle">👋</span>
+          </h1>
+          <p className="mt-1 text-sm text-brand-dark/55">
+            Son analizinden bu yana içerik skorun +6 puan arttı.
+          </p>
+        </div>
+        <Link
+          href="/dashboard/yeni-analiz"
+          className="flex items-center gap-2 rounded-lg bg-brand-neon px-4 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
+        >
+          <Plus className="size-4" strokeWidth={2.25} />
+          Yeni Analiz
+        </Link>
+      </div>
 
-            <div className="-mt-2 flex flex-col items-center gap-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-brand-dark">
-                <CheckCircle2 className="size-4" strokeWidth={2} />
-                Yayınlanmaya Hazır
-              </div>
-              <span className="rounded-full bg-brand-neon/30 px-3 py-1 text-xs font-medium text-brand-dark">
-                Geçen aya göre +6 puan arttı
-              </span>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-brand-dark/60">
+              Ortalama Score
+            </h2>
+            <div className="flex size-9 items-center justify-center rounded-full bg-brand-neon/90">
+              <TrendingUp className="size-[18px] text-brand-dark" strokeWidth={2} />
             </div>
+          </div>
+          <div className="mt-6 flex items-baseline">
+            <span className="text-5xl font-bold tracking-tight text-brand-dark">
+              84
+            </span>
+            <span className="text-2xl font-medium text-brand-dark/35">/100</span>
+          </div>
+          <div className="mt-3">
+            <ChangeBadge change={6} />
+            <span className="ml-1 text-xs text-brand-dark/40">bu ay</span>
           </div>
         </Card>
 
         <Card>
-          <h2 className="text-sm font-medium text-brand-dark/60">
-            Score Trendi
-          </h2>
-          <div className="mt-4 h-[280px] w-full">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-brand-dark/60">Son 30 Gün</h2>
+            <span className="rounded-md bg-brand-dark/5 px-2.5 py-1 text-xs font-medium text-brand-dark/60">
+              Son 30 Gün
+            </span>
+          </div>
+          <div className="mt-4 h-[90px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={trendData}
-                margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
-              >
+              <AreaChart data={trendData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
                 <defs>
-                  <linearGradient
-                    id="scoreTrendGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="0%" stopColor={BRAND_DARK} stopOpacity={0.2} />
+                  <linearGradient id="ovTrend" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={BRAND_DARK} stopOpacity={0.33} />
                     <stop offset="100%" stopColor={BRAND_DARK} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis
-                  dataKey="date"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: BRAND_DARK, opacity: 0.4, fontSize: 12 }}
-                  dy={8}
-                />
-                <YAxis
-                  domain={[50, 90]}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: BRAND_DARK, opacity: 0.4, fontSize: 12 }}
-                  tickCount={5}
-                />
                 <Tooltip
                   contentStyle={{
                     borderRadius: "12px",
@@ -216,147 +162,172 @@ export default function DashboardPage() {
                 <Area
                   type="monotone"
                   dataKey="score"
-                  stroke="none"
-                  fill="url(#scoreTrendGradient)"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="score"
                   stroke={BRAND_DARK}
                   strokeWidth={2.5}
-                  dot={{
-                    r: 4,
-                    fill: BRAND_DARK,
-                    stroke: "#fff",
-                    strokeWidth: 2,
-                  }}
-                  activeDot={{ r: 5, fill: BRAND_DARK }}
+                  fill="url(#ovTrend)"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {statCards.map(({ label, value, change, changeLabel, icon: Icon }) => (
-          <Card key={label}>
-            <div className="flex size-9 items-center justify-center rounded-lg bg-brand-neon/30">
-              <Icon className="size-[18px] text-brand-dark" strokeWidth={1.75} />
-            </div>
-            <p className="mt-4 text-sm text-brand-dark/55">{label}</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight text-brand-dark">
-              {value}
-            </p>
-            <div className="mt-2 flex items-center gap-1 text-xs font-medium text-brand-dark">
-              <ArrowUpRight className="size-3.5 text-brand-neon" strokeWidth={2} />
-              <span>{change}</span>
-              <span className="font-normal text-brand-dark/40">
-                {changeLabel}
-              </span>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-          <h2 className="text-sm font-medium text-brand-dark/60">
-            Score Dağılımı
-          </h2>
-          <div className="mt-3 flex items-center gap-1">
-            <div className="aspect-square h-[180px] shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={distributionData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius="58%"
-                    outerRadius="88%"
-                    paddingAngle={2}
-                    dataKey="value"
-                    nameKey="name"
-                    stroke="none"
-                  >
-                    {distributionData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: "12px",
-                      border: "none",
-                      boxShadow: "0 4px 24px rgba(0,39,44,0.08)",
-                      fontSize: "13px",
-                    }}
-                    formatter={(value) => [`%${value}`, "Oran"]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="flex min-w-0 flex-1 flex-col gap-4 py-1">
-              {distributionData.map((item) => (
-                <div
-                  key={item.name}
-                  className="flex items-center justify-between gap-4 text-sm"
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span
-                      className="size-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <span className="text-brand-dark/55">{item.name}</span>
-                  </div>
-                  <span className="shrink-0 font-semibold tabular-nums text-brand-dark">
-                    %{item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
+          <div className="mt-2">
+            <ChangeBadge change={18} />
+            <span className="ml-1 text-xs text-brand-dark/40">
+              Geçen 30 güne göre
+            </span>
           </div>
         </Card>
 
-        <Card className="lg:col-span-2">
-          <h2 className="text-sm font-medium text-brand-dark/60">
-            Son Analizler
-          </h2>
-          <div className="mt-3 divide-y divide-brand-dark/5">
-            {recentAnalyses.map((item) => (
-              <div
-                key={item.title}
-                className="flex items-center gap-4 py-3 first:pt-0 last:pb-0"
-              >
-                <div className="size-12 shrink-0 rounded-xl bg-bg-offwhite" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-brand-dark">
+        <Card className="flex flex-col">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-full bg-brand-neon/90">
+              <Bot className="size-[18px] text-brand-dark" strokeWidth={1.75} />
+            </div>
+            <h2 className="text-sm font-medium text-brand-dark/60">AI İçgörüsü</h2>
+          </div>
+          <p className="mt-4 flex-1 text-sm leading-relaxed text-brand-dark">
+            Yeşil ton kullandığın içerikler{" "}
+            <span className="font-semibold">%21 daha fazla</span> etkileşim alıyor.
+          </p>
+          <Link
+            href="/dashboard/icgoruler"
+            className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brand-dark hover:underline"
+          >
+            Tüm içgörüleri gör
+            <ChevronRight className="size-4" strokeWidth={2} />
+          </Link>
+        </Card>
+      </div>
+      <Card>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-brand-dark">Son Analizler</h2>
+          <Link
+            href="/dashboard/analizler"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-brand-dark hover:underline"
+          >
+            Tümünü Gör
+            <ChevronRight className="size-4" strokeWidth={2} />
+          </Link>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {recentAnalyses.map((item) => (
+            <Link
+              key={item.title}
+              href="/dashboard/analizler"
+              className="group rounded-2xl border border-brand-dark/8 p-4 transition-colors hover:border-brand-dark/20"
+            >
+              <div className="aspect-video w-full rounded-xl bg-bg-offwhite" />
+              <div className="mt-3 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-brand-dark">
                     {item.title}
                   </p>
                   <p className="mt-0.5 text-xs text-brand-dark/45">
                     {item.platform}
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <div className="flex items-baseline tabular-nums">
-                    <span className="text-2xl font-bold text-brand-dark">
-                      {item.score}
-                    </span>
-                    <span className="text-sm font-medium text-brand-dark/30">
-                      /100
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-brand-dark/10 px-3 py-1.5 text-xs font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 hover:text-brand-dark"
-                  >
-                    Detayları Gör
-                  </button>
+                <div className="flex shrink-0 items-baseline">
+                  <span className="text-xl font-bold text-brand-dark">
+                    {item.score}
+                  </span>
+                  <span className="text-xs font-medium text-brand-dark/30">
+                    /100
+                  </span>
+                </div>
+              </div>
+              <div className="mt-2 flex items-center justify-between">
+                <ChangeBadge change={item.change} />
+                <span className="text-[11px] text-brand-dark/35">{item.date}</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card>
+          <h2 className="text-base font-semibold text-brand-dark">
+            En Güçlü Kategoriler
+          </h2>
+          <div className="mt-5 space-y-4">
+            {topCategories.map((cat) => (
+              <div key={cat.label}>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-brand-dark/70">{cat.label}</span>
+                  <span className="font-semibold tabular-nums text-brand-dark">
+                    {cat.value}
+                  </span>
+                </div>
+                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-brand-dark/8">
+                  <div
+                    className="h-full rounded-full bg-brand-dark"
+                    style={{ width: `${cat.value}%` }}
+                  />
                 </div>
               </div>
             ))}
           </div>
         </Card>
+
+        <Card>
+          <h2 className="text-base font-semibold text-brand-dark">
+            En Çok Gelişim Gösteren Alanlar
+          </h2>
+          <div className="mt-5 divide-y divide-brand-dark/5">
+            {mostImproved.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0"
+              >
+                <span className="text-sm text-brand-dark/70">{item.label}</span>
+                <ChangeBadge change={item.change} />
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <h2 className="text-base font-semibold text-brand-dark">Hızlı Aksiyonlar</h2>
+          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3">
+            {quickActions.map(({ label, href, icon: Icon }) => (
+              <Link
+                key={label}
+                href={href}
+                className="flex min-h-[72px] items-center gap-2 rounded-2xl border border-brand-dark/8 p-2.5 transition-colors hover:border-brand-dark/20 hover:bg-bg-offwhite sm:min-h-[78px] sm:gap-2.5 sm:p-3"
+              >
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand-neon/90 sm:size-8">
+                  <Icon className="size-4 text-brand-dark sm:size-[17px]" strokeWidth={1.75} />
+                </div>
+                <span className="min-w-0 text-[11px] font-medium leading-tight text-brand-dark sm:text-xs lg:text-sm">
+                  {label}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-brand-dark p-6 text-white">
+        <div className="flex items-start gap-4">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-neon/90">
+            <Bot className="size-5 text-brand-dark/90" strokeWidth={1.75} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-brand-neon">
+              Score AI Bu Hafta
+            </p>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-white/75">
+              Doğa temalı görseller ve kısa başlıklar içerik performansını en çok
+              artıran iki faktör oldu.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+        >
+          Tüm raporu görüntüle
+          <ChevronRight className="size-4" strokeWidth={2} />
+        </button>
       </div>
     </div>
   );

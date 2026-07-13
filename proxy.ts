@@ -19,6 +19,23 @@ export function proxy(request: NextRequest) {
   const isDashboardRoute =
     pathname === "/dashboard" || pathname.startsWith("/dashboard/");
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
+  const isAdminDashboardRoute =
+    pathname === "/admin-dashboard" || pathname.startsWith("/admin-dashboard/");
+  const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  const session = verifySessionToken(token);
+
+  if (isAdminDashboardRoute) {
+    if (!session) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/login";
+      return NextResponse.redirect(url);
+    }
+
+    const rewriteUrl = request.nextUrl.clone();
+    const dashboardPath = pathname.replace("/admin-dashboard", "/dashboard");
+    rewriteUrl.pathname = dashboardPath || "/dashboard";
+    return NextResponse.rewrite(rewriteUrl);
+  }
 
   if (isDashboardRoute) {
     if (APP_MODE === "waitlist") {
@@ -49,8 +66,6 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
-  const session = verifySessionToken(token);
   const isLoginPage = pathname === "/admin/login";
 
   if (!session && !isLoginPage) {
@@ -69,5 +84,12 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*", "/dashboard", "/dashboard/:path*"],
+  matcher: [
+    "/admin",
+    "/admin/:path*",
+    "/admin-dashboard",
+    "/admin-dashboard/:path*",
+    "/dashboard",
+    "/dashboard/:path*",
+  ],
 };
