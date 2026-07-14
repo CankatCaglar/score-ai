@@ -649,13 +649,7 @@ export default function LandingPage() {
               <p className="max-w-md text-base leading-relaxed text-brand-dark/80">
                 {pageCopy.hero.desc}
               </p>
-              <p
-                className={`font-medium text-brand-dark ${
-                  locale === "en"
-                    ? "whitespace-nowrap text-[13px] lg:text-sm"
-                    : "text-sm"
-                }`}
-              >
+              <p className="text-sm font-medium text-brand-dark">
                 {pageCopy.hero.subtitle}
               </p>
               <WaitlistForm

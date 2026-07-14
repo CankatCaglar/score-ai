@@ -12,6 +12,14 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
 
+    // Blog yazilari: yalnizca yayinlanmis (status == 'published') yazilar
+    // istemciden OKUNABILIR. Yazma islemleri kapalidir; admin panel yalnizca
+    // Firebase Admin SDK (server) uzerinden yazar ve kurallari bypass eder.
+    match /blog_posts/{docId} {
+      allow read: if resource.data.status == 'published';
+      allow write: if false;
+    }
+
     // Diger tum koleksiyonlar varsayilan olarak kapali.
     match /{document=**} {
       allow read, write: if false;

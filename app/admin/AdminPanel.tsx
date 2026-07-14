@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { BlogAdmin } from "./BlogAdmin";
 import {
   adminLogout,
   deleteWaitlistEntry,
@@ -74,6 +75,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
   const [localeFilter, setLocaleFilter] = useState<"all" | "tr" | "en">("all");
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [view, setView] = useState<"waitlist" | "blog">("waitlist");
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const localeMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -395,7 +397,35 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
         </div>
       </header>
 
+      <div className="border-b border-brand-dark/10 bg-bg-light">
+        <div className="mx-auto flex max-w-6xl gap-1 px-4 sm:px-6">
+          {(
+            [
+              { id: "waitlist", label: "Bekleme Listesi" },
+              { id: "blog", label: "Blog" },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setView(tab.id)}
+              className={`-mb-px border-b-2 px-4 py-3 text-sm font-semibold transition ${
+                view === tab.id
+                  ? "border-brand-dark text-brand-dark"
+                  : "border-transparent text-brand-dark/50 hover:text-brand-dark"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        {view === "blog" ? (
+          <BlogAdmin />
+        ) : (
+        <>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="w-full text-center sm:w-auto sm:text-left">
             <h1 className="text-[2rem] font-semibold text-brand-dark sm:text-2xl">
@@ -730,6 +760,8 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
             </>
           )}
         </div>
+        </>
+        )}
       </main>
 
       {isLogoutConfirmOpen && (
