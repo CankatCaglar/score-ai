@@ -331,7 +331,7 @@ export default function DashboardLayout({
               aria-label="Bildirimler"
             >
               <Bell className="size-5" strokeWidth={1.75} />
-              <span className="absolute right-2 top-2 size-1.5 rounded-full bg-brand-neon/90 ring-2 ring-bg-offwhite" />
+              <span className="absolute right-2 top-2 size-1.5 rounded-full bg-green-300 ring-2 ring-bg-offwhite" />
             </button>
 
             <div className="flex size-9 items-center justify-center rounded-full bg-brand-dark/10 text-xs font-semibold text-brand-dark">
