@@ -151,7 +151,7 @@ const PAGE_COPY = {
     menuItems: ["Özellikler", "Nasıl Çalışır?"],
     header: { menuOpen: "Menüyü aç", menuClose: "Menüyü kapat", toTop: "Sayfanın başına dön" },
     hero: {
-      badge: "Yapay Zeka Destekli İçerik Analizi",
+      badge: "Ölç, anla, geliştir",
       titleMobile: [
         "İçerikleriniz neden",
         "performans göstermiyor?",
@@ -200,7 +200,7 @@ const PAGE_COPY = {
     menuItems: ["Features", "How It Works?"],
     header: { menuOpen: "Open menu", menuClose: "Close menu", toTop: "Back to top" },
     hero: {
-      badge: "AI-Powered Content Analysis",
+      badge: "Measure, understand, improve",
       titleMobile: ["Why are your contents not", "performing? Let Score AI","tell you in seconds."],
       titleDesktopLine1: "Why are your contents not performing?",
       titleDesktopLine2: "Let Score AI tell you in seconds.",
@@ -859,12 +859,12 @@ export default function LandingPage() {
             </p>
           </FadeIn>
 
-          {/* Brand Brain */}
+          {/* Brand DNA */}
           <FadeIn>
             <div className="grid items-stretch gap-10 lg:grid-cols-2">
               <div className="mx-auto flex h-full w-full max-w-xl flex-col justify-center space-y-7">
                 <h3 className="text-left text-3xl font-bold text-white md:text-5xl">
-                  Brand <span className="text-brand-neon">Brain</span>
+                  Brand <span className="text-brand-neon">DNA</span>
                 </h3>
                 <p className="text-left text-xl font-semibold leading-snug text-white md:text-2xl">
                   {locale === "en" ? (
@@ -911,7 +911,7 @@ export default function LandingPage() {
                   variant="section"
                   className="mx-auto max-w-xl"
                   src={DASHBOARD_SCREENSHOTS.brandBrain}
-                  alt={locale === "en" ? "Score AI Brand Brain screen" : "Score AI Brand Brain ekranı"}
+                  alt={locale === "en" ? "Score AI Brand DNA screen" : "Score AI Brand DNA ekranı"}
                 />
               </div>
             </div>

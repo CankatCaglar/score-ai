@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
+import { headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "sonner";
 import "./globals.css";
@@ -10,10 +11,30 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Score AI",
-  description: "Yapay zeka destekli içerik analizi ve puanlama platformu",
-};
+function isEnglishRequest(acceptLanguage: string | null): boolean {
+  if (!acceptLanguage) return false;
+  return acceptLanguage.toLowerCase().startsWith("en");
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const requestHeaders = await headers();
+  const acceptLanguage = requestHeaders.get("accept-language");
+  const isEnglish = isEnglishRequest(acceptLanguage);
+
+  return {
+    title: isEnglish
+      ? "Score AI | Measure, Understand, Improve Your Content"
+      : "Score AI | İçeriğinizi Ölçün, Anlayın, Geliştirin",
+    description: isEnglish
+      ? "AI-powered platform to analyze, score, and improve your content performance."
+      : "Yapay zeka destekli içerik analizi ve puanlama platformu",
+    icons: {
+      icon: "/favicon.png",
+      shortcut: "/favicon.png",
+      apple: "/favicon.png",
+    },
+  };
+}
 
 export default function RootLayout({
   children,

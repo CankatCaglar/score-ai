@@ -485,7 +485,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
             <div className="mb-3 inline-flex size-10 items-center justify-center rounded-xl bg-brand-neon/80 text-brand-dark">
               <Users className="size-5" />
             </div>
-            <p className="text-xs font-medium text-brand-dark/50">Total Waitlist</p>
+            <p className="text-xs font-medium text-brand-dark/80">Total Waitlist</p>
             <p className="mt-1 text-3xl font-semibold text-brand-dark">
               {entries.length.toLocaleString("tr-TR")}
             </p>
@@ -496,7 +496,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
             <div className="mb-3 inline-flex size-10 items-center justify-center rounded-xl bg-brand-neon/80 text-brand-dark">
               <TrendingUp className="size-5" />
             </div>
-            <p className="text-xs font-medium text-brand-dark/50">Last 7 Days</p>
+            <p className="text-xs font-medium text-brand-dark/80">Last 7 Days</p>
             <p className="mt-1 text-3xl font-semibold text-green-700">+{last7DaysCount}</p>
             <p className="mt-1 text-xs text-brand-dark/45">Son 7 günde eklenenler</p>
           </article>
@@ -505,7 +505,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
             <div className="mb-3 inline-flex size-10 items-center justify-center rounded-xl bg-brand-neon/80 text-brand-dark">
               <CalendarDays className="size-5" />
             </div>
-            <p className="text-xs font-medium text-brand-dark/50">Today / Last 30 Days</p>
+            <p className="text-xs font-medium text-brand-dark/80">Today / Last 30 Days</p>
             <p className="mt-1 text-3xl font-semibold text-green-700">
               +{todayCount}
               <span className="ml-2 text-base font-medium text-brand-dark/55">
@@ -521,7 +521,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
             <div className="mb-3 inline-flex size-10 items-center justify-center rounded-xl bg-brand-neon/80 text-brand-dark">
               <Globe className="size-5" />
             </div>
-            <p className="text-xs font-medium text-brand-dark/50">Languages</p>
+            <p className="text-xs font-medium text-brand-dark/80">Languages</p>
             <p className="mt-1 text-2xl font-semibold text-brand-dark">
               TR {trPercent}% / EN {enPercent}%
             </p>
@@ -555,10 +555,6 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
             <div className="px-6 py-16 text-center text-sm text-brand-dark/50">
               Yükleniyor...
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="px-6 py-16 text-center text-sm text-brand-dark/50">
-              {query ? "Eşleşen kayıt bulunamadı." : "Henüz kayıt yok."}
-            </div>
           ) : (
             <>
               <div className="overflow-x-auto hidden md:block">
@@ -591,7 +587,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                                   }}
                                   className={`block w-full rounded-md px-2 py-1.5 text-left text-xs font-medium transition hover:bg-brand-dark/5 ${
                                     localeFilter === option
-                                      ? "bg-brand-neon/30 text-brand-dark"
+                                      ? "bg-brand-neon/80 text-brand-dark"
                                       : "text-brand-dark/70"
                                   }`}
                                 >
@@ -608,111 +604,128 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((entry, index) => (
-                      <tr
-                        key={entry.id}
-                        className="border-b border-brand-dark/5 last:border-0 hover:bg-brand-dark/2"
-                      >
-                        <td className="px-4 py-3 text-brand-dark/40">
-                          {index + 1}
-                        </td>
-                        <td className="px-4 py-3 font-medium text-brand-dark">
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(entry.email)}
-                            className="inline-flex items-center gap-1.5 transition hover:text-brand-dark/70"
-                            title="E-postayı kopyala"
-                          >
-                            {entry.email}
-                            <Copy className="size-3 text-brand-dark/30" />
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 text-brand-dark/70">
-                          <span className="rounded-full border border-brand-dark/10 px-2 py-1 text-xs font-semibold">
-                            {formatLocale(entry.locale)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(entry.id)}
-                            className="inline-flex max-w-[220px] items-center gap-1.5 font-mono text-xs text-brand-dark/50 transition hover:text-brand-dark/80"
-                            title="ID'yi kopyala"
-                          >
-                            <span className="truncate">{entry.id}</span>
-                            <Copy className="size-3 shrink-0" />
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 text-brand-dark/70">
-                          {formatDate(entry.createdAt)}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(entry)}
-                            disabled={deletingId === entry.id}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                          >
-                            <Trash2 className="size-3.5" />
-                            {deletingId === entry.id ? "Siliniyor..." : "Sil"}
-                          </button>
+                    {filtered.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="px-6 py-14 text-center text-sm text-brand-dark/50"
+                        >
+                          {query ? "Eşleşen kayıt bulunamadı." : "Henüz kayıt yok."}
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filtered.map((entry, index) => (
+                        <tr
+                          key={entry.id}
+                          className="border-b border-brand-dark/5 last:border-0 hover:bg-brand-dark/2"
+                        >
+                          <td className="px-4 py-3 text-brand-dark/40">
+                            {index + 1}
+                          </td>
+                          <td className="px-4 py-3 font-medium text-brand-dark">
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(entry.email)}
+                              className="inline-flex items-center gap-1.5 transition hover:text-brand-dark/70"
+                              title="E-postayı kopyala"
+                            >
+                              {entry.email}
+                              <Copy className="size-3 text-brand-dark/30" />
+                            </button>
+                          </td>
+                          <td className="px-4 py-3 text-brand-dark/70">
+                            <span className="rounded-full border border-brand-dark/10 px-2 py-1 text-xs font-semibold">
+                              {formatLocale(entry.locale)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(entry.id)}
+                              className="inline-flex max-w-[220px] items-center gap-1.5 font-mono text-xs text-brand-dark/50 transition hover:text-brand-dark/80"
+                              title="ID'yi kopyala"
+                            >
+                              <span className="truncate">{entry.id}</span>
+                              <Copy className="size-3 shrink-0" />
+                            </button>
+                          </td>
+                          <td className="px-4 py-3 text-brand-dark/70">
+                            {formatDate(entry.createdAt)}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(entry)}
+                              disabled={deletingId === entry.id}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                            >
+                              <Trash2 className="size-3.5" />
+                              {deletingId === entry.id ? "Siliniyor..." : "Sil"}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
               <div className="divide-y divide-brand-dark/10 md:hidden">
-                <>
-                  {filtered.map((entry, index) => (
-                    <article key={entry.id} className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
+                {filtered.length === 0 ? (
+                  <div className="px-6 py-14 text-center text-sm text-brand-dark/50">
+                    {query ? "Eşleşen kayıt bulunamadı." : "Henüz kayıt yok."}
+                  </div>
+                ) : (
+                  <>
+                    {filtered.map((entry, index) => (
+                      <article key={entry.id} className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(entry.email)}
+                              className="inline-flex max-w-full items-center gap-2 text-left text-base font-semibold text-brand-dark transition hover:text-brand-dark/75"
+                            >
+                              <span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-brand-dark/45">
+                                #{index + 1}
+                              </span>
+                              <span className="truncate">{entry.email}</span>
+                              <Copy className="size-3.5 text-brand-dark/40" />
+                            </button>
+                          </div>
                           <button
                             type="button"
-                            onClick={() => handleCopy(entry.email)}
-                            className="inline-flex max-w-full items-center gap-2 text-left text-base font-semibold text-brand-dark transition hover:text-brand-dark/75"
+                            onClick={() => handleDelete(entry)}
+                            disabled={deletingId === entry.id}
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                           >
-                            <span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-brand-dark/45">
-                              #{index + 1}
+                            <Trash2 className="size-3.5" />
+                            {deletingId === entry.id ? "Siliniyor..." : "Sil"}
+                          </button>
+                        </div>
+
+                        <div className="mt-3 rounded-lg border border-brand-dark/10 bg-bg-offwhite px-3 py-2">
+                          <div className="flex items-center gap-8">
+                            <span className="shrink-0 text-[12px] uppercase tracking-wider text-brand-dark/45">
+                              ID
                             </span>
-                            <span className="truncate">{entry.email}</span>
-                            <Copy className="size-3.5 text-brand-dark/40" />
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(entry.id)}
+                              className="inline-flex min-w-0 items-center gap-1.5 font-mono text-xs text-brand-dark/60 transition hover:text-brand-dark"
+                            >
+                              <span className="truncate">{entry.id}</span>
+                              <Copy className="size-3.5 shrink-0" />
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(entry)}
-                          disabled={deletingId === entry.id}
-                          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                        >
-                          <Trash2 className="size-3.5" />
-                          {deletingId === entry.id ? "Siliniyor..." : "Sil"}
-                        </button>
-                      </div>
 
-                      <div className="mt-3 rounded-lg border border-brand-dark/10 bg-bg-offwhite px-3 py-2">
-                        <div className="flex items-center gap-8">
-                          <span className="shrink-0 text-[12px] uppercase tracking-wider text-brand-dark/45">
-                            ID
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(entry.id)}
-                            className="inline-flex min-w-0 items-center gap-1.5 font-mono text-xs text-brand-dark/60 transition hover:text-brand-dark"
-                          >
-                            <span className="truncate">{entry.id}</span>
-                            <Copy className="size-3.5 shrink-0" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <p className="mt-2 text-xs text-brand-dark/55">
-                        Dil: {formatLocale(entry.locale)} · Eklenme: {formatDate(entry.createdAt)}
-                      </p>
-                    </article>
-                  ))}
-                </>
+                        <p className="mt-2 text-xs text-brand-dark/55">
+                          Dil: {formatLocale(entry.locale)} · Eklenme: {formatDate(entry.createdAt)}
+                        </p>
+                      </article>
+                    ))}
+                  </>
+                )}
               </div>
             </>
           )}
