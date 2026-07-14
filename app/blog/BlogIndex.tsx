@@ -176,7 +176,7 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
         </div>
       </header>
 
-      <main className="min-h-[calc(100vh-18rem)] bg-bg-offwhite pt-20 pb-16">
+      <main className="min-h-[calc(100vh-18rem)] bg-bg-offwhite pt-20 pb10">
         <section className="py-10">
           <div className={`${PAGE_CONTAINER} space-y-3`}>
             <span className="inline-flex rounded-full bg-brand-neon px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-brand-dark">
@@ -213,18 +213,21 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
                 <Link
                   key={post.slug}
                   href={`/blog/${post.slug}`}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-brand-dark/10 bg-bg-light shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                  className="group flex items-start gap-8 rounded-2xl border border-brand-dark/10 bg-bg-light p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                 >
                   {post.coverImageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={post.coverImageUrl}
-                      alt={title}
-                      className="h-44 w-full object-cover"
-                      decoding="async"
-                    />
+                    <div className="size-24 shrink-0 overflow-hidden rounded-xl bg-brand-dark/5 md:size-36">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={post.coverImageUrl}
+                        alt={title}
+                        className="h-full w-full object-cover"
+                        decoding="async"
+                        loading="lazy"
+                      />
+                    </div>
                   ) : null}
-                  <div className="flex flex-1 flex-col p-6">
+                  <div className="flex min-w-0 flex-1 flex-col">
                     <div className="flex items-center gap-3 text-xs text-brand-dark/50">
                       <span className="inline-flex items-center gap-1.5">
                         <CalendarDays className="size-3.5" />
@@ -232,13 +235,13 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
                       </span>
                       {readTime ? <span>• {readTime}</span> : null}
                     </div>
-                    <h2 className="mt-4 text-xl font-semibold text-brand-dark">
+                    <h2 className="mt-3 line-clamp-2 text-xl font-semibold text-brand-dark">
                       {title}
                     </h2>
-                    <p className="mt-3 text-sm leading-relaxed text-brand-dark/65">
+                    <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-brand-dark/65">
                       {excerpt}
                     </p>
-                    <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-dark transition group-hover:gap-3">
+                    <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand-dark transition group-hover:gap-3">
                       {copy.read}
                       <ArrowRight className="size-4" />
                     </span>

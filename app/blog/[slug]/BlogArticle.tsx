@@ -172,7 +172,7 @@ export function BlogArticle({ post }: { post: BlogArticleData }) {
       <main className="bg-bg-offwhite pt-20">
         <article className="min-h-[calc(100vh-22rem)] py-12 pb-24">
           <div className={`${PAGE_CONTAINER}`}>
-            <div className="mx-auto max-w-3xl">
+            <div className="mx-auto max-w-4xl">
               <Link
                 href="/blog"
                 className="inline-flex items-center gap-2 text-sm font-medium text-brand-dark/60 transition hover:text-brand-dark"
@@ -182,7 +182,7 @@ export function BlogArticle({ post }: { post: BlogArticleData }) {
               </Link>
 
               {category ? (
-                <span className="mt-3 flex w-fit rounded-full bg-brand-neon px-3 py-1 text-xs font-bold uppercase tracking-widest text-brand-dark">
+                <span className="mt-6 flex w-fit rounded-full bg-brand-neon px-3 py-1 text-xs font-bold uppercase tracking-widest text-brand-dark">
                   {category}
                 </span>
               ) : null}
@@ -205,19 +205,22 @@ export function BlogArticle({ post }: { post: BlogArticleData }) {
                 ) : null}
               </div>
 
-              {post.coverImageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={post.coverImageUrl}
-                  alt={title}
-                  className="mt-8 w-full rounded-2xl border border-brand-dark/10 object-cover"
-                />
-              ) : null}
-
-              <div
-                className="prose-blog mt-8 text-base leading-relaxed text-brand-dark/80 [&_a]:text-brand-dark [&_a]:underline [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-brand-neon [&_blockquote]:pl-4 [&_blockquote]:text-brand-dark/70 [&_h2]:mt-8 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-brand-dark [&_h3]:mt-6 [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-brand-dark [&_li]:mt-1 [&_ol]:mt-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:mt-4 [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pl-6 [&_img]:my-6 [&_img]:rounded-xl"
-                dangerouslySetInnerHTML={{ __html: content }}
-              />
+              <div className="prose-blog mt-8 text-base leading-relaxed text-brand-dark/80 [&_a]:text-brand-dark [&_a]:underline [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-brand-neon [&_blockquote]:pl-4 [&_blockquote]:text-brand-dark/70 [&_h2]:mt-8 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-brand-dark [&_h3]:mt-6 [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-brand-dark [&_li]:mt-1 [&_ol]:mt-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:mt-4 [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pl-6 [&_img]:my-4 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-xl [&_img]:object-contain">
+                {post.coverImageUrl ? (
+                  <figure className="mb-4 w-full overflow-hidden rounded-xl md:float-right md:mb-2 md:ml-4 md:w-[38%] lg:ml-5 lg:w-[34%]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={post.coverImageUrl}
+                      alt={title}
+                      className="h-auto w-full rounded-xl object-contain"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </figure>
+                ) : null}
+                <div dangerouslySetInnerHTML={{ __html: content }} />
+                <div className="clear-both" />
+              </div>
             </div>
           </div>
         </article>
