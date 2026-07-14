@@ -27,7 +27,6 @@ import {
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
-  DASHBOARD_SCREENSHOTS,
   DashboardScreenshot,
   MacbookFrame,
 } from "@/components/landing/DashboardScreenshot";
@@ -37,8 +36,14 @@ const PAGE_CONTAINER =
   "mx-auto w-full max-w-[1880px] px-4 sm:px-6 lg:px-8 xl:px-10  2xl:px-12";
 
 const ANALYSIS_PREVIEW_IMAGES = {
-  current: "/screenshots/analysis-current.png",
-  suggested: "/screenshots/analysis-suggested.png",
+  tr: {
+    current: "/screenshots/analysis-current.png",
+    suggested: "/screenshots/analysis-suggested.png",
+  },
+  en: {
+    current: "/screenshots/analysis-current.png",
+    suggested: "/screenshots/analysis-suggested-en.png",
+  },
 } as const;
 
 const AUDIENCE_CARD_IMAGES = [
@@ -73,7 +78,24 @@ const UPLOAD_SOURCE_ICONS = [
   { label: "URL", src: "/screenshots/upload-icon-link.png", alt: "Link ikonu" },
 ] as const;
 
-const FOOTER_QUOTE_IMAGE = "/screenshots/footer-quote-image.png";
+const LANDING_SCREENSHOTS = {
+  tr: {
+    hero: "/screenshots/dashboard-hero.png",
+    brandDna: "/screenshots/dashboard-brand-brain.png",
+    benchmark: "/screenshots/dashboard-benchmark.png",
+    creativeMemory: "/screenshots/dashboard-creative-memory.png",
+    video: "/screenshots/dashboard-video.png",
+    footerQuote: "/screenshots/footer-quote-image.png",
+  },
+  en: {
+    hero: "/screenshots/dashboard-hero-en.png",
+    brandDna: "/screenshots/dashboard-brand-dna-en.png",
+    benchmark: "/screenshots/dashboard-benchmark-en.png",
+    creativeMemory: "/screenshots/dashboard-creative-memory-en.png",
+    video: "/screenshots/dashboard-video-en.png",
+    footerQuote: "/screenshots/footer-quote-image-en.png",
+  },
+} as const;
 const PRODUCT_VIDEO_EMBED_URL = "https://www.youtube.com/embed/ALk-ws_XffI?autoplay=1&rel=0";
 
 type Locale = "tr" | "en";
@@ -338,6 +360,8 @@ export default function LandingPage() {
   const accessToastShownRef = useRef(false);
   const localeCopy = WAITLIST_COPY[locale];
   const pageCopy = PAGE_COPY[locale];
+  const landingScreens = LANDING_SCREENSHOTS[locale];
+  const analysisPreviewImages = ANALYSIS_PREVIEW_IMAGES[locale];
   const menuItems = useMemo(
     () =>
       pageCopy.menuItems.map((label, index) => ({
@@ -496,7 +520,7 @@ export default function LandingPage() {
           </nav>
 
           <div className="flex items-center justify-end gap-2">
-            <div className="hidden items-center gap-1 rounded-lg border border-white/15 p-1 md:flex">
+            <div className="hidden items-center gap-1 md:flex">
               <button
                 type="button"
                 onClick={() => setLocale("tr")}
@@ -520,7 +544,7 @@ export default function LandingPage() {
                 EN
               </button>
             </div>
-            <div className="flex items-center gap-1 rounded-lg border border-white/15 p-1 md:hidden">
+            <div className="flex items-center gap-1 md:hidden">
               <button
                 type="button"
                 onClick={() => setLocale("tr")}
@@ -625,7 +649,13 @@ export default function LandingPage() {
               <p className="max-w-md text-base leading-relaxed text-brand-dark/80">
                 {pageCopy.hero.desc}
               </p>
-              <p className="text-sm font-medium text-brand-dark">
+              <p
+                className={`font-medium text-brand-dark ${
+                  locale === "en"
+                    ? "whitespace-nowrap text-[13px] lg:text-sm"
+                    : "text-sm"
+                }`}
+              >
                 {pageCopy.hero.subtitle}
               </p>
               <WaitlistForm
@@ -651,7 +681,7 @@ export default function LandingPage() {
             <div className="relative">
               <DashboardScreenshot
                 variant="hero"
-                src={DASHBOARD_SCREENSHOTS.hero}
+                src={landingScreens.hero}
                 alt={pageCopy.hero.screenshotAlt}
                 priority
               />
@@ -686,7 +716,7 @@ export default function LandingPage() {
                 <div className="mt-4 overflow-hidden rounded-xl bg-brand-dark/5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={ANALYSIS_PREVIEW_IMAGES.current}
+                    src={analysisPreviewImages.current}
                     alt={locale === "en" ? "Current content preview" : "Mevcut içerik önizlemesi"}
                     className="h-auto w-full object-contain"
                     decoding="async"
@@ -714,7 +744,7 @@ export default function LandingPage() {
                 <div className="mt-4 overflow-hidden rounded-xl bg-brand-dark/5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={ANALYSIS_PREVIEW_IMAGES.suggested}
+                    src={analysisPreviewImages.suggested}
                     alt={
                       locale === "en"
                         ? "Suggested content preview"
@@ -910,7 +940,7 @@ export default function LandingPage() {
                 <DashboardScreenshot
                   variant="section"
                   className="mx-auto max-w-xl"
-                  src={DASHBOARD_SCREENSHOTS.brandBrain}
+                  src={landingScreens.brandDna}
                   alt={locale === "en" ? "Score AI Brand DNA screen" : "Score AI Brand DNA ekranı"}
                 />
               </div>
@@ -924,7 +954,7 @@ export default function LandingPage() {
                 <DashboardScreenshot
                   variant="section"
                   className="mx-auto max-w-xl"
-                  src={DASHBOARD_SCREENSHOTS.benchmark}
+                  src={landingScreens.benchmark}
                   alt={locale === "en" ? "Score AI Benchmark screen" : "Score AI Benchmark ekranı"}
                 />
               </div>
@@ -1028,7 +1058,7 @@ export default function LandingPage() {
                 <DashboardScreenshot
                   variant="section"
                   className="mx-auto max-w-xl"
-                  src={DASHBOARD_SCREENSHOTS.creativeMemory}
+                  src={landingScreens.creativeMemory}
                   alt={
                     locale === "en"
                       ? "Score AI Creative Memory screen"
@@ -1100,7 +1130,7 @@ export default function LandingPage() {
                   <div className="relative">
                     <DashboardScreenshot
                       variant="video"
-                      src={DASHBOARD_SCREENSHOTS.video}
+                      src={landingScreens.video}
                       alt={locale === "en" ? "Score AI product demo" : "Score AI ürün demosu"}
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-brand-dark/20">
@@ -1383,7 +1413,7 @@ export default function LandingPage() {
                       <div className="overflow-hidden rounded-lg border border-brand-dark/10">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={DASHBOARD_SCREENSHOTS.brandBrain}
+                          src={landingScreens.brandDna}
                           alt={
                             locale === "en"
                               ? "Canva suggestion preview"
@@ -1467,16 +1497,14 @@ export default function LandingPage() {
       <section id="faq" className="bg-brand-dark py-24">
         <div className={PAGE_CONTAINER}>
           <FadeIn className="text-center">
-            <SectionBadge>FAQ</SectionBadge>
+            <SectionBadge>{locale === "en" ? "FAQ" : "SSS"}</SectionBadge>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-white md:text-5xl">
               {locale === "en" ? (
                 <>
                   Frequently Asked <span className="text-brand-neon">Questions</span>
                 </>
               ) : (
-                <>
-                  Sıkça Sorulan <span className="text-brand-neon">Sorular</span>
-                </>
+                <>Sıkça Sorulan Sorular</>
               )}
             </h2>
             <p className="mt-3 text-white/60">
@@ -1572,15 +1600,15 @@ export default function LandingPage() {
                 locale === "en"
                   ? [
                       { val: "1,000+", lbl: "People on waitlist", sub: "We keep growing every day." },
-                      { val: "84", lbl: "Average Score", sub: "Average after first analysis." },
+                      { val: "60 sec", lbl: "First Analysis", sub: "Fast, easy, and fully automated." },
                       { val: "40", lbl: "Micro Criteria", sub: "Detailed quality analysis." },
-                      { val: "3 min", lbl: "First Analysis", sub: "Fast, easy, and automatic." },
+                      { val: "24/7", lbl: "Instant Analysis", sub: "Evaluate your content anytime." },
                     ]
                   : [
                       { val: "1.000+", lbl: "Kişi waitlist'te", sub: "Her geçen gün büyüyoruz." },
-                      { val: "84", lbl: "Ortalama Score", sub: "İlk analiz sonrası ortalama." },
+                      { val: "60 sn", lbl: "İlk Analiz", sub: "Hızlı, kolay ve tamamen otomatik." },
                       { val: "40", lbl: "Mikro Kriter", sub: "Detaylı kalite analizi." },
-                      { val: "3 dk", lbl: "İlk Analiz", sub: "Hızlı, kolay ve otomatik." },
+                      { val: "7/24", lbl: "Anında Analiz", sub: "İçeriklerinizi istediğiniz zaman değerlendirin." },
                     ]
               ).map(({ val, lbl, sub }, i) => (
                 <div key={lbl} className="flex h-full flex-col items-center text-center">
@@ -1615,7 +1643,7 @@ export default function LandingPage() {
           <FadeIn>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={FOOTER_QUOTE_IMAGE}
+              src={landingScreens.footerQuote}
               alt={locale === "en" ? "Footer insight visual" : "Footer içgörü görseli"}
               className="mx-auto w-full max-w-[440px] rounded-3xl"
               decoding="async"
@@ -1659,14 +1687,86 @@ export default function LandingPage() {
             {(
               locale === "en"
                 ? [
-                    { title: "PRODUCT", links: ["Features", "How It Works?", "Pricing", "Updates"] },
-                    { title: "RESOURCES", links: ["Blog", "Guides", "Q&A", "Content Glossary"] },
-                    { title: "COMPANY", links: ["About", "Contact", "Privacy Policy", "Terms"] },
+                    {
+                      title: "PRODUCT",
+                      links: [
+                        { label: "Features", id: "ozellikler" },
+                        { label: "How It Works?", id: "nasil-calisir" },
+                      ],
+                    },
+                    {
+                      title: "RESOURCES",
+                      links: [
+                        { label: "Blog", href: "/blog" },
+                        { label: "FAQ", id: "faq" },
+                      ],
+                    },
+                    {
+                      title: "COMPANY",
+                      links: [
+                        {
+                          label: "About",
+                          href: "https://www.nerasocial.com/hakkimizda",
+                          newTab: true,
+                        },
+                        {
+                          label: "Contact",
+                          href: "https://www.nerasocial.com/iletisim",
+                          newTab: true,
+                        },
+                        {
+                          label: "Privacy Policy",
+                          href: "https://www.nerasocial.com/gizlilik-politikasi",
+                          newTab: true,
+                        },
+                        {
+                          label: "Terms",
+                          href: "https://www.nerasocial.com/kullanim-kosullari",
+                          newTab: true,
+                        },
+                      ],
+                    },
                   ]
                 : [
-                    { title: "ÜRÜN", links: ["Özellikler", "Nasıl Çalışır?", "Fiyatlandırma", "Güncellemeler"] },
-                    { title: "KAYNAKLAR", links: ["Blog", "Rehberler", "Soru & Cevap", "İçerik Sözlüğü"] },
-                    { title: "ŞİRKET", links: ["Hakkımızda", "İletişim", "Gizlilik Politikası", "Kullanım Koşulları"] },
+                    {
+                      title: "ÜRÜN",
+                      links: [
+                        { label: "Özellikler", id: "ozellikler" },
+                        { label: "Nasıl Çalışır?", id: "nasil-calisir" },
+                      ],
+                    },
+                    {
+                      title: "KAYNAKLAR",
+                      links: [
+                        { label: "Blog", href: "/blog" },
+                        { label: "SSS", id: "faq" },
+                      ],
+                    },
+                    {
+                      title: "ŞİRKET",
+                      links: [
+                        {
+                          label: "Hakkımızda",
+                          href: "https://www.nerasocial.com/hakkimizda",
+                          newTab: true,
+                        },
+                        {
+                          label: "İletişim",
+                          href: "https://www.nerasocial.com/iletisim",
+                          newTab: true,
+                        },
+                        {
+                          label: "Gizlilik Politikası",
+                          href: "https://www.nerasocial.com/gizlilik-politikasi",
+                          newTab: true,
+                        },
+                        {
+                          label: "Kullanım Koşulları",
+                          href: "https://www.nerasocial.com/kullanim-kosullari",
+                          newTab: true,
+                        },
+                      ],
+                    },
                   ]
             ).map((col) => (
               <div key={col.title}>
@@ -1675,12 +1775,25 @@ export default function LandingPage() {
                 </p>
                 <ul className="mt-4 space-y-2">
                   {col.links.map((link) => (
-                    <li key={link}>
+                    <li key={link.label}>
                       <button
                         type="button"
+                        onClick={() => {
+                          if ("href" in link && typeof link.href === "string") {
+                            if ("newTab" in link && link.newTab) {
+                              window.open(link.href, "_blank", "noopener,noreferrer");
+                              return;
+                            }
+                            window.location.href = link.href;
+                            return;
+                          }
+                          if ("id" in link && typeof link.id === "string") {
+                            scrollTo(link.id);
+                          }
+                        }}
                         className="text-sm text-white/50 transition hover:text-white"
                       >
-                        {link}
+                        {link.label}
                       </button>
                     </li>
                   ))}
