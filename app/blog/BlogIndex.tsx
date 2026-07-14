@@ -213,15 +213,15 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
                 <Link
                   key={post.slug}
                   href={`/blog/${post.slug}`}
-                  className="group flex h-full overflow-hidden rounded-2xl border border-brand-dark/10 bg-bg-light shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                  className="group flex h-full flex-col overflow-hidden rounded-2xl border border-brand-dark/10 bg-bg-light shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:flex-row"
                 >
                   {post.coverImageUrl ? (
-                    <div className="flex w-[55%] min-w-[140px] shrink-0 items-center justify-center sm:min-w-[180px] md:w-[45%]">
+                    <div className="flex w-full shrink-0 items-center justify-center sm:min-w-[180px] sm:w-[45%]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={post.coverImageUrl}
                         alt={title}
-                        className="h-full w-full rounded-2xl object-contain p-2 sm:p-3"
+                        className="h-auto w-full rounded-2xl object-contain p-3 sm:h-full"
                         decoding="async"
                         loading="lazy"
                       />
@@ -235,10 +235,10 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
                       </span>
                       {readTime ? <span>• {readTime}</span> : null}
                     </div>
-                    <h2 className="mt-2 text-sm leading-snug font-semibold text-brand-dark sm:text-base">
+                    <h2 className="mt-2 wrap-break-word text-sm leading-snug font-semibold text-brand-dark sm:text-base">
                       {title}
                     </h2>
-                    <p className="mt-2 text-xs leading-relaxed text-brand-dark/70 sm:text-sm">
+                    <p className="mt-2 wrap-break-word text-xs leading-relaxed text-brand-dark/70 sm:text-sm">
                       {excerpt}
                     </p>
                     <span className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-brand-dark transition group-hover:gap-3 sm:text-sm">

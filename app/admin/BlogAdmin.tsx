@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   Bold,
+  ChevronDown,
   Italic,
   Link2,
   List,
@@ -401,20 +402,23 @@ export function BlogAdmin() {
             <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-brand-dark/50">
               Dil
             </span>
-            <select
-              name="blog-locale"
-              autoComplete="off"
-              data-lpignore="true"
-              data-1p-ignore="true"
-              value={form.locale}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, locale: e.target.value as BlogLocale }))
-              }
-              className="h-10 w-full rounded-lg border border-brand-dark/15 bg-bg-light px-3 text-sm text-brand-dark outline-none transition focus:border-brand-neon focus:ring-2 focus:ring-brand-neon/20"
-            >
-              <option value="tr">Türkçe (TR)</option>
-              <option value="en">İngilizce (EN)</option>
-            </select>
+            <div className="relative">
+              <select
+                name="blog-locale"
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                value={form.locale}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, locale: e.target.value as BlogLocale }))
+                }
+                className="h-10 w-full appearance-none rounded-lg border border-brand-dark/15 bg-bg-light px-3 pr-10 text-sm text-brand-dark outline-none transition focus:border-brand-neon focus:ring-2 focus:ring-brand-neon/20"
+              >
+                <option value="tr">Türkçe (TR)</option>
+                <option value="en">İngilizce (EN)</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-brand-dark/45" />
+            </div>
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-brand-dark/50">
