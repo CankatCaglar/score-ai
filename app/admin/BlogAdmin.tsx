@@ -438,7 +438,7 @@ export function BlogAdmin() {
 
         <label className="block">
           <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-brand-dark/50">
-            Kısa Açıklama (maks. 255 karakter)
+            Kısa Açıklama (maks. 300 karakter)
           </span>
           <textarea
             name="blog-excerpt"
@@ -446,7 +446,7 @@ export function BlogAdmin() {
             data-lpignore="true"
             data-1p-ignore="true"
             value={form.excerpt}
-            maxLength={255}
+            maxLength={300}
             rows={2}
             onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))}
             className="w-full resize-y rounded-lg border border-brand-dark/15 bg-bg-light px-3 py-2 text-sm text-brand-dark outline-none transition focus:border-brand-neon focus:ring-2 focus:ring-brand-neon/20"
@@ -531,10 +531,10 @@ export function BlogAdmin() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
+            <table className="w-full min-w-[860px] text-left text-sm">
               <thead>
                 <tr className="border-b border-brand-dark/10 text-xs uppercase tracking-wider text-brand-dark/50">
-                  <th className="px-4 py-3 font-semibold">Başlık</th>
+                  <th className="w-[38%] px-4 py-3 font-semibold">Başlık</th>
                   <th className="px-4 py-3 font-semibold">Dil</th>
                   <th className="px-4 py-3 font-semibold">Kategori</th>
                   <th className="px-4 py-3 font-semibold">Durum</th>
@@ -558,16 +558,18 @@ export function BlogAdmin() {
                       key={post.id}
                       className="border-b border-brand-dark/5 last:border-0 hover:bg-brand-dark/2"
                     >
-                      <td className="px-4 py-3 font-medium text-brand-dark">
+                      <td className="w-[48%] px-4 py-3 font-medium text-brand-dark">
                         <button
                           type="button"
                           onClick={() => openEdit(post)}
-                          className="inline-flex items-center gap-2 text-left transition hover:text-brand-dark/70"
+                          className="inline-flex max-w-full items-start gap-2 text-left transition hover:text-brand-dark/70"
                         >
                           {post.featured && (
-                            <Star className="size-3.5 shrink-0 text-brand-neon" />
+                            <Star className="mt-0.5 size-3.5 shrink-0 text-brand-neon" />
                           )}
-                          {post.title || "(başlıksız)"}
+                          <span className="line-clamp-2 wrap-break-word">
+                            {post.title || "(başlıksız)"}
+                          </span>
                         </button>
                       </td>
                       <td className="px-4 py-3 text-brand-dark/70">
@@ -585,18 +587,18 @@ export function BlogAdmin() {
                         {formatDate(post.updatedAt)}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-2 whitespace-nowrap">
                           <button
                             type="button"
                             onClick={() => handleToggleStatus(post)}
-                            className="rounded-lg border border-brand-dark/15 px-2.5 py-1.5 text-xs font-medium text-brand-dark transition hover:bg-brand-dark/5"
+                            className="rounded-lg border border-brand-dark/15 px-3 py-1.5 text-xs font-medium text-brand-dark transition hover:bg-brand-dark/5"
                           >
                             {post.status === "published" ? "Taslağa Al" : "Yayınla"}
                           </button>
                           <button
                             type="button"
                             onClick={() => openEdit(post)}
-                            className="rounded-lg border border-brand-dark/15 px-2.5 py-1.5 text-xs font-medium text-brand-dark transition hover:bg-brand-dark/5"
+                            className="rounded-lg border border-brand-dark/15 px-3 py-1.5 text-xs font-medium text-brand-dark transition hover:bg-brand-dark/5"
                           >
                             Düzenle
                           </button>

@@ -182,10 +182,10 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
             <span className="inline-flex rounded-full bg-brand-neon px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-brand-dark">
               {copy.hero.badge}
             </span>
-            <h1 className="text-3xl font-bold tracking-tight text-brand-dark md:text-5xl">
+            <h1 className="text-3xl font-bold tracking-tight text-brand-dark md:text-4xl">
               {copy.hero.title}
             </h1>
-            <p className="max-w-3xl text-base leading-relaxed text-brand-dark/70 md:text-lg">
+            <p className="max-w-3xl text-sm leading-relaxed text-brand-dark/70 md:text-base">
               {copy.hero.desc}
             </p>
           </div>
@@ -199,7 +199,7 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
               </div>
             </div>
           ) : (
-            <div className={`grid gap-4 md:grid-cols-2 xl:grid-cols-3 ${PAGE_CONTAINER}`}>
+            <div className={`grid gap-5 md:grid-cols-2 ${PAGE_CONTAINER}`}>
               {visiblePosts.map((post) => {
                 const localized = post.translations[locale];
                 const title = localized.title || post.translations[post.locale].title;
@@ -213,21 +213,21 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
                 <Link
                   key={post.slug}
                   href={`/blog/${post.slug}`}
-                  className="group flex items-start gap-8 rounded-2xl border border-brand-dark/10 bg-bg-light p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                  className="group flex h-full overflow-hidden rounded-2xl border border-brand-dark/10 bg-bg-light shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                 >
                   {post.coverImageUrl ? (
-                    <div className="size-24 shrink-0 overflow-hidden rounded-xl bg-brand-dark/5 md:size-36">
+                    <div className="flex w-[55%] min-w-[140px] shrink-0 items-center justify-center sm:min-w-[180px] md:w-[45%]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={post.coverImageUrl}
                         alt={title}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full rounded-2xl object-contain p-2 sm:p-3"
                         decoding="async"
                         loading="lazy"
                       />
                     </div>
                   ) : null}
-                  <div className="flex min-w-0 flex-1 flex-col">
+                  <div className="flex min-w-0 flex-1 flex-col p-4 sm:p-5">
                     <div className="flex items-center gap-3 text-xs text-brand-dark/50">
                       <span className="inline-flex items-center gap-1.5">
                         <CalendarDays className="size-3.5" />
@@ -235,13 +235,13 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
                       </span>
                       {readTime ? <span>• {readTime}</span> : null}
                     </div>
-                    <h2 className="mt-3 line-clamp-2 text-xl font-semibold text-brand-dark">
+                    <h2 className="mt-2 text-sm leading-snug font-semibold text-brand-dark sm:text-base">
                       {title}
                     </h2>
-                    <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-brand-dark/65">
+                    <p className="mt-2 text-xs leading-relaxed text-brand-dark/70 sm:text-sm">
                       {excerpt}
                     </p>
-                    <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand-dark transition group-hover:gap-3">
+                    <span className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-brand-dark transition group-hover:gap-3 sm:text-sm">
                       {copy.read}
                       <ArrowRight className="size-4" />
                     </span>

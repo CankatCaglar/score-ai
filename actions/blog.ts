@@ -228,7 +228,7 @@ async function buildTranslations(input: {
   const targetData: BlogLocalizedContent = {
     title,
     category,
-    excerpt: excerpt.slice(0, 255),
+    excerpt: excerpt.slice(0, 300),
     content,
   };
 
@@ -261,7 +261,7 @@ export async function saveBlogPost(
   const status: BlogStatus = input.status === "published" ? "published" : "draft";
   const sourceTitle = title;
   const sourceCategory = input.category.trim();
-  const sourceExcerpt = input.excerpt.trim().slice(0, 255);
+  const sourceExcerpt = input.excerpt.trim().slice(0, 300);
   const sourceContent = input.content;
   const translations = await buildTranslations({
     locale,

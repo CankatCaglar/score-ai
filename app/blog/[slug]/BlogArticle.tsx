@@ -172,7 +172,7 @@ export function BlogArticle({ post }: { post: BlogArticleData }) {
       <main className="bg-bg-offwhite pt-20">
         <article className="min-h-[calc(100vh-22rem)] py-12 pb-24">
           <div className={`${PAGE_CONTAINER}`}>
-            <div className="mx-auto max-w-4xl">
+            <div className="mx-auto max-w-3xl">
               <Link
                 href="/blog"
                 className="inline-flex items-center gap-2 text-sm font-medium text-brand-dark/60 transition hover:text-brand-dark"
@@ -187,11 +187,11 @@ export function BlogArticle({ post }: { post: BlogArticleData }) {
                 </span>
               ) : null}
 
-              <h1 className="mt-4 text-3xl font-bold leading-tight tracking-tight text-brand-dark md:text-4xl">
+              <h1 className="mt-4 text-2xl font-bold leading-tight tracking-tight text-brand-dark md:text-[2.5rem]">
                 {title}
               </h1>
 
-              <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-brand-dark/50">
+              <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-brand-dark/50 sm:text-sm">
                 <span className="inline-flex items-center gap-1.5">
                   <CalendarDays className="size-4" />
                   {formatDate(post.publishedAt, locale)}
@@ -205,21 +205,21 @@ export function BlogArticle({ post }: { post: BlogArticleData }) {
                 ) : null}
               </div>
 
-              <div className="prose-blog mt-8 text-base leading-relaxed text-brand-dark/80 [&_a]:text-brand-dark [&_a]:underline [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-brand-neon [&_blockquote]:pl-4 [&_blockquote]:text-brand-dark/70 [&_h2]:mt-8 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-brand-dark [&_h3]:mt-6 [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-brand-dark [&_li]:mt-1 [&_ol]:mt-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:mt-4 [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pl-6 [&_img]:my-4 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-xl [&_img]:object-contain">
-                {post.coverImageUrl ? (
-                  <figure className="mb-4 w-full overflow-hidden rounded-xl md:float-right md:mb-2 md:ml-4 md:w-[38%] lg:ml-5 lg:w-[34%]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={post.coverImageUrl}
-                      alt={title}
-                      className="h-auto w-full rounded-xl object-contain"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </figure>
-                ) : null}
+              {post.coverImageUrl ? (
+                <figure className="mt-8 overflow-hidden rounded-[28px]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={post.coverImageUrl}
+                    alt={title}
+                    className="block h-auto w-full rounded-[28px]"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </figure>
+              ) : null}
+
+              <div className="prose-blog mt-8 max-w-3xl text-[15px] leading-relaxed text-brand-dark/80 md:text-base [&_a]:text-brand-dark [&_a]:underline [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-brand-neon [&_blockquote]:pl-4 [&_blockquote]:text-brand-dark/70 [&_h2]:mt-10 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-brand-dark md:[&_h2]:text-xl [&_h3]:mt-7 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-brand-dark md:[&_h3]:text-lg [&_li]:mt-1 [&_ol]:mt-5 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:mt-4 [&_ul]:mt-5 [&_ul]:list-disc [&_ul]:pl-6 [&_img]:my-5 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-2xl [&_img]:object-contain">
                 <div dangerouslySetInnerHTML={{ __html: content }} />
-                <div className="clear-both" />
               </div>
             </div>
           </div>
