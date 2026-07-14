@@ -1,17 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownUp,
+  CalendarDays,
   Copy,
   Download,
   FileText,
+  Globe,
   LogOut,
   RefreshCw,
   Search,
+  TrendingUp,
   Trash2,
   Users,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
@@ -66,7 +70,12 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isLocaleMenuOpen, setIsLocaleMenuOpen] = useState(false);
+  const [localeFilter, setLocaleFilter] = useState<"all" | "tr" | "en">("all");
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
+  const localeMenuRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async (nextSort: WaitlistSort) => {
     try {
@@ -96,13 +105,25 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (!exportMenuRef.current) return;
-      if (!exportMenuRef.current.contains(event.target as Node)) {
+      if (
+        exportMenuRef.current &&
+        !exportMenuRef.current.contains(event.target as Node)
+      ) {
         setIsExportOpen(false);
+      }
+      if (
+        localeMenuRef.current &&
+        !localeMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsLocaleMenuOpen(false);
       }
     };
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsExportOpen(false);
+      if (event.key === "Escape") {
+        setIsExportOpen(false);
+        setIsLocaleMenuOpen(false);
+        setIsLogoutConfirmOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -142,9 +163,15 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
   };
 
   const handleLogout = async () => {
-    await adminLogout();
-    router.replace("/admin/login");
-    router.refresh();
+    setIsLoggingOut(true);
+    try {
+      await adminLogout();
+      router.replace("/admin/login");
+      router.refresh();
+    } finally {
+      setIsLoggingOut(false);
+      setIsLogoutConfirmOpen(false);
+    }
   };
 
   const handleCopy = async (text: string) => {
@@ -158,9 +185,31 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
 
   const filtered = entries.filter(
     (e) =>
-      e.email.toLowerCase().includes(query.toLowerCase()) ||
-      e.id.toLowerCase().includes(query.toLowerCase()),
+      (localeFilter === "all" || e.locale === localeFilter) &&
+      (e.email.toLowerCase().includes(query.toLowerCase()) ||
+        e.id.toLowerCase().includes(query.toLowerCase())),
   );
+
+  const statsNow = useMemo(() => new Date().getTime(), []);
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const dayStartMs = dayStart.getTime();
+  const last7DaysMs = statsNow - 7 * 24 * 60 * 60 * 1000;
+  const last30DaysMs = statsNow - 30 * 24 * 60 * 60 * 1000;
+  const last7DaysCount = entries.filter(
+    (entry) => (entry.createdAt ?? 0) >= last7DaysMs,
+  ).length;
+  const last30DaysCount = entries.filter(
+    (entry) => (entry.createdAt ?? 0) >= last30DaysMs,
+  ).length;
+  const todayCount = entries.filter(
+    (entry) => (entry.createdAt ?? 0) >= dayStartMs,
+  ).length;
+  const trCount = entries.filter((entry) => entry.locale === "tr").length;
+  const enCount = entries.filter((entry) => entry.locale === "en").length;
+  const totalForLocaleShare = Math.max(entries.length, 1);
+  const trPercent = Math.round((trCount / totalForLocaleShare) * 100);
+  const enPercent = Math.round((enCount / totalForLocaleShare) * 100);
 
   const exportRows = filtered.map((entry, index) => ({
     sira: index + 1,
@@ -336,7 +385,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
             </span>
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={() => setIsLogoutConfirmOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-2.5 py-2 text-sm font-medium text-white transition hover:border-brand-neon hover:text-brand-neon sm:gap-2 sm:px-3"
             >
               <LogOut className="size-4" />
@@ -431,6 +480,55 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
           </div>
         </div>
 
+        <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <article className="rounded-2xl border border-brand-dark/10 bg-bg-light p-4 shadow-sm">
+            <div className="mb-3 inline-flex size-10 items-center justify-center rounded-xl bg-brand-neon/80 text-brand-dark">
+              <Users className="size-5" />
+            </div>
+            <p className="text-xs font-medium text-brand-dark/50">Total Waitlist</p>
+            <p className="mt-1 text-3xl font-semibold text-brand-dark">
+              {entries.length.toLocaleString("tr-TR")}
+            </p>
+            <p className="mt-1 text-xs text-brand-dark/45">Toplam bekleme listesi</p>
+          </article>
+
+          <article className="rounded-2xl border border-brand-dark/10 bg-bg-light p-4 shadow-sm">
+            <div className="mb-3 inline-flex size-10 items-center justify-center rounded-xl bg-brand-neon/80 text-brand-dark">
+              <TrendingUp className="size-5" />
+            </div>
+            <p className="text-xs font-medium text-brand-dark/50">Last 7 Days</p>
+            <p className="mt-1 text-3xl font-semibold text-green-700">+{last7DaysCount}</p>
+            <p className="mt-1 text-xs text-brand-dark/45">Son 7 günde eklenenler</p>
+          </article>
+
+          <article className="rounded-2xl border border-brand-dark/10 bg-bg-light p-4 shadow-sm">
+            <div className="mb-3 inline-flex size-10 items-center justify-center rounded-xl bg-brand-neon/80 text-brand-dark">
+              <CalendarDays className="size-5" />
+            </div>
+            <p className="text-xs font-medium text-brand-dark/50">Today / Last 30 Days</p>
+            <p className="mt-1 text-3xl font-semibold text-green-700">
+              +{todayCount}
+              <span className="ml-2 text-base font-medium text-brand-dark/55">
+                / +{last30DaysCount}
+              </span>
+            </p>
+            <p className="mt-1 text-xs text-brand-dark/45">
+              Bugün gelenler / son 30 gun
+            </p>
+          </article>
+
+          <article className="rounded-2xl border border-brand-dark/10 bg-bg-light p-4 shadow-sm">
+            <div className="mb-3 inline-flex size-10 items-center justify-center rounded-xl bg-brand-neon/80 text-brand-dark">
+              <Globe className="size-5" />
+            </div>
+            <p className="text-xs font-medium text-brand-dark/50">Languages</p>
+            <p className="mt-1 text-2xl font-semibold text-brand-dark">
+              TR {trPercent}% / EN {enPercent}%
+            </p>
+            <p className="mt-1 text-xs text-brand-dark/45">Dil dağılımı</p>
+          </article>
+        </section>
+
         <div className="mt-6 overflow-hidden rounded-2xl border border-brand-dark/10 bg-bg-light shadow-sm">
           {errorCode === "FIREBASE_ADMIN_NOT_CONFIGURED" ? (
             <div className="px-6 py-16 text-center">
@@ -469,7 +567,41 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                     <tr className="border-b border-brand-dark/10 text-xs uppercase tracking-wider text-brand-dark/50">
                       <th className="px-4 py-3 font-semibold">#</th>
                       <th className="px-4 py-3 font-semibold">E-posta</th>
-                      <th className="px-4 py-3 font-semibold">Dil</th>
+                      <th className="px-4 py-3 font-semibold">
+                        <div ref={localeMenuRef} className="relative inline-flex items-center gap-1.5">
+                          <span>Dil</span>
+                          <button
+                            type="button"
+                            onClick={() => setIsLocaleMenuOpen((v) => !v)}
+                            className="inline-flex size-5 items-center justify-center rounded-md border border-brand-dark/15 text-brand-dark/55 transition hover:bg-brand-dark/5 hover:text-brand-dark"
+                            aria-label="Dil filtresi"
+                            title="Dil filtresi"
+                          >
+                            <ChevronDown className="size-3.5" />
+                          </button>
+                          {isLocaleMenuOpen && (
+                            <div className="absolute left-0 top-7 z-20 min-w-[90px] rounded-lg border border-brand-dark/10 bg-bg-light p-1 shadow-lg">
+                              {(["all", "tr", "en"] as const).map((option) => (
+                                <button
+                                  key={option}
+                                  type="button"
+                                  onClick={() => {
+                                    setLocaleFilter(option);
+                                    setIsLocaleMenuOpen(false);
+                                  }}
+                                  className={`block w-full rounded-md px-2 py-1.5 text-left text-xs font-medium transition hover:bg-brand-dark/5 ${
+                                    localeFilter === option
+                                      ? "bg-brand-neon/30 text-brand-dark"
+                                      : "text-brand-dark/70"
+                                  }`}
+                                >
+                                  {option === "all" ? "Tümü" : option.toUpperCase()}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </th>
                       <th className="px-4 py-3 font-semibold">ID</th>
                       <th className="px-4 py-3 font-semibold">Eklenme</th>
                       <th className="px-4 py-3 text-right font-semibold">İşlem</th>
@@ -586,6 +718,35 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
           )}
         </div>
       </main>
+
+      {isLogoutConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-dark/35 px-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-sm rounded-2xl border border-brand-dark/10 bg-bg-light p-5 shadow-2xl">
+            <h2 className="text-lg font-semibold text-brand-dark">Emin misiniz?</h2>
+            <p className="mt-2 text-sm text-brand-dark/65">
+              Admin panelinden guvenli cikis yapmak uzere oldugunuzu onaylayin.
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsLogoutConfirmOpen(false)}
+                disabled={isLoggingOut}
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-brand-dark/15 px-4 text-sm font-medium text-brand-dark transition hover:bg-brand-dark/5 disabled:opacity-50"
+              >
+                Iptal
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-brand-dark px-4 text-sm font-medium text-white transition hover:bg-brand-dark/90 disabled:opacity-50"
+              >
+                {isLoggingOut ? "Cikiliyor..." : "Cikis Yap"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
