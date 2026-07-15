@@ -5,21 +5,9 @@ import {
   createAnalysisJob,
   processPendingAnalysisJobs,
 } from "@/lib/analysis/repository";
-import { getDashboardUserEmailFromToken } from "@/lib/analysis/auth";
-import { EARLY_ACCESS_COOKIE_NAME } from "@/lib/early-access-auth";
+import { getDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
 import { getAdminStorage } from "@/lib/firebase-admin";
 import type { Platform } from "@/lib/analysis/types";
-
-function getCookieValue(cookieHeader: string | null, key: string): string | null {
-  if (!cookieHeader) return null;
-  return (
-    cookieHeader
-      .split(";")
-      .map((part) => part.trim())
-      .find((part) => part.startsWith(`${key}=`))
-      ?.split("=")[1] ?? null
-  );
-}
 
 function normalizePlatform(value: string): Platform {
   return value === "linkedin" ? "linkedin" : "instagram";
@@ -63,11 +51,9 @@ async function uploadInputFile(ownerEmail: string, file: File) {
 }
 
 export async function POST(request: Request) {
-  const token = getCookieValue(
+  const ownerEmail = getDashboardUserEmailFromCookieHeader(
     request.headers.get("cookie"),
-    EARLY_ACCESS_COOKIE_NAME,
   );
-  const ownerEmail = getDashboardUserEmailFromToken(token);
   if (!ownerEmail) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
