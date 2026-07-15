@@ -4,75 +4,125 @@ Score AI, sosyal medya ve dijital pazarlama içeriklerini yapay zeka ile analiz 
 
 ## Mevcut Durum (Temmuz 2026)
 
-- Landing page aktif ve kapsamlı responsive iyileştirmeler tamamlandı (mobil header/hamburger, kart ve spacing düzenleri).
-- Waitlist akışı canlı: Server Action ile Firestore `waitlist` koleksiyonuna kayıt yapılıyor.
-- SMTP değişkenleri tanımlıysa kullanıcıya hoş geldin e-postası gönderiliyor (opsiyonel).
-- Dashboard şu an UI iskeleti + mock verilerle çalışıyor; alt sayfalar placeholder.
+Aktif olarak çalışan ana parçalar:
 
-## Amaç
+- Public landing (`/`) ve çift dil arayüz (TR/EN)
+- Waitlist kayıt akışı (Firestore + opsiyonel SMTP)
+- Admin panel (`/admin`) içinde:
+  - waitlist operasyonu (arama, filtre, silme, export)
+  - blog yönetimi (oluşturma, düzenleme, yayınlama)
+- Public blog (`/blog`, `/blog/[slug]`)
+- Erken erişim davet linki akışı (`/invite/[token]`)
+- Dashboard route koruması (`APP_ACCESS_MODE`: `waitlist` / `early_access`)
 
-- Dijital içeriklerin performansını yapay zeka ile analiz etmek ve nesnel bir puan (score) üretmek.
-- İçeriklerin güçlü/zayıf yönlerini ortaya koyarak somut, uygulanabilir iyileştirme önerileri sunmak.
-- İçerik üretim ve karar süreçlerini hızlandırarak zaman ve maliyet tasarrufu sağlamak.
+Not: Dashboard tarafı güçlü bir UI seviyesine ulaşmış durumda olsa da gerçek veri/AI scoring katmanı henüz tam entegre değildir.
+
+## Ürün Vizyonu
+
+- Dijital içeriklerin performansını AI ile analiz etmek ve nesnel bir skor üretmek
+- İçeriğin güçlü/zayıf yönlerini ortaya koyup uygulanabilir öneriler sunmak
+- İçerik üretim döngüsünü hızlandırıp maliyet ve zaman avantajı sağlamak
 
 ## Hedef Kitle
 
-- **Ajanslar:** Birden fazla müşteri hesabını yöneten, ölçeklenebilir ve tekrarlanabilir içerik değerlendirme akışına ihtiyaç duyan dijital/kreatif ajanslar.
-- **KOBİ'ler:** Sınırlı pazarlama kaynağıyla profesyonel kalitede içerik üretmek ve performansını artırmak isteyen küçük ve orta ölçekli işletmeler.
-
-
+- **Ajanslar:** Çoklu müşteri hesabı yöneten, ölçeklenebilir değerlendirme akışına ihtiyaç duyan ekipler
+- **KOBİ'ler:** Sınırlı kaynağa rağmen daha profesyonel içerik üretmek isteyen işletmeler
+- **İçerik/Pazarlama ekipleri:** Veri odaklı kreatif karar alma ihtiyacı olan ekipler
 
 ## Teknoloji Yığını
 
-
-
 ### Frontend
 
-- **Next.js (App Router)** - Routing ve sayfa/layout mimarisi.
-- **React** - Bileşen tabanlı arayüz geliştirme.
-- **Tailwind CSS v4** - Utility-first, tutarlı ve hızlı stillendirme.
-- **TypeScript** - Tip güvenliği.
-- **Framer Motion** - Landing sayfası geçiş animasyonları.
+- **Next.js 16 (App Router)**
+- **React 19**
+- **TypeScript**
+- **Tailwind CSS v4**
+- **Framer Motion**
+- **Recharts**
+- **Lucide React** + **Sonner**
 
+### Backend ve Veri Katmanı
 
+- **Firebase Firestore** (`waitlist`, `blog_posts`, `early_access_invites`)
+- **Firebase Admin SDK** (sunucu tarafı admin operasyonları)
+- **Next.js Server Actions** (waitlist/admin/blog akışları)
+- **Nodemailer** (opsiyonel e-posta gönderimi)
 
-### Backend & Veritabanı
+### Operasyon ve Ölçümleme
 
-- **Firebase**
-  - **Firestore** - Waitlist kayıtları için aktif kullanımda.
-  - **Authentication** - Planlanan (henüz aktif değil).
-  - **Storage** - Planlanan (henüz aktif değil).
-- **Next.js Server Actions** - Waitlist kayıt akışı.
-- **Nodemailer (opsiyonel)** - SMTP varsa hoş geldin e-postası.
+- **Vercel Analytics**
+- **Yandex Metrica**
+- **jsPDF + jspdf-autotable** (admin export)
 
+## Erişim Modları
 
+`proxy.ts` ile dashboard erişimi ortam değişkenine göre yönetilir:
 
-### AI Motoru
+- `APP_ACCESS_MODE=waitlist`  
+  Dashboard public kullanıcıya kapalıdır, landing'e yönlendirme yapılır.
+- `APP_ACCESS_MODE=early_access`  
+  Sadece geçerli davet token'ı ile oluşturulmuş early-access cookie'si olan kullanıcılar dashboard'a girer.
+- Admin oturumu olan kullanıcı dashboard'a erişimde bu kısıtlamadan muaf tutulur.
 
-- **OpenAI GPT-4o** - İçerik analizi, puanlama ve öneri üretimi.
+## Kurulum
 
+```bash
+npm install
+npm run dev
+```
 
+Lokal adresler:
 
-## Mimari
+- `http://localhost:3000` -> Landing
+- `http://localhost:3000/blog` -> Blog
+- `http://localhost:3000/dashboard` -> Ürün arayüzü (mode'a bağlı)
+- `http://localhost:3000/admin/login` -> Admin login
 
-Score AI, fazlı ilerleyen bir B2B SaaS mimarisiyle geliştirilmektedir.
+Kalite kontrol:
 
-Mevcut fazda odak, landing + waitlist toplama + dashboard UI iskeletidir. Kimlik doğrulama (Login / Signup), gerçek içerik yükleme akışı ve tam analiz motoru bir sonraki fazlarda devreye alınacaktır.
+```bash
+npm run lint
+npm run build
+```
 
-İlerleyen fazlarda, kullanıcıların **sosyal medya hesaplarını OAuth ile bağlayabileceği** bir sistem kurgulanmıştır. Bu sayede içeriklerin doğrudan bağlı hesaplar üzerinden analiz edilmesi ve performans verileriyle zenginleştirilmesi hedeflenmektedir.
+## Ortam Değişkenleri
 
-## Tasarım & UI Dili
+### Zorunlu (Firebase client)
 
-Tüm sayfaların arayüz dili **temiz, sade ve premium** olacak şekilde tasarlanır (Apple / Linear tarzı):
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
 
-- Minimalist düzen, bol boşluk (whitespace) ve net görsel hiyerarşi.
-- Sade tipografi ve ölçülü renk paleti.
-- Dikkat dağıtmayan, işlevsel ve yüksek kaliteli bir kullanıcı deneyimi.
+### Zorunlu (Admin)
 
+- `FIREBASE_ADMIN_CLIENT_EMAIL`
+- `FIREBASE_ADMIN_PRIVATE_KEY`
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+- `ADMIN_SESSION_SECRET`
 
+### Erişim modu / erken erişim
+
+- `APP_ACCESS_MODE` (`waitlist` veya `early_access`)
+- `EARLY_ACCESS_SESSION_SECRET` (opsiyonel; yoksa `ADMIN_SESSION_SECRET` fallback)
+- `APP_BASE_URL` (invite link üretimi için)
+- `EARLY_ACCESS_INVITE_EXPIRY_DAYS` (opsiyonel)
+
+### Opsiyonel
+
+- SMTP: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+- Çeviri: `GOOGLE_TRANSLATE_API_KEY`
+
+## Yardımcı Scriptler
+
+- `npm run invite:generate`  
+  Waitlist kayıtlarından tek kullanımlık erken erişim linkleri üretir ve `exports/` altına CSV çıkarır.
 
 ## Not
 
-> Bu README, proje vizyonunu ve uzun vadeli hedefleri anlatır.  
-> **Güncel teknik durum, tamamlanan işler ve günlük değişiklikler** için bkz. `[ILERLEME.md](./ILERLEME.md)` — her anlamlı geliştirmeden sonra güncellenir.
+Bu README vizyonu ve mevcut ürün iskeletini özetler.  
+Günlük operasyonel takip, tamamlanan işler ve roadmap için: [ILERLEME.md](./ILERLEME.md)
 
