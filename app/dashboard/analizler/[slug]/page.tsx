@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { notFound, useParams } from "next/navigation";
-import { useState } from "react";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
   BadgeCheck,
@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import {
   buildCriteria,
-  getAnalysisBySlug,
   scoreColor,
   type Analysis,
 } from "../data";
@@ -41,6 +40,8 @@ const categoryIcons: Record<string, typeof ImageIcon> = {
   "CTA Gücü": MousePointerClick,
   "Hikaye Anlatımı": BookOpen,
   "Marka Uyumu": BadgeCheck,
+  "Etkileşim Potansiyeli": Bot,
+  "Dönüşüm Hazırlığı": ArrowUpRight,
 };
 
 function Card({
@@ -59,10 +60,66 @@ function Card({
 
 export default function AnalizDetayPage() {
   const params = useParams<{ slug: string }>();
-  const analysis = getAnalysisBySlug(params.slug);
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("Genel Bakış");
 
-  if (!analysis) notFound();
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`/api/dashboard/analyses/${params.slug}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (response.status === 404) {
+          setAnalysis(null);
+          setError("Analiz bulunamadı.");
+          return;
+        }
+        if (!response.ok) {
+          throw new Error("Analiz alınamadı");
+        }
+        const data = (await response.json()) as { analysis: Analysis };
+        setAnalysis(data.analysis);
+      } catch (fetchError) {
+        if ((fetchError as Error).name === "AbortError") return;
+        setError("Analiz detayları yüklenemedi.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
+    return () => controller.abort();
+  }, [params.slug]);
+
+  if (loading) {
+    return (
+      <div className="px-4 pb-8 pt-2 text-sm text-brand-dark/60 sm:px-6 lg:px-8 lg:pt-4">
+        Analiz detayları yükleniyor...
+      </div>
+    );
+  }
+
+  if (!analysis) {
+    return (
+      <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
+        <Link
+          href="/dashboard/analizler"
+          className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark/50 hover:text-brand-dark"
+        >
+          <ChevronLeft className="size-4" strokeWidth={2} />
+          Analizler
+        </Link>
+        <p className="mt-5 rounded-xl bg-bg-light px-4 py-3 text-sm text-brand-dark/70">
+          {error ?? "Bu analiz bulunamadı."}
+        </p>
+      </div>
+    );
+  }
 
   const PlatformIcon =
     analysis.platformType === "instagram" ? Camera : Briefcase;
@@ -103,7 +160,7 @@ export default function AnalizDetayPage() {
             Paylaş
           </button>
           <Link
-            href="/dashboard/analiz-sonucu"
+            href={`/dashboard/analiz-sonucu?id=${analysis.id}`}
             className="flex items-center gap-1.5 rounded-lg bg-brand-neon px-3.5 py-2 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
           >
             <ExternalLink className="size-4" strokeWidth={2} />
@@ -115,7 +172,8 @@ export default function AnalizDetayPage() {
       <div className="mt-5 flex gap-1 overflow-x-auto border-b border-brand-dark/10">
         {tabs.map((t) => {
           const active = t === tab;
-          const label = t === "Kriterler" ? `Kriterler (45)` : t;
+          const label =
+            t === "Kriterler" ? `Kriterler (${analysis.criteriaCount})` : t;
           return (
             <button
               key={t}
@@ -259,9 +317,9 @@ function OverviewTab({ analysis }: { analysis: Analysis }) {
         <Card>
           <h2 className="text-base font-semibold text-brand-dark">AI Önerileri</h2>
           <div className="mt-4 space-y-2">
-            {analysis.suggestions.map((s) => (
+            {analysis.suggestions.map((s, index) => (
               <div
-                key={s.text}
+                key={`${s.id ?? s.text}-${index}`}
                 className="flex items-center gap-3 rounded-xl bg-bg-offwhite px-3 py-2.5"
               >
                 <ArrowUpRight
@@ -426,9 +484,9 @@ function SuggestionsTab({ analysis }: { analysis: Analysis }) {
         Bu önerileri uyguladığınızda içeriğinizin puanı yükselebilir.
       </p>
       <div className="mt-4 space-y-3">
-        {analysis.suggestions.map((s) => (
+        {analysis.suggestions.map((s, index) => (
           <div
-            key={s.text}
+            key={`${s.id ?? s.text}-${index}`}
             className="flex flex-wrap items-center gap-3 rounded-2xl border border-brand-dark/8 px-4 py-3"
           >
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-neon/60">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Brain,
   Clock,
@@ -14,7 +15,7 @@ import {
 const features = [
   {
     icon: ListChecks,
-    title: "45 Mikro Kriter",
+    title: "40 Mikro Kriter",
     desc: "Tüm kriterlere göre analiz edilir.",
   },
   {
@@ -40,9 +41,47 @@ const features = [
 ];
 
 export default function YeniAnalizPage() {
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [url, setUrl] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [platformType, setPlatformType] = useState<"instagram" | "linkedin">(
+    "instagram",
+  );
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submitJob = async () => {
+    setError(null);
+    if (!selectedFile && !url.trim()) {
+      setError("Lütfen bir görsel/video seçin veya bir post linki yapıştırın.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.set("platformType", platformType);
+      if (url.trim()) formData.set("sourceUrl", url.trim());
+      if (selectedFile) formData.set("file", selectedFile);
+
+      const response = await fetch("/api/analysis-jobs", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        throw new Error("Analiz başlatılamadı");
+      }
+      const data = (await response.json()) as { slug: string };
+      router.push(`/dashboard/analizler/${data.slug}`);
+      router.refresh();
+    } catch {
+      setError("Analiz başlatılırken bir hata oluştu. Lütfen tekrar deneyin.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
@@ -65,6 +104,8 @@ export default function YeniAnalizPage() {
           onDrop={(e) => {
             e.preventDefault();
             setIsDragging(false);
+            const droppedFile = e.dataTransfer.files?.[0];
+            if (droppedFile) setSelectedFile(droppedFile);
           }}
           className={`flex flex-col items-center rounded-2xl border-2 border-dashed px-6 py-12 transition-colors ${
             isDragging
@@ -92,8 +133,17 @@ export default function YeniAnalizPage() {
             ref={fileInputRef}
             type="file"
             accept="image/png,image/jpeg,image/webp,video/mp4"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              setSelectedFile(file ?? null);
+            }}
             className="hidden"
           />
+          {selectedFile && (
+            <p className="mt-2 text-xs text-brand-dark/55">
+              Seçilen dosya: {selectedFile.name}
+            </p>
+          )}
         </div>
 
         <div className="my-6 flex items-center gap-4">
@@ -115,11 +165,47 @@ export default function YeniAnalizPage() {
           </div>
           <button
             type="button"
+            onClick={() => setSelectedFile(null)}
             className="shrink-0 rounded-lg bg-brand-neon px-6 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
           >
-            Yapıştır
+            Link Modu
           </button>
         </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-brand-dark/45">Platform:</span>
+          {[
+            { id: "instagram", label: "Instagram" },
+            { id: "linkedin", label: "LinkedIn" },
+          ].map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() =>
+                setPlatformType(item.id as "instagram" | "linkedin")
+              }
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                platformType === item.id
+                  ? "bg-brand-dark text-white"
+                  : "bg-brand-dark/5 text-brand-dark/70 hover:bg-brand-dark/10"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={submitJob}
+            disabled={submitting}
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-dark px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {submitting ? "Analiz Başlatılıyor..." : "Analizi Başlat"}
+          </button>
+        </div>
+        {error && <p className="mt-2 text-sm font-medium text-red-500">{error}</p>}
       </div>
 
       <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-5">

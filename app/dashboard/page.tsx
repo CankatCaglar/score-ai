@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -14,42 +15,9 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from "recharts";
+import type { DashboardOverview } from "@/lib/analysis/types";
 
 const BRAND_DARK = "#00272c";
-
-const trendData = [
-  { date: "18 May", score: 66 },
-  { date: "23 May", score: 69 },
-  { date: "28 May", score: 67 },
-  { date: "2 Haz", score: 72 },
-  { date: "7 Haz", score: 76 },
-  { date: "12 Haz", score: 74 },
-  { date: "17 Haz", score: 80 },
-  { date: "22 Haz", score: 84 },
-];
-
-const recentAnalyses = [
-  { title: "Terra Niva", platform: "Instagram", date: "12 Haziran 2025, 14:32", score: 84, change: 12 },
-  { title: "Siskon", platform: "LinkedIn", date: "11 Haziran 2025, 11:20", score: 79, change: -3 },
-  { title: "Uniba", platform: "Instagram", date: "10 Haziran 2025, 16:45", score: 91, change: 15 },
-  { title: "Altınok Palet", platform: "LinkedIn", date: "9 Haziran 2025, 09:15", score: 82, change: 6 },
-];
-
-const topCategories = [
-  { label: "Görsel Kalitesi", value: 92 },
-  { label: "Dikkat Çekicilik", value: 88 },
-  { label: "CTA Gücü", value: 84 },
-  { label: "Storytelling", value: 73 },
-  { label: "Okunabilirlik", value: 71 },
-];
-
-const mostImproved = [
-  { label: "CTA Gücü", change: 18 },
-  { label: "Hook (Başlık)", change: 12 },
-  { label: "Okunabilirlik", change: 9 },
-  { label: "Duygusal Etki", change: 7 },
-  { label: "Etkileşim Potansiyeli", change: 6 },
-];
 
 const quickActions = [
   { label: "Yeni Analiz Başlat", href: "/dashboard/yeni-analiz", icon: UploadCloud },
@@ -92,15 +60,52 @@ function ChangeBadge({ change }: { change: number }) {
 }
 
 export default function DashboardPage() {
+  const [overview, setOverview] = useState<DashboardOverview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch("/api/dashboard/overview", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error("Overview alınamadı");
+        }
+        const data = (await response.json()) as { overview: DashboardOverview };
+        setOverview(data.overview);
+      } catch (fetchError) {
+        if ((fetchError as Error).name === "AbortError") return;
+        setError("Dashboard verileri yüklenemedi.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
+    return () => controller.abort();
+  }, []);
+
+  const trendData = overview?.trendData ?? [{ date: "Bugün", score: 0 }];
+  const recentAnalyses = overview?.recentAnalyses ?? [];
+  const topCategories = overview?.topCategories ?? [];
+  const mostImproved = overview?.mostImproved ?? [];
+
   return (
     <div className="space-y-5 px-4 pb-8 pt-2 sm:px-6 sm:space-y-6 lg:px-8 lg:pt-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
-            Günaydın Ece <span className="align-middle">👋</span>
+            Günaydın {overview?.greetingName ?? "Kullanıcı"}{" "}
+            <span className="align-middle">👋</span>
           </h1>
           <p className="mt-1 text-sm text-brand-dark/55">
-            Son analizinden bu yana içerik skorun +6 puan arttı.
+            Son analizinden bu yana içerik skorun {overview?.avgScoreChange ?? 0} puan
+            değişti.
           </p>
         </div>
         <Link
@@ -124,12 +129,12 @@ export default function DashboardPage() {
           </div>
           <div className="mt-6 flex items-baseline">
             <span className="text-5xl font-bold tracking-tight text-brand-dark">
-              84
+              {overview?.avgScore ?? 0}
             </span>
             <span className="text-2xl font-medium text-brand-dark/35">/100</span>
           </div>
           <div className="mt-3">
-            <ChangeBadge change={6} />
+            <ChangeBadge change={overview?.avgScoreChange ?? 0} />
             <span className="ml-1 text-xs text-brand-dark/40">bu ay</span>
           </div>
         </Card>
@@ -170,7 +175,7 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           </div>
           <div className="mt-2">
-            <ChangeBadge change={18} />
+            <ChangeBadge change={overview?.monthChange ?? 0} />
             <span className="ml-1 text-xs text-brand-dark/40">
               Geçen 30 güne göre
             </span>
@@ -185,8 +190,8 @@ export default function DashboardPage() {
             <h2 className="text-sm font-medium text-brand-dark/60">AI İçgörüsü</h2>
           </div>
           <p className="mt-4 flex-1 text-sm leading-relaxed text-brand-dark">
-            Yeşil ton kullandığın içerikler{" "}
-            <span className="font-semibold">%21 daha fazla</span> etkileşim alıyor.
+            {overview?.aiInsight ??
+              "İlk analizinizi tamamladıktan sonra kişiselleştirilmiş içgörüler burada görünecek."}
           </p>
           <Link
             href="/dashboard/icgoruler"
@@ -211,8 +216,8 @@ export default function DashboardPage() {
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {recentAnalyses.map((item) => (
             <Link
-              key={item.title}
-              href="/dashboard/analizler"
+              key={item.id}
+              href={`/dashboard/analizler/${item.slug}`}
               className="group rounded-2xl border border-brand-dark/8 p-4 transition-colors hover:border-brand-dark/20"
             >
               <div className="aspect-video w-full rounded-xl bg-bg-offwhite" />
@@ -222,7 +227,7 @@ export default function DashboardPage() {
                     {item.title}
                   </p>
                   <p className="mt-0.5 text-xs text-brand-dark/45">
-                    {item.platform}
+                    {item.platform.split(" ")[0]}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-baseline">
@@ -236,10 +241,16 @@ export default function DashboardPage() {
               </div>
               <div className="mt-2 flex items-center justify-between">
                 <ChangeBadge change={item.change} />
-                <span className="text-[11px] text-brand-dark/35">{item.date}</span>
+                  <span className="text-[11px] text-brand-dark/35">{item.date}</span>
               </div>
             </Link>
           ))}
+          {!loading && recentAnalyses.length === 0 && (
+            <div className="rounded-2xl border border-brand-dark/8 p-4 text-sm text-brand-dark/60">
+              Henüz analiz bulunmuyor. İlk analizi başlatmak için “Yeni Analiz”e
+              tıklayın.
+            </div>
+          )}
         </div>
       </Card>
 
@@ -265,6 +276,11 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
+            {!loading && topCategories.length === 0 && (
+              <p className="text-sm text-brand-dark/55">
+                Kategori performansı ilk sonuçlarla birlikte oluşacak.
+              </p>
+            )}
           </div>
         </Card>
 
@@ -282,6 +298,11 @@ export default function DashboardPage() {
                 <ChangeBadge change={item.change} />
               </div>
             ))}
+            {!loading && mostImproved.length === 0 && (
+              <p className="py-2 text-sm text-brand-dark/55">
+                Gelişim alanları henüz hesaplanmadı.
+              </p>
+            )}
           </div>
         </Card>
 
@@ -316,8 +337,8 @@ export default function DashboardPage() {
               Score AI Bu Hafta
             </p>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-white/75">
-              Doğa temalı görseller ve kısa başlıklar içerik performansını en çok
-              artıran iki faktör oldu.
+              {overview?.aiInsight ??
+                "Analizler tamamlandıkça haftalık AI özeti burada görüntülenir."}
             </p>
           </div>
         </div>
@@ -329,6 +350,7 @@ export default function DashboardPage() {
           <ChevronRight className="size-4" strokeWidth={2} />
         </button>
       </div>
+      {error && <p className="text-sm font-medium text-red-500">{error}</p>}
     </div>
   );
 }

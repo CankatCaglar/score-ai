@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -24,19 +25,46 @@ const metricIcons = {
 
 type MetricLabel = keyof typeof metricIcons;
 
-const oldMetrics: { label: MetricLabel; value: number }[] = [
-  { label: "Dikkat Çekicilik", value: 45 },
-  { label: "Netlik", value: 50 },
-  { label: "Duygusal Etki", value: 46 },
-  { label: "Etkileşim Potansiyeli", value: 51 },
-];
+type ResultPayload = {
+  analysis: { id: string; title: string; criteriaCount: number; score: number };
+  revision: {
+    oldScore: number;
+    newScore: number;
+    oldMetrics: { label: string; value: number }[];
+    newMetrics: { label: string; value: number }[];
+    summary: string;
+    canvaEditUrl?: string;
+  } | null;
+};
 
-const newMetrics: { label: MetricLabel; value: number }[] = [
-  { label: "Dikkat Çekicilik", value: 88 },
-  { label: "Netlik", value: 86 },
-  { label: "Duygusal Etki", value: 82 },
-  { label: "Etkileşim Potansiyeli", value: 85 },
-];
+const metricLabelSet = new Set<MetricLabel>([
+  "Dikkat Çekicilik",
+  "Netlik",
+  "Duygusal Etki",
+  "Etkileşim Potansiyeli",
+]);
+
+function normalizeMetrics(
+  metrics: Array<{ label: string; value: number }> | undefined,
+  fallback: number,
+): Array<{ label: MetricLabel; value: number }> {
+  const normalized = (metrics ?? [])
+    .filter((metric): metric is { label: MetricLabel; value: number } =>
+      metricLabelSet.has(metric.label as MetricLabel),
+    )
+    .slice(0, 4);
+
+  if (normalized.length > 0) {
+    return normalized;
+  }
+
+  return [
+    { label: "Dikkat Çekicilik", value: fallback },
+    { label: "Netlik", value: fallback },
+    { label: "Duygusal Etki", value: fallback },
+    { label: "Etkileşim Potansiyeli", value: fallback },
+  ];
+}
 
 function MetricRow({
   label,
@@ -68,6 +96,55 @@ function MetricRow({
 }
 
 export default function AnalizSonucuPage() {
+  const [id] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("id");
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [payload, setPayload] = useState<ResultPayload | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const qs = id ? `?id=${encodeURIComponent(id)}` : "";
+        const response = await fetch(`/api/dashboard/result${qs}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error("Sonuç alınamadı");
+        }
+        const data = (await response.json()) as ResultPayload;
+        setPayload(data);
+      } catch (fetchError) {
+        if ((fetchError as Error).name === "AbortError") return;
+        setError("Analiz sonucu yüklenemedi.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
+    return () => controller.abort();
+  }, [id]);
+
+  const revision = payload?.revision;
+  const oldMetrics = useMemo(
+    () => normalizeMetrics(revision?.oldMetrics, 0),
+    [revision?.oldMetrics],
+  );
+  const newMetrics = useMemo(
+    () => normalizeMetrics(revision?.newMetrics, payload?.analysis.score ?? 0),
+    [payload?.analysis.score, revision?.newMetrics],
+  );
+
+  const oldScore = revision?.oldScore ?? Math.max(0, (payload?.analysis.score ?? 0) - 12);
+  const newScore = revision?.newScore ?? payload?.analysis.score ?? 0;
+  const scoreDiff = newScore - oldScore;
+
   return (
     <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
       <Link
@@ -84,7 +161,8 @@ export default function AnalizSonucuPage() {
             Analiz tamamlandı! <span className="align-middle">🎉</span>
           </h1>
           <p className="mt-1 text-sm text-brand-dark/55">
-            İçeriğiniz 45 mikro kritere göre analiz edildi.
+            İçeriğiniz {payload?.analysis.criteriaCount ?? 40} mikro kritere göre analiz
+            edildi.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -105,9 +183,14 @@ export default function AnalizSonucuPage() {
           <button
             type="button"
             className="flex items-center gap-1.5 rounded-lg bg-brand-dark px-3.5 py-2 text-sm font-semibold text-brand-neon transition-opacity hover:opacity-90"
+            onClick={() => {
+              if (revision?.canvaEditUrl) {
+                window.open(revision.canvaEditUrl, "_blank", "noopener,noreferrer");
+              }
+            }}
           >
             <Sparkles className="size-4" strokeWidth={2} />
-            Canva'da Aç
+            Canva&apos;da Aç
           </button>
         </div>
       </div>
@@ -120,7 +203,7 @@ export default function AnalizSonucuPage() {
           <div className="mt-4 flex items-start justify-between gap-4">
             <div className="aspect-square w-32 shrink-0 rounded-2xl bg-bg-offwhite" />
             <div className="flex items-baseline">
-              <span className="text-4xl font-bold text-red-500">48</span>
+              <span className="text-4xl font-bold text-red-500">{oldScore}</span>
               <span className="text-lg font-medium text-red-500/40">/100</span>
             </div>
           </div>
@@ -136,7 +219,10 @@ export default function AnalizSonucuPage() {
 
         <div className="flex flex-col items-center gap-2 py-4">
           <div className="flex size-20 flex-col items-center justify-center rounded-full bg-brand-neon/30 text-brand-dark">
-            <span className="text-xl font-bold leading-none">+36</span>
+            <span className="text-xl font-bold leading-none">
+              {scoreDiff >= 0 ? "+" : ""}
+              {scoreDiff}
+            </span>
             <span className="text-[10px] font-medium">puan</span>
           </div>
           <span className="text-xs font-medium text-brand-dark/50">gelişim</span>
@@ -164,7 +250,7 @@ export default function AnalizSonucuPage() {
               </span>
             </div>
             <div className="flex items-baseline">
-              <span className="text-4xl font-bold text-brand-dark">84</span>
+              <span className="text-4xl font-bold text-brand-dark">{newScore}</span>
               <span className="text-lg font-medium text-brand-dark/30">/100</span>
             </div>
           </div>
@@ -174,7 +260,8 @@ export default function AnalizSonucuPage() {
             ))}
           </div>
           <p className="mt-4 rounded-lg bg-brand-neon/15 px-3 py-2.5 text-xs leading-snug text-brand-dark">
-            Fayda mesajı, görsel hiyerarşi ve CTA güçlendirildi.
+            {revision?.summary ??
+              "Fayda mesajı, görsel hiyerarşi ve CTA güçlendirildi."}
           </p>
         </div>
       </div>
@@ -186,16 +273,16 @@ export default function AnalizSonucuPage() {
         <div>
           <p className="text-sm font-semibold text-brand-neon">Score AI Yorumu</p>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/80">
-            İçeriğiniz genel olarak iyi bir yapıya sahip. Ancak ilk 2 saniyede
-            dikkat çekicilik artırılabilir. Fayda mesajınızı daha net
-            vurguladığınızda etkileşim oranınız{" "}
-            <span className="font-semibold text-white">%18 artabilir</span>.
-            Başlığı sadeleştirip görsel kontrastı güçlendirdiğinizde skorunuzun{" "}
-            <span className="font-semibold text-white">90+ üzerine</span>{" "}
-            çıkmasını bekliyoruz.
+            {revision?.summary ??
+              "İçeriğinizde fayda mesajı, görsel kontrast ve CTA hiyerarşisi iyileştirildi."}
           </p>
         </div>
       </div>
+      {(loading || error) && (
+        <p className={`mt-4 text-sm ${error ? "text-red-500" : "text-brand-dark/60"}`}>
+          {error ?? "Sonuç verileri güncelleniyor..."}
+        </p>
+      )}
     </div>
   );
 }

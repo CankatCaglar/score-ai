@@ -20,6 +20,28 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Dashboard analiz koleksiyonlari sunucu tarafindan (Admin SDK) yazilir.
+    // Erken erisim akisinda istemciden dogrudan erisim kapali tutulur.
+    match /users/{docId} {
+      allow read, write: if false;
+    }
+
+    match /content_items/{docId} {
+      allow read, write: if false;
+    }
+
+    match /analysis_jobs/{docId} {
+      allow read, write: if false;
+    }
+
+    match /analyses/{docId} {
+      allow read, write: if false;
+    }
+
+    match /analysis_revisions/{docId} {
+      allow read, write: if false;
+    }
+
     // Diger tum koleksiyonlar varsayilan olarak kapali.
     match /{document=**} {
       allow read, write: if false;

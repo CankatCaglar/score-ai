@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Briefcase,
   Camera,
@@ -12,15 +12,50 @@ import {
   FilterX,
   Search,
 } from "lucide-react";
-import { analyses } from "./data";
 import { ScoreRing } from "./ScoreRing";
+import type { Analysis as DashboardAnalysis } from "./data";
 
 export default function AnalizlerPage() {
   const [query, setQuery] = useState("");
+  const [analyses, setAnalyses] = useState<DashboardAnalysis[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = analyses.filter((a) =>
-    a.title.toLowerCase().includes(query.toLowerCase()),
-  );
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams();
+        if (query.trim()) params.set("query", query.trim());
+        const response = await fetch(`/api/dashboard/analyses?${params.toString()}`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error("Analizler alınamadı");
+        }
+        const data = (await response.json()) as {
+          analyses: DashboardAnalysis[];
+          total: number;
+        };
+        setAnalyses(data.analyses ?? []);
+        setTotal(data.total ?? 0);
+      } catch (fetchError) {
+        if ((fetchError as Error).name === "AbortError") return;
+        setError("Analizler yüklenirken bir hata oluştu.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
+    return () => controller.abort();
+  }, [query]);
+
+  const filtered = useMemo(() => analyses, [analyses]);
 
   return (
     <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
@@ -96,7 +131,7 @@ export default function AnalizlerPage() {
         </div>
 
         <div className="divide-y divide-brand-dark/5">
-          {filtered.map((a) => {
+          {filtered.map((a: DashboardAnalysis) => {
             const PlatformIcon =
               a.platformType === "instagram" ? Camera : Briefcase;
             return (
@@ -143,10 +178,17 @@ export default function AnalizlerPage() {
               </Link>
             );
           })}
+          {!loading && filtered.length === 0 && (
+            <div className="px-4 py-10 text-center text-sm text-brand-dark/55">
+              Henüz analiz bulunamadı. Yeni analiz başlatıp içerik yükleyebilirsiniz.
+            </div>
+          )}
         </div>
 
         <div className="mt-2 flex flex-col items-center justify-between gap-4 border-t border-brand-dark/8 px-4 pt-4 sm:flex-row">
-          <span className="text-sm text-brand-dark/50">Toplam 28 analiz</span>
+          <span className="text-sm text-brand-dark/50">
+            {loading ? "Yükleniyor..." : `Toplam ${total} analiz`}
+          </span>
 
           <div className="flex items-center gap-1">
             <button
@@ -187,6 +229,9 @@ export default function AnalizlerPage() {
           </button>
         </div>
       </div>
+      {error && (
+        <p className="mt-3 text-sm font-medium text-red-500">{error}</p>
+      )}
     </div>
   );
 }
