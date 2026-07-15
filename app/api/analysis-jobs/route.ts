@@ -101,7 +101,7 @@ export async function POST(request: Request) {
     sizeBytes,
   });
 
-  void processPendingAnalysisJobs(1);
+  await processPendingAnalysisJobs(1);
 
   return NextResponse.json({
     ok: true,
