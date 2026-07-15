@@ -24,6 +24,24 @@ body {
   font-weight: 400;
 }
 
+.dashboard-ui a[href],
+.dashboard-ui button,
+.dashboard-ui [role="button"],
+.dashboard-ui select,
+.dashboard-ui summary,
+.dashboard-ui input[type="checkbox"],
+.dashboard-ui input[type="radio"] {
+  cursor: pointer;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-ui input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .dashboard-ui textarea,
+  .dashboard-ui select {
+    font-size: 16px;
+  }
+}
+
 h1,
 h2,
 h3,

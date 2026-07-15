@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, Mail, MapPin } from "lucide-react";
+import { ArrowRight, CalendarDays, Mail, MapPin, Menu, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
 
 const PAGE_CONTAINER =
@@ -29,6 +29,7 @@ export type BlogIndexPost = {
 
 const COPY = {
   tr: {
+    header: { menuOpen: "Menüyü aç", menuClose: "Menüyü kapat" },
     menu: { features: "Özellikler", howItWorks: "Nasıl Çalışır?", waitlist: "Waitlist'e Katıl" },
     hero: {
       badge: "BLOG",
@@ -57,6 +58,7 @@ const COPY = {
     },
   },
   en: {
+    header: { menuOpen: "Open menu", menuClose: "Close menu" },
     menu: { features: "Features", howItWorks: "How It Works?", waitlist: "Join Waitlist" },
     hero: {
       badge: "BLOG",
@@ -111,6 +113,7 @@ function estimateReadTime(content: string, locale: Locale): string {
 
 export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
   const [locale, setLocale] = useState<Locale>("tr");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const copy = COPY[locale];
 
   useEffect(() => {
@@ -166,14 +169,71 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
                 EN
               </button>
             </div>
+            <div className="flex items-center gap-1 md:hidden">
+              <button
+                type="button"
+                onClick={() => setLocale("tr")}
+                className={`rounded-md px-2 py-1 text-xs font-semibold transition ${
+                  locale === "tr" ? "bg-brand-neon text-brand-dark" : "text-white/70 hover:text-brand-neon"
+                }`}
+              >
+                TR
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocale("en")}
+                className={`rounded-md px-2 py-1 text-xs font-semibold transition ${
+                  locale === "en" ? "bg-brand-neon text-brand-dark" : "text-white/70 hover:text-brand-neon"
+                }`}
+              >
+                EN
+              </button>
+            </div>
             <Link
               href="/#son-adim"
               className="hidden h-10 items-center rounded-xl border border-brand-neon bg-brand-neon px-4 text-sm font-bold text-brand-dark transition hover:brightness-105 md:inline-flex"
             >
               {copy.menu.waitlist}
             </Link>
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              aria-label={isMobileMenuOpen ? copy.header.menuClose : copy.header.menuOpen}
+              aria-expanded={isMobileMenuOpen}
+              className="inline-flex size-10 items-center justify-center rounded-xl border border-white/15 text-white transition hover:border-brand-neon hover:text-brand-neon md:hidden"
+            >
+              {isMobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+            </button>
           </div>
         </div>
+
+        {isMobileMenuOpen && (
+          <div className="border-t border-white/10 bg-brand-dark md:hidden">
+            <nav className={`flex flex-col gap-1 py-4 ${PAGE_CONTAINER}`}>
+              <Link
+                href="/#ozellikler"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="rounded-lg px-3 py-3 text-left text-base font-medium text-white/80 transition hover:bg-white/5 hover:text-brand-neon"
+              >
+                {copy.menu.features}
+              </Link>
+              <Link
+                href="/#nasil-calisir"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="rounded-lg px-3 py-3 text-left text-base font-medium text-white/80 transition hover:bg-white/5 hover:text-brand-neon"
+              >
+                {copy.menu.howItWorks}
+              </Link>
+              <Link
+                href="/#son-adim"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="mt-2 inline-flex h-11 items-center justify-center rounded-xl bg-brand-neon px-4 text-sm font-bold text-brand-dark transition hover:brightness-105"
+              >
+                {copy.menu.waitlist}
+              </Link>
+            </nav>
+          </div>
+        )}
       </header>
 
       <main className="min-h-[calc(100vh-18rem)] bg-bg-offwhite pt-20 pb10">

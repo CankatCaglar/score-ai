@@ -16,7 +16,7 @@ import {
   Smartphone,
   User,
 } from "lucide-react";
-import { SocialIcon } from "react-social-icons";
+import { FaFacebookF, FaInstagram, FaLinkedinIn } from "react-icons/fa6";
 import { useClickOutside } from "@/hooks/useClickOutside";
 
 type Tab = "profil" | "guvenlik" | "bildirimler" | "entegrasyonlar";
@@ -548,20 +548,66 @@ function BildirimlerTab() {
 
 // ─── Entegrasyonlar Tab ───────────────────────────────────────────────────────
 
+type IntegrationId = "canva" | "facebook" | "instagram" | "linkedin";
+
 type Integration = {
-  id: string;
+  id: IntegrationId;
   name: string;
   desc: string;
-  url: string;
   connected: boolean;
   meta: string;
 };
+
+function IntegrationIcon({ id }: { id: IntegrationId }) {
+  if (id === "canva") {
+    return (
+      <span
+        className="inline-flex size-10 items-center justify-center"
+        aria-hidden="true"
+      >
+        <img
+          src="/brands/canva/canva-icon-logo.svg"
+          alt=""
+          className="size-10"
+          loading="lazy"
+          decoding="async"
+        />
+      </span>
+    );
+  }
+
+  const iconMap = {
+    facebook: {
+      IconComponent: FaFacebookF,
+      wrapperClass: "bg-[#1877F2] text-white",
+    },
+    instagram: {
+      IconComponent: FaInstagram,
+      wrapperClass:
+        "bg-[linear-gradient(135deg,#FEDA75_0%,#FA7E1E_25%,#D62976_55%,#962FBF_80%,#4F5BD5_100%)] text-white",
+    },
+    linkedin: {
+      IconComponent: FaLinkedinIn,
+      wrapperClass: "bg-[#0A66C2] text-white",
+    },
+  } as const;
+
+  const config = iconMap[id];
+
+  return (
+    <span
+      className={`inline-flex size-10 items-center justify-center rounded-full ${config.wrapperClass}`}
+      aria-hidden="true"
+    >
+      <config.IconComponent className="size-5" />
+    </span>
+  );
+}
 
 const integrations: Integration[] = [
   {
     id: "canva",
     name: "Canva",
-    url: "https://canva.com",
     desc: "Önerilen tasarımları Canva'da açıp düzenleyin.",
     connected: true,
     meta: "Son eşitleme: bugün",
@@ -569,7 +615,6 @@ const integrations: Integration[] = [
   {
     id: "facebook",
     name: "Facebook",
-    url: "https://facebook.com",
     desc: "Sayfa içeriklerini ve reklam kreatiflerini analiz edin.",
     connected: false,
     meta: "Meta hesabı gerekir",
@@ -577,7 +622,6 @@ const integrations: Integration[] = [
   {
     id: "instagram",
     name: "Instagram",
-    url: "https://instagram.com",
     desc: "Gönderi ve Reels içerikleri için skor takibi yapın.",
     connected: false,
     meta: "Profesyonel hesap gerekir",
@@ -585,7 +629,6 @@ const integrations: Integration[] = [
   {
     id: "linkedin",
     name: "LinkedIn",
-    url: "https://linkedin.com",
     desc: "Şirket sayfası içeriklerini puanlayın ve iyileştirin.",
     connected: true,
     meta: "Nera Digital sayfası",
@@ -626,12 +669,8 @@ function EntegrasyonlarTab() {
               className="flex flex-col rounded-2xl border border-brand-dark/8 bg-white p-4"
             >
               <div className="flex items-start gap-3">
-                <div className="shrink-0">
-                  <SocialIcon
-                    url={item.url}
-                    network={item.id}
-                    style={{ height: 40, width: 40 }}
-                  />
+                <div className="pointer-events-none shrink-0 select-none">
+                  <IntegrationIcon id={item.id} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
