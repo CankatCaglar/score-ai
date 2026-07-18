@@ -15,6 +15,8 @@ import {
   Target,
   Type,
 } from "lucide-react";
+import { CRITERION_DEFINITIONS } from "@/lib/analysis/rubric";
+import type { Analysis, CriterionEvaluation } from "@/lib/analysis/types";
 
 const metricIcons = {
   "Dikkat Çekicilik": Eye,
@@ -26,7 +28,7 @@ const metricIcons = {
 type MetricLabel = keyof typeof metricIcons;
 
 type ResultPayload = {
-  analysis: { id: string; title: string; criteriaCount: number; score: number };
+  analysis: Analysis;
   revision: {
     oldScore: number;
     newScore: number;
@@ -37,33 +39,112 @@ type ResultPayload = {
   } | null;
 };
 
-const metricLabelSet = new Set<MetricLabel>([
-  "Dikkat Çekicilik",
-  "Netlik",
-  "Duygusal Etki",
-  "Etkileşim Potansiyeli",
-]);
+const metricCategoryMap: Record<MetricLabel, string[]> = {
+  "Dikkat Çekicilik": ["visual_intelligence"],
+  Netlik: ["content_intelligence"],
+  "Duygusal Etki": ["brand_intelligence"],
+  "Etkileşim Potansiyeli": ["channel_intelligence", "business_intelligence"],
+};
 
-function normalizeMetrics(
-  metrics: Array<{ label: string; value: number }> | undefined,
-  fallback: number,
-): Array<{ label: MetricLabel; value: number }> {
-  const normalized = (metrics ?? [])
-    .filter((metric): metric is { label: MetricLabel; value: number } =>
-      metricLabelSet.has(metric.label as MetricLabel),
-    )
-    .slice(0, 4);
+const criterionLabelMap = new Map(
+  CRITERION_DEFINITIONS.map((item) => [item.id, item.label]),
+);
 
-  if (normalized.length > 0) {
-    return normalized;
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function buildMetricsFromAnalysis(
+  analysis: Analysis | null,
+): {
+  current: Array<{ label: MetricLabel; value: number }>;
+  potential: Array<{ label: MetricLabel; value: number }>;
+} {
+  const fallback = analysis?.score ?? 0;
+  if (!analysis) {
+    return {
+      current: [
+        { label: "Dikkat Çekicilik", value: fallback },
+        { label: "Netlik", value: fallback },
+        { label: "Duygusal Etki", value: fallback },
+        { label: "Etkileşim Potansiyeli", value: fallback },
+      ],
+      potential: [
+        { label: "Dikkat Çekicilik", value: fallback },
+        { label: "Netlik", value: fallback },
+        { label: "Duygusal Etki", value: fallback },
+        { label: "Etkileşim Potansiyeli", value: fallback },
+      ],
+    };
   }
 
-  return [
-    { label: "Dikkat Çekicilik", value: fallback },
-    { label: "Netlik", value: fallback },
-    { label: "Duygusal Etki", value: fallback },
-    { label: "Etkileşim Potansiyeli", value: fallback },
-  ];
+  const gainRatio =
+    analysis.score >= 100
+      ? 0
+      : clamp((analysis.potentialScore - analysis.score) / (100 - analysis.score), 0, 1);
+
+  const current = (Object.keys(metricCategoryMap) as MetricLabel[]).map((label) => {
+    const ids = metricCategoryMap[label];
+    const matched = analysis.categories.filter((category) => ids.includes(category.id));
+    const value =
+      matched.length > 0
+        ? Math.round(
+            matched.reduce((sum, category) => sum + category.value, 0) / matched.length,
+          )
+        : fallback;
+    return { label, value };
+  });
+
+  const potential = current.map((item) => ({
+    label: item.label,
+    value: Math.round(item.value + (100 - item.value) * gainRatio),
+  }));
+
+  return { current, potential };
+}
+
+function summarizeAiCommentary(analysis: Analysis | null) {
+  if (!analysis?.criteriaEvaluations) {
+    return {
+      strengths: [] as string[],
+      weaknesses: [] as string[],
+      actions: [] as string[],
+    };
+  }
+
+  const entries = Object.entries(analysis.criteriaEvaluations).map(([id, value]) => ({
+    id,
+    label: criterionLabelMap.get(id) ?? id,
+    evaluation: value as CriterionEvaluation,
+  }));
+
+  const strengths = entries
+    .filter((entry) => entry.evaluation.seviye >= 2)
+    .sort((a, b) => b.evaluation.seviye - a.evaluation.seviye)
+    .slice(0, 3)
+    .map((entry) => `${entry.label}: ${entry.evaluation.mevcut_durum}`);
+
+  const weaknesses = entries
+    .filter((entry) => entry.evaluation.seviye <= 1)
+    .sort((a, b) => a.evaluation.seviye - b.evaluation.seviye)
+    .slice(0, 3)
+    .map((entry) => `${entry.label}: ${entry.evaluation.eksiklikler}`);
+
+  const actions = entries
+    .filter((entry) => entry.evaluation.seviye <= 1)
+    .slice(0, 3)
+    .map((entry) => entry.evaluation.aksiyon_onerisi)
+    .filter(Boolean);
+
+  return { strengths, weaknesses, actions };
+}
+
+function buildPreviewUrl(analysis: Analysis | undefined) {
+  if (!analysis) return undefined;
+  if (analysis.mediaUrl || analysis.sourceUrl) {
+    return `/api/dashboard/media/${analysis.id}`;
+  }
+  return undefined;
 }
 
 function MetricRow({
@@ -132,18 +213,21 @@ export default function AnalizSonucuPage() {
   }, [id]);
 
   const revision = payload?.revision;
-  const oldMetrics = useMemo(
-    () => normalizeMetrics(revision?.oldMetrics, 0),
-    [revision?.oldMetrics],
+  const metricSnapshot = useMemo(
+    () => buildMetricsFromAnalysis(payload?.analysis ?? null),
+    [payload?.analysis],
   );
-  const newMetrics = useMemo(
-    () => normalizeMetrics(revision?.newMetrics, payload?.analysis.score ?? 0),
-    [payload?.analysis.score, revision?.newMetrics],
-  );
+  const oldMetrics = metricSnapshot.current;
+  const newMetrics = metricSnapshot.potential;
 
-  const oldScore = revision?.oldScore ?? Math.max(0, (payload?.analysis.score ?? 0) - 12);
-  const newScore = revision?.newScore ?? payload?.analysis.score ?? 0;
+  const oldScore = payload?.analysis.score ?? revision?.oldScore ?? 0;
+  const newScore = payload?.analysis.potentialScore ?? revision?.newScore ?? oldScore;
   const scoreDiff = newScore - oldScore;
+  const previewUrl = buildPreviewUrl(payload?.analysis);
+  const aiSummary = useMemo(
+    () => summarizeAiCommentary(payload?.analysis ?? null),
+    [payload?.analysis],
+  );
 
   return (
     <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
@@ -161,7 +245,7 @@ export default function AnalizSonucuPage() {
             Analiz tamamlandı! <span className="align-middle">🎉</span>
           </h1>
           <p className="mt-1 text-sm text-brand-dark/55">
-            İçeriğiniz {payload?.analysis.criteriaCount ?? 40} mikro kritere göre analiz
+            İçeriğiniz {payload?.analysis.criteriaCount ?? 31} mikro kritere göre analiz
             edildi.
           </p>
         </div>
@@ -198,10 +282,19 @@ export default function AnalizSonucuPage() {
       <div className="mt-8 grid grid-cols-1 items-center gap-4 lg:grid-cols-[1fr_auto_1fr]">
         <div className="rounded-3xl border-2 border-red-100 bg-bg-light p-6 shadow-sm">
           <span className="inline-block rounded-md bg-red-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-red-500">
-            Eski İçeriğiniz
+            Mevcut İçeriğiniz
           </span>
           <div className="mt-4 flex items-start justify-between gap-4">
-            <div className="aspect-square w-32 shrink-0 rounded-2xl bg-bg-offwhite" />
+            <div className="relative aspect-square w-32 shrink-0 overflow-hidden rounded-2xl bg-bg-offwhite">
+              {previewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewUrl}
+                  alt={payload?.analysis?.title ?? "İçerik önizleme"}
+                  className="size-full object-contain p-2"
+                />
+              ) : null}
+            </div>
             <div className="flex items-baseline">
               <span className="text-4xl font-bold text-red-500">{oldScore}</span>
               <span className="text-lg font-medium text-red-500/40">/100</span>
@@ -213,7 +306,7 @@ export default function AnalizSonucuPage() {
             ))}
           </div>
           <p className="mt-4 rounded-lg bg-red-50 px-3 py-2.5 text-xs leading-snug text-red-600">
-            İçeriğinizde net bir fayda mesajı ve güçlü bir CTA eksik.
+            {aiSummary.weaknesses[0] ?? "Geliştirilebilecek alanlar kriter analizinde listelendi."}
           </p>
         </div>
 
@@ -235,18 +328,20 @@ export default function AnalizSonucuPage() {
         <div className="rounded-3xl border-2 border-brand-neon/40 bg-bg-light p-6 shadow-sm">
           <span className="inline-flex items-center gap-1 rounded-md bg-brand-neon/25 px-3 py-1 text-xs font-bold uppercase tracking-wide text-brand-dark">
             <Sparkles className="size-3.5" strokeWidth={2} />
-            Yeni Öneri (Score AI)
+            Potansiyel Hedef (Score AI)
           </span>
           <div className="mt-4 flex items-start justify-between gap-4">
-            <div className="relative aspect-square w-32 shrink-0 overflow-hidden rounded-2xl bg-brand-dark p-3 text-white">
-              <p className="text-sm font-semibold leading-tight">
-                Doğadan gelen saf bakım
-              </p>
-              <p className="mt-1 text-[10px] text-white/70">
-                Cildiniz için en iyisi.
-              </p>
+            <div className="relative aspect-square w-32 shrink-0 overflow-hidden rounded-2xl bg-brand-dark/10">
+              {previewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewUrl}
+                  alt={`${payload?.analysis?.title ?? "İçerik"} potansiyel`}
+                  className="size-full object-contain p-2 opacity-75"
+                />
+              ) : null}
               <span className="absolute bottom-3 left-3 rounded-md bg-brand-neon px-2 py-0.5 text-[10px] font-bold text-brand-dark">
-                Keşfet
+                Potansiyel
               </span>
             </div>
             <div className="flex items-baseline">
@@ -260,8 +355,9 @@ export default function AnalizSonucuPage() {
             ))}
           </div>
           <p className="mt-4 rounded-lg bg-brand-neon/15 px-3 py-2.5 text-xs leading-snug text-brand-dark">
-            {revision?.summary ??
-              "Fayda mesajı, görsel hiyerarşi ve CTA güçlendirildi."}
+            {aiSummary.actions[0] ??
+              revision?.summary ??
+              "Bu skor, mevcut eksiklerin optimize edilmesiyle ulaşılabilecek potansiyel seviyeyi temsil eder."}
           </p>
         </div>
       </div>
@@ -273,9 +369,40 @@ export default function AnalizSonucuPage() {
         <div>
           <p className="text-sm font-semibold text-brand-neon">Score AI Yorumu</p>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/80">
-            {revision?.summary ??
-              "İçeriğinizde fayda mesajı, görsel kontrast ve CTA hiyerarşisi iyileştirildi."}
+            {payload?.analysis.insight ?? revision?.summary ?? "Detaylı AI yorumu oluşturuluyor."}
           </p>
+          <div className="mt-3 space-y-3 text-xs text-white/75">
+            {aiSummary.strengths.length > 0 && (
+              <div>
+                <p className="font-semibold text-brand-neon">Güçlü yönler</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5">
+                  {aiSummary.strengths.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {aiSummary.weaknesses.length > 0 && (
+              <div>
+                <p className="font-semibold text-brand-neon">Eksikler</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5">
+                  {aiSummary.weaknesses.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {aiSummary.actions.length > 0 && (
+              <div>
+                <p className="font-semibold text-brand-neon">Öncelikli aksiyonlar</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5">
+                  {aiSummary.actions.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {(loading || error) && (

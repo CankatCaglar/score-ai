@@ -220,7 +220,16 @@ export default function DashboardPage() {
               href={`/dashboard/analizler/${item.slug}`}
               className="group rounded-2xl border border-brand-dark/8 p-4 transition-colors hover:border-brand-dark/20"
             >
-              <div className="aspect-video w-full rounded-xl bg-bg-offwhite" />
+              <div className="aspect-video w-full overflow-hidden rounded-xl bg-bg-offwhite">
+                {item.mediaUrl || item.sourceUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`/api/dashboard/media/${item.id}`}
+                    alt={item.title}
+                    className="size-full object-contain p-1"
+                  />
+                ) : null}
+              </div>
               <div className="mt-3 flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-brand-dark">

@@ -10,6 +10,7 @@
     "invite:generate": "node scripts/generate-early-access-links.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.3",
     "@vercel/analytics": "^2.0.1",
     "firebase": "^12.15.0",
     "firebase-admin": "^13.10.0",

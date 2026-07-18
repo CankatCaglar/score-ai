@@ -21,6 +21,13 @@ export type Suggestion = {
   estimatedGain?: number;
 };
 
+export type CriterionEvaluation = {
+  seviye: 0 | 1 | 2 | 3;
+  mevcut_durum: string;
+  eksiklikler: string;
+  aksiyon_onerisi: string;
+};
+
 export type AnalysisStatus = "Geliştirildi" | "İnceleniyor";
 export type JobStatus = "pending" | "processing" | "completed" | "failed";
 
@@ -32,6 +39,7 @@ export type Analysis = {
   platformType: Platform;
   date: string;
   score: number;
+  potentialScore: number;
   change: number;
   status: AnalysisStatus;
   evaluation: string;
@@ -43,6 +51,9 @@ export type Analysis = {
   criteriaCount: number;
   sectorAverage: number;
   rubricVersion: string;
+  aiRubricVersion?: string;
+  promptVersion?: string;
+  modelUsed?: string;
   ownerEmail: string;
   sourceUrl?: string;
   mediaUrl?: string;
@@ -51,6 +62,7 @@ export type Analysis = {
   createdAtMs: number;
   updatedAtMs: number;
   microCriteria: MicroCriterionScore[];
+  criteriaEvaluations?: Record<string, CriterionEvaluation>;
 };
 
 export type ContentSourceType = "url" | "upload";

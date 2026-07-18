@@ -6,11 +6,14 @@ import {
   Briefcase,
   Camera,
   CheckCircle2,
+  CheckSquare,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   FilterX,
   Search,
+  Square,
+  Trash2,
 } from "lucide-react";
 import { ScoreRing } from "./ScoreRing";
 import type { Analysis as DashboardAnalysis } from "./data";
@@ -21,6 +24,8 @@ export default function AnalizlerPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -43,6 +48,9 @@ export default function AnalizlerPage() {
         };
         setAnalyses(data.analyses ?? []);
         setTotal(data.total ?? 0);
+        setSelectedIds((prev) =>
+          prev.filter((id) => (data.analyses ?? []).some((item) => item.id === id)),
+        );
       } catch (fetchError) {
         if ((fetchError as Error).name === "AbortError") return;
         setError("Analizler yüklenirken bir hata oluştu.");
@@ -56,6 +64,54 @@ export default function AnalizlerPage() {
   }, [query]);
 
   const filtered = useMemo(() => analyses, [analyses]);
+  const allVisibleSelected =
+    filtered.length > 0 && filtered.every((item) => selectedIds.includes(item.id));
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
+
+  const toggleSelectAllVisible = () => {
+    if (allVisibleSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !filtered.some((item) => item.id === id)));
+      return;
+    }
+    setSelectedIds((prev) => {
+      const set = new Set(prev);
+      for (const item of filtered) set.add(item.id);
+      return [...set];
+    });
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0 || deleting) return;
+    const confirmed = window.confirm(
+      `${selectedIds.length} analiz silinsin mi? Bu işlem geri alınamaz.`,
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/dashboard/analyses", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+      if (!response.ok) {
+        throw new Error("Silme işlemi başarısız oldu.");
+      }
+      setAnalyses((prev) => prev.filter((item) => !selectedIds.includes(item.id)));
+      setTotal((prev) => Math.max(0, prev - selectedIds.length));
+      setSelectedIds([]);
+    } catch {
+      setError("Analizler silinirken bir hata oluştu.");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
@@ -117,12 +173,33 @@ export default function AnalizlerPage() {
               <FilterX className="size-4" strokeWidth={2} />
               Filtreleri Temizle
             </button>
+            <button
+              type="button"
+              disabled={selectedIds.length === 0 || deleting}
+              onClick={handleDeleteSelected}
+              className="flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2 className="size-4" strokeWidth={2} />
+              {deleting ? "Siliniyor..." : `Seçilenleri Sil (${selectedIds.length})`}
+            </button>
           </div>
         </div>
       </div>
 
       <div className="mt-6 rounded-3xl bg-bg-light p-2 shadow-sm sm:p-4">
-        <div className="hidden grid-cols-[1fr_160px_90px_150px_40px] items-center gap-4 border-b border-brand-dark/8 px-4 py-3 text-xs font-semibold text-brand-dark/45 md:grid">
+        <div className="hidden grid-cols-[36px_1fr_160px_90px_150px_40px] items-center gap-4 border-b border-brand-dark/8 px-4 py-3 text-xs font-semibold text-brand-dark/45 md:grid">
+          <button
+            type="button"
+            onClick={toggleSelectAllVisible}
+            className="inline-flex items-center justify-center text-brand-dark/60 hover:text-brand-dark"
+            aria-label="Tümünü seç"
+          >
+            {allVisibleSelected ? (
+              <CheckSquare className="size-4" strokeWidth={2} />
+            ) : (
+              <Square className="size-4" strokeWidth={2} />
+            )}
+          </button>
           <span>İçerik</span>
           <span>Tarih</span>
           <span>Score</span>
@@ -135,13 +212,36 @@ export default function AnalizlerPage() {
             const PlatformIcon =
               a.platformType === "instagram" ? Camera : Briefcase;
             return (
-              <Link
+              <div
                 key={a.id}
-                href={`/dashboard/analizler/${a.slug}`}
-                className="grid grid-cols-1 items-center gap-3 rounded-2xl px-4 py-3 transition-colors hover:bg-bg-offwhite md:grid-cols-[1fr_160px_90px_150px_40px] md:gap-4"
+                className="grid grid-cols-1 items-center gap-3 rounded-2xl px-4 py-3 transition-colors hover:bg-bg-offwhite md:grid-cols-[36px_1fr_160px_90px_150px_40px] md:gap-4"
               >
+                <button
+                  type="button"
+                  onClick={() => {
+                    toggleSelected(a.id);
+                  }}
+                  className="inline-flex items-center justify-center text-brand-dark/60 hover:text-brand-dark"
+                  aria-label="Analizi seç"
+                >
+                  {selectedIds.includes(a.id) ? (
+                    <CheckSquare className="size-4" strokeWidth={2} />
+                  ) : (
+                    <Square className="size-4" strokeWidth={2} />
+                  )}
+                </button>
+                <Link href={`/dashboard/analizler/${a.slug}`} className="contents">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="size-12 shrink-0 rounded-xl bg-bg-offwhite" />
+                  <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-bg-offwhite">
+                    {a.mediaUrl || a.sourceUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/api/dashboard/media/${a.id}`}
+                        alt={a.title}
+                        className="size-full object-contain p-1"
+                      />
+                    ) : null}
+                  </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-brand-dark">
                       {a.title}
@@ -175,7 +275,8 @@ export default function AnalizlerPage() {
                 <div className="hidden justify-end text-brand-dark/30 md:flex">
                   <ChevronRight className="size-5" strokeWidth={2} />
                 </div>
-              </Link>
+                </Link>
+              </div>
             );
           })}
           {!loading && filtered.length === 0 && (

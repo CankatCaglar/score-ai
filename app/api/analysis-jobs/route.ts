@@ -6,7 +6,7 @@ import {
   processPendingAnalysisJobs,
 } from "@/lib/analysis/repository";
 import { getDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
-import { getAdminStorage } from "@/lib/firebase-admin";
+import { getAdminStorage, getAdminStorageBucketName } from "@/lib/firebase-admin";
 import type { Platform } from "@/lib/analysis/types";
 
 function normalizePlatform(value: string): Platform {
@@ -30,7 +30,7 @@ function guessTitle(sourceUrl?: string, fileName?: string): string {
 
 async function uploadInputFile(ownerEmail: string, file: File) {
   const storage = getAdminStorage();
-  const bucket = storage.bucket();
+  const bucket = storage.bucket(getAdminStorageBucketName());
   const extension = path.extname(file.name) || ".bin";
   const objectPath = `analysis-inputs/${Buffer.from(ownerEmail).toString("base64url")}/${Date.now()}-${randomUUID()}${extension}`;
   const object = bucket.file(objectPath);

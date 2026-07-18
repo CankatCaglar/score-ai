@@ -10,6 +10,30 @@ import { getStorage, type Storage } from "firebase-admin/storage";
 let cachedApp: App | null = null;
 let cachedDb: Firestore | null = null;
 let cachedStorage: Storage | null = null;
+let cachedBucketName: string | null = null;
+
+function normalizeBucketName(input?: string | null): string | null {
+  if (!input) return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("gs://")) {
+    return trimmed.replace(/^gs:\/\//, "").replace(/\/+$/, "");
+  }
+  return trimmed.replace(/\/+$/, "");
+}
+
+export function getAdminStorageBucketName(): string {
+  if (cachedBucketName) return cachedBucketName;
+  const fromEnv = normalizeBucketName(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim();
+  const fallback = projectId ? `${projectId}.appspot.com` : null;
+  const bucketName = fromEnv || fallback;
+  if (!bucketName) {
+    throw new Error("FIREBASE_STORAGE_BUCKET_NOT_CONFIGURED");
+  }
+  cachedBucketName = bucketName;
+  return bucketName;
+}
 
 function getOrInitAdminApp(): App {
   if (cachedApp) return cachedApp;
@@ -28,6 +52,7 @@ function getOrInitAdminApp(): App {
       ? getApps()[0]!
       : initializeApp({
           credential: cert({ projectId, clientEmail, privateKey }),
+          storageBucket: getAdminStorageBucketName(),
         });
   return cachedApp;
 }

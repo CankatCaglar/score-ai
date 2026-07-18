@@ -1,14 +1,29 @@
 import { FieldValue } from "firebase-admin/firestore";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { createHash } from "node:crypto";
+import { analyzeCategoryWithAnthropic } from "@/lib/ai/anthropic";
 import {
-  MAIN_CATEGORY_DEFINITIONS,
-  RUBRIC_CRITERIA_COUNT,
-  RUBRIC_VERSION,
+  getAdminDb,
+  getAdminStorage,
+  getAdminStorageBucketName,
+} from "@/lib/firebase-admin";
+import {
+  AI_PROMPT_VERSION,
+  CRITERION_DEFINITIONS,
+  NCQS_CRITERION_IDS,
+  buildCategoryScoresFromEvaluations,
+  buildMicroScoresFromEvaluations,
+  calculateCurrentScore,
+  calculatePotentialScore,
   mapMainCategories,
   mapMicroCriteria,
+  validateRubricCoverage,
+  RUBRIC_CRITERIA_COUNT,
+  RUBRIC_VERSION,
 } from "@/lib/analysis/rubric";
+import { CATEGORY_PROMPTS } from "@/lib/analysis/prompts";
 import type {
   Analysis,
+  CriterionEvaluation,
   AnalysisRevision,
   DashboardOverview,
   JobStatus,
@@ -21,6 +36,7 @@ const COLLECTIONS = {
   contentItems: "content_items",
   users: "users",
   revisions: "analysis_revisions",
+  cache: "analysis_cache",
 } as const;
 
 type CreateAnalysisJobInput = {
@@ -97,49 +113,117 @@ function scoreToStatus(status: JobStatus): "Geliştirildi" | "İnceleniyor" {
   return status === "completed" ? "Geliştirildi" : "İnceleniyor";
 }
 
-function seededNumber(seed: string, min: number, max: number): number {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i += 1) {
-    hash = (hash << 5) - hash + seed.charCodeAt(i);
-    hash |= 0;
-  }
-  const normalized = Math.abs(hash) / 2147483647;
-  return Math.round(min + normalized * (max - min));
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
 }
 
-function buildSeededScores(seedBase: string) {
-  const categories = MAIN_CATEGORY_DEFINITIONS.map((category, idx) => {
-    const baseScore = seededNumber(`${seedBase}-main-${idx}`, 58, 90);
+function sha256(input: string | Buffer) {
+  return createHash("sha256").update(input).digest("hex");
+}
+
+function getModelIdForCache() {
+  return process.env.ANTHROPIC_MODEL?.trim() || "claude-sonnet-4-20250514";
+}
+
+function buildSuggestionsFromEvaluations(
+  evaluations: Record<string, CriterionEvaluation>,
+): Analysis["suggestions"] {
+  const suggestionRows = CRITERION_DEFINITIONS.map((criterion) => {
+    const evaluation = evaluations[criterion.id];
+    const seviye = evaluation?.seviye ?? 0;
+    const recoverable = criterion.weight * ((3 - seviye) / 3);
     return {
-      id: category.id,
-      label: category.label,
-      value: baseScore,
+      criterionId: criterion.id,
+      recoverable,
+      text: evaluation?.aksiyon_onerisi?.trim() || "Kriter icin aksiyon onerisi uretilmedi.",
     };
-  });
+  })
+    .filter((row) => row.recoverable > 0)
+    .sort((a, b) => b.recoverable - a.recoverable)
+    .slice(0, 6);
 
-  const microCriteria = MAIN_CATEGORY_DEFINITIONS.flatMap((category, catIdx) => {
-    const parent = categories.find((main) => main.id === category.id)?.value ?? 60;
-    return category.criteria.map((criterion, criterionIdx) => {
-      const variation = seededNumber(
-        `${seedBase}-micro-${catIdx}-${criterionIdx}`,
-        -8,
-        8,
-      );
-      return {
-        id: criterion.id,
-        mainCategoryId: category.id,
-        label: criterion.label,
-        value: Math.max(20, Math.min(100, parent + variation)),
-      };
-    });
-  });
+  return suggestionRows.map((row, index) => ({
+    id: `${row.criterionId}-${index}`,
+    criterionId: row.criterionId,
+    estimatedGain: Math.max(1, Math.round(row.recoverable)),
+    gain: Math.max(1, Math.round(row.recoverable)),
+    text: row.text,
+  }));
+}
 
-  const overallScore = Math.round(
-    categories.reduce((sum, item) => sum + item.value, 0) / categories.length,
+function buildSummaryTexts(
+  categories: Analysis["categories"],
+  evaluations: Record<string, CriterionEvaluation>,
+) {
+  const bestCategory = [...categories].sort((a, b) => b.value - a.value)[0];
+  const weakestCriterion = CRITERION_DEFINITIONS.map((criterion) => ({
+    ...criterion,
+    level: evaluations[criterion.id]?.seviye ?? 0,
+  })).sort((a, b) => a.level - b.level)[0];
+
+  const evaluation = weakestCriterion
+    ? evaluations[weakestCriterion.id]
+    : undefined;
+
+  return {
+    evaluation:
+      "AI analizi tamamlandi. Kategori bazli degerlendirme ve aksiyon oncelikleri olusturuldu.",
+    strength: bestCategory
+      ? `${bestCategory.label} kategorisi en guclu gorunuyor.`
+      : "Kategori bazli guclu alanlar bulunamadi.",
+    insight:
+      weakestCriterion && evaluation
+        ? `${weakestCriterion.label} iyilestirilirse skor artis potansiyeli yuksek. ${evaluation.eksiklikler}`
+        : "En zayif kriter belirlenemedi.",
+  };
+}
+
+function buildRevisionMetrics(categories: Analysis["categories"]) {
+  const top = [...categories].sort((a, b) => b.value - a.value).slice(0, 4);
+  return top.map((category) => ({
+    label: category.label,
+    value: category.value,
+  }));
+}
+
+function parseStoredCategoryScores(data: Record<string, unknown>): Analysis["categories"] {
+  return mapMainCategories(
+    (Array.isArray(data.categories) ? data.categories : []) as Analysis["categories"],
   );
-  const change = seededNumber(`${seedBase}-change`, -5, 16);
-  const sectorAverage = seededNumber(`${seedBase}-sector`, 62, 78);
-  return { categories, microCriteria, overallScore, change, sectorAverage };
+}
+
+function normalizeImageMediaType(
+  mimeType: string | undefined,
+): "image/jpeg" | "image/png" | "image/webp" | "image/gif" | null {
+  if (!mimeType) return null;
+  const normalized = mimeType.toLowerCase();
+  if (normalized.includes("image/png")) return "image/png";
+  if (normalized.includes("image/webp")) return "image/webp";
+  if (normalized.includes("image/gif")) return "image/gif";
+  if (normalized.includes("image/jpeg") || normalized.includes("image/jpg")) {
+    return "image/jpeg";
+  }
+  return null;
+}
+
+function buildAnalysisCacheKey(params: {
+  imageFingerprint: string;
+  modelId: string;
+  rubricVersion: string;
+  promptVersion: string;
+  platformType: string;
+  brandContext?: string;
+}) {
+  return sha256(
+    [
+      params.imageFingerprint,
+      params.modelId,
+      params.rubricVersion,
+      params.promptVersion,
+      params.platformType,
+      params.brandContext?.trim() ? sha256(params.brandContext.trim()) : "no-brand-context",
+    ].join("|"),
+  );
 }
 
 function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
@@ -163,6 +247,7 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
     platform: String(data.platform ?? platformTypeToLabel("instagram")),
     date: formatDate(updatedAtMs || createdAtMs),
     score: Number(data.score ?? 0),
+    potentialScore: Number(data.potentialScore ?? data.score ?? 0),
     change: Number(data.change ?? 0),
     status: scoreToStatus(status),
     evaluation: String(data.evaluation ?? "Analiz işleniyor."),
@@ -176,6 +261,16 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
     criteriaCount: Number(data.criteriaCount ?? RUBRIC_CRITERIA_COUNT),
     sectorAverage: Number(data.sectorAverage ?? 0),
     rubricVersion: String(data.rubricVersion ?? RUBRIC_VERSION),
+    aiRubricVersion:
+      typeof data.aiRubricVersion === "string"
+        ? String(data.aiRubricVersion)
+        : undefined,
+    promptVersion:
+      typeof data.promptVersion === "string"
+        ? String(data.promptVersion)
+        : undefined,
+    modelUsed:
+      typeof data.modelUsed === "string" ? String(data.modelUsed) : undefined,
     ownerEmail: String(data.ownerEmail ?? ""),
     sourceUrl:
       typeof data.sourceUrl === "string" ? String(data.sourceUrl) : undefined,
@@ -187,20 +282,13 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
     createdAtMs,
     updatedAtMs,
     microCriteria,
+    criteriaEvaluations:
+      data.criteriaEvaluations &&
+      typeof data.criteriaEvaluations === "object" &&
+      !Array.isArray(data.criteriaEvaluations)
+        ? (data.criteriaEvaluations as Record<string, CriterionEvaluation>)
+        : undefined,
   };
-}
-
-function buildSuggestions(seedBase: string, categoryIds: string[]) {
-  return categoryIds.slice(0, 4).map((criterionId, index) => ({
-    id: `${criterionId}-${index}`,
-    criterionId,
-    estimatedGain: seededNumber(`${seedBase}-suggestion-${index}`, 4, 11),
-    gain: seededNumber(`${seedBase}-gain-${index}`, 4, 11),
-    text:
-      index % 2 === 0
-        ? "Mesajı ilk bakışta daha net aktaran kısa bir fayda cümlesi ekleyin."
-        : "CTA bloğunu tek bir eyleme odaklayarak dönüşüm sürtünmesini azaltın.",
-  }));
 }
 
 async function ensureUserDoc(ownerEmail: string) {
@@ -246,9 +334,8 @@ export async function createAnalysisJob(
     updatedAt: now,
   });
 
-  const { categories, microCriteria } = buildSeededScores(
-    `${input.ownerEmail}-${slug}`,
-  );
+  const zeroCategories = mapMainCategories([]);
+  const zeroMicroCriteria = mapMicroCriteria([]);
   const analysisRef = db.collection(COLLECTIONS.analyses).doc();
   await analysisRef.set({
     id: analysisRef.id,
@@ -259,18 +346,25 @@ export async function createAnalysisJob(
     platform: platformTypeToLabel(input.platformType),
     contentType: "Gönderi",
     score: 0,
+    potentialScore: 0,
     change: 0,
     sectorAverage: 0,
     evaluation: "Analiz kuyruğa alındı. Sonuçlar hazırlanıyor.",
     strength: "İşlem devam ediyor.",
     insight: "AI analizi sonuçlandığında bu alan güncellenecek.",
     suggestions: [],
-    categories: categories.map((category) => ({ ...category, value: 0 })),
-    microCriteria: microCriteria.map((criterion) => ({ ...criterion, value: 0 })),
+    categories: zeroCategories,
+    microCriteria: zeroMicroCriteria,
+    criteriaEvaluations: {},
     criteriaCount: RUBRIC_CRITERIA_COUNT,
     rubricVersion: RUBRIC_VERSION,
+    aiRubricVersion: RUBRIC_VERSION,
+    promptVersion: AI_PROMPT_VERSION,
+    modelUsed: null,
     sourceUrl: input.sourceUrl ?? null,
     mediaUrl: input.mediaUrl ?? null,
+    storagePath: input.storagePath ?? null,
+    mimeType: input.mimeType ?? null,
     jobStatus: "pending",
     createdAt: now,
     updatedAt: now,
@@ -315,27 +409,13 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
     const jobData = doc.data() as {
       ownerEmail?: string;
       analysisId?: string;
+      contentItemId?: string;
       status?: JobStatus;
     };
-    if (!jobData.ownerEmail || !jobData.analysisId) continue;
-
-    const seedBase = `${jobData.ownerEmail}-${jobData.analysisId}`;
-    const {
-      categories,
-      microCriteria,
-      overallScore,
-      change,
-      sectorAverage,
-    } = buildSeededScores(seedBase);
-    const suggestions = buildSuggestions(
-      seedBase,
-      microCriteria.slice(0, 4).map((criterion) => criterion.id),
-    );
+    if (!jobData.ownerEmail || !jobData.analysisId || !jobData.contentItemId) continue;
 
     const now = FieldValue.serverTimestamp();
     const analysisRef = db.collection(COLLECTIONS.analyses).doc(jobData.analysisId);
-    const revisionRef = db.collection(COLLECTIONS.revisions).doc();
-    const beforeScore = Math.max(0, overallScore - seededNumber(seedBase, 8, 24));
 
     await doc.ref.set(
       {
@@ -345,63 +425,248 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
       { merge: true },
     );
 
-    await analysisRef.set(
-      {
-        score: overallScore,
-        change,
-        sectorAverage,
-        categories,
-        microCriteria,
-        suggestions,
-        criteriaCount: RUBRIC_CRITERIA_COUNT,
-        evaluation:
-          "İçerik analizi tamamlandı. Mesaj netliği ve görsel hiyerarşi birlikte iyileşince genel skor yükseliyor.",
-        strength:
-          "Marka uyumu ve görsel kalite bu içerikte güçlü bir performans gösteriyor.",
-        insight:
-          "Kısa fayda cümlesi + tek CTA kombinasyonu benzer içeriklerde etkileşim artışı getiriyor.",
-        jobStatus: "completed",
-        revisionId: revisionRef.id,
+    try {
+      const [analysisDoc, contentDoc] = await Promise.all([
+        analysisRef.get(),
+        db.collection(COLLECTIONS.contentItems).doc(jobData.contentItemId).get(),
+      ]);
+      const analysisData = (analysisDoc.data() ?? {}) as Record<string, unknown>;
+      const contentData = (contentDoc.data() ?? {}) as Record<string, unknown>;
+
+      let imageBase64: string | undefined;
+      let imageMediaType:
+        | "image/jpeg"
+        | "image/png"
+        | "image/webp"
+        | "image/gif"
+        | undefined;
+      let imageFingerprint: string | undefined;
+
+      const storagePath =
+        (typeof contentData.storagePath === "string" && contentData.storagePath) ||
+        (typeof analysisData.storagePath === "string" && analysisData.storagePath) ||
+        undefined;
+      const storedMimeType = normalizeImageMediaType(
+        (typeof contentData.mimeType === "string" && contentData.mimeType) ||
+          (typeof analysisData.mimeType === "string" && analysisData.mimeType) ||
+          undefined,
+      );
+      if (storagePath) {
+        const storage = getAdminStorage();
+        const bucket = storage.bucket(getAdminStorageBucketName());
+        const file = bucket.file(storagePath);
+        const [bytes] = await file.download();
+        imageBase64 = bytes.toString("base64");
+        imageMediaType = storedMimeType ?? "image/jpeg";
+        imageFingerprint = sha256(bytes);
+      }
+
+      const imageUrl =
+        (typeof contentData.mediaUrl === "string" && contentData.mediaUrl) ||
+        (typeof analysisData.mediaUrl === "string" && analysisData.mediaUrl) ||
+        (typeof contentData.sourceUrl === "string" && contentData.sourceUrl) ||
+        (typeof analysisData.sourceUrl === "string" && analysisData.sourceUrl) ||
+        undefined;
+      if (!imageFingerprint && imageUrl) {
+        imageFingerprint = sha256(imageUrl);
+      }
+
+      if (!imageBase64 && !imageUrl) {
+        throw new Error("Analiz icin gorsel URL bulunamadi.");
+      }
+
+      const brandContext =
+        typeof analysisData.brandContext === "string" && analysisData.brandContext.trim()
+          ? String(analysisData.brandContext)
+          : undefined;
+      const cacheKey = buildAnalysisCacheKey({
+        imageFingerprint: imageFingerprint ?? "unknown-image",
+        modelId: getModelIdForCache(),
+        rubricVersion: RUBRIC_VERSION,
+        promptVersion: AI_PROMPT_VERSION,
+        platformType:
+          typeof analysisData.platformType === "string"
+            ? analysisData.platformType
+            : "instagram",
+        brandContext,
+      });
+      const cacheRef = db.collection(COLLECTIONS.cache).doc(cacheKey);
+      const cacheDoc = await cacheRef.get();
+      const cacheData = (cacheDoc.data() ?? {}) as Record<string, unknown>;
+
+      let modelUsed: string | null = null;
+      let criteriaEvaluations: Record<string, CriterionEvaluation> = {};
+      const cachedEvaluations =
+        cacheData.criteriaEvaluations &&
+        typeof cacheData.criteriaEvaluations === "object" &&
+        !Array.isArray(cacheData.criteriaEvaluations)
+          ? (cacheData.criteriaEvaluations as Record<string, CriterionEvaluation>)
+          : null;
+
+      if (cachedEvaluations) {
+        criteriaEvaluations = cachedEvaluations;
+        modelUsed =
+          typeof cacheData.modelUsed === "string" ? String(cacheData.modelUsed) : null;
+      } else {
+        const categoryResults = await Promise.all(
+          CATEGORY_PROMPTS.map((config) =>
+            analyzeCategoryWithAnthropic({
+              categoryId: config.categoryId,
+              categoryLabel: config.categoryLabel,
+              systemPrompt: config.systemPrompt,
+              criteriaKeys: config.criteriaKeys,
+              imageBase64,
+              imageMediaType,
+              imageUrl,
+              brandContext,
+            }),
+          ),
+        );
+        modelUsed = categoryResults[0]?.modelUsed ?? null;
+        criteriaEvaluations = Object.assign(
+          {},
+          ...categoryResults.map((result) => result.evaluations),
+        );
+      }
+      const rubricCoverage = validateRubricCoverage(Object.keys(criteriaEvaluations));
+      if (rubricCoverage.missing.length || rubricCoverage.extra.length) {
+        throw new Error(
+          `Rubric key mismatch. missing=${rubricCoverage.missing.join(",")} extra=${rubricCoverage.extra.join(",")}`,
+        );
+      }
+
+      for (const criterionId of NCQS_CRITERION_IDS) {
+        const evaluation = criteriaEvaluations[criterionId];
+        if (!evaluation) {
+          throw new Error(`Eksik kriter degerlendirmesi: ${criterionId}`);
+        }
+      }
+
+      const currentScore = calculateCurrentScore(criteriaEvaluations);
+      const potentialScore = calculatePotentialScore(criteriaEvaluations);
+      const categories = buildCategoryScoresFromEvaluations(criteriaEvaluations);
+      const microCriteria = buildMicroScoresFromEvaluations(criteriaEvaluations);
+      const suggestions = buildSuggestionsFromEvaluations(criteriaEvaluations);
+      const summaries = buildSummaryTexts(categories, criteriaEvaluations);
+      const revisionRef = db.collection(COLLECTIONS.revisions).doc();
+      const previousScore =
+        typeof analysisData.score === "number" ? clamp(analysisData.score, 0, 100) : 0;
+      const previousCategories = parseStoredCategoryScores(analysisData);
+      const newMetrics = buildRevisionMetrics(categories);
+      const previousCategoryById = new Map(
+        previousCategories.map((category) => [category.id, category]),
+      );
+      const oldMetrics = newMetrics.map((metric) => {
+        const previous = previousCategoryById.get(
+          categories.find((current) => current.label === metric.label)?.id ?? "",
+        );
+        return {
+          label: metric.label,
+          value: previous?.value ?? 0,
+        };
+      });
+
+      await analysisRef.set(
+        {
+          score: Math.round(currentScore),
+          potentialScore: Math.round(potentialScore),
+          change: Math.round(currentScore - previousScore),
+          sectorAverage: 0,
+          categories,
+          microCriteria,
+          criteriaEvaluations,
+          suggestions,
+          criteriaCount: RUBRIC_CRITERIA_COUNT,
+          rubricVersion: RUBRIC_VERSION,
+          aiRubricVersion: RUBRIC_VERSION,
+          promptVersion: AI_PROMPT_VERSION,
+          modelUsed,
+          evaluation: summaries.evaluation,
+          strength: summaries.strength,
+          insight: summaries.insight,
+          jobStatus: "completed",
+          revisionId: revisionRef.id,
+          updatedAt: now,
+        },
+        { merge: true },
+      );
+
+      await revisionRef.set({
+        id: revisionRef.id,
+        ownerEmail: jobData.ownerEmail,
+        analysisId: jobData.analysisId,
+        oldScore: Math.round(previousScore),
+        newScore: Math.round(currentScore),
+        oldMetrics,
+        newMetrics,
+        summary:
+          "AI kriter degerlendirmeleri birlestirildi ve oncelikli iyilestirme aksiyonlari olusturuldu.",
+        createdAt: now,
         updatedAt: now,
-      },
-      { merge: true },
-    );
+      });
 
-    await revisionRef.set({
-      id: revisionRef.id,
-      ownerEmail: jobData.ownerEmail,
-      analysisId: jobData.analysisId,
-      oldScore: beforeScore,
-      newScore: overallScore,
-      oldMetrics: [
-        { label: "Dikkat Çekicilik", value: Math.max(0, beforeScore - 5) },
-        { label: "Netlik", value: Math.max(0, beforeScore - 2) },
-        { label: "Duygusal Etki", value: Math.max(0, beforeScore - 4) },
-        { label: "Etkileşim Potansiyeli", value: Math.max(0, beforeScore - 1) },
-      ],
-      newMetrics: [
-        { label: "Dikkat Çekicilik", value: Math.min(100, overallScore + 3) },
-        { label: "Netlik", value: Math.min(100, overallScore + 1) },
-        { label: "Duygusal Etki", value: Math.min(100, overallScore - 2) },
-        { label: "Etkileşim Potansiyeli", value: Math.min(100, overallScore + 2) },
-      ],
-      summary:
-        "Fayda mesajı, görsel kontrast ve CTA yerleşimi optimize edildiğinde skor anlamlı şekilde yükseldi.",
-      canvaEditUrl:
-        "https://www.canva.com",
-      createdAt: now,
-      updatedAt: now,
-    });
+      if (!cachedEvaluations) {
+        await cacheRef.set(
+          {
+            id: cacheKey,
+            ownerEmail: jobData.ownerEmail,
+            criteriaEvaluations,
+            modelUsed,
+            rubricVersion: RUBRIC_VERSION,
+            promptVersion: AI_PROMPT_VERSION,
+            imageFingerprint,
+            brandContextHash: brandContext ? sha256(brandContext) : null,
+            platformType:
+              typeof analysisData.platformType === "string"
+                ? analysisData.platformType
+                : "instagram",
+            createdAt: now,
+            updatedAt: now,
+          },
+          { merge: true },
+        );
+      } else {
+        await cacheRef.set(
+          {
+            updatedAt: now,
+            lastAccessedAt: now,
+          },
+          { merge: true },
+        );
+      }
 
-    await doc.ref.set(
-      {
-        status: "completed",
-        updatedAt: now,
-      },
-      { merge: true },
-    );
+      await doc.ref.set(
+        {
+          status: "completed",
+          errorMessage: null,
+          updatedAt: now,
+        },
+        { merge: true },
+      );
 
-    processed += 1;
+      processed += 1;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Bilinmeyen analiz hatasi.";
+      await Promise.all([
+        analysisRef.set(
+          {
+            jobStatus: "failed",
+            evaluation: "Analiz tamamlanamadi. Lutfen tekrar deneyin.",
+            insight: message,
+            updatedAt: now,
+          },
+          { merge: true },
+        ),
+        doc.ref.set(
+          {
+            status: "failed",
+            errorMessage: message,
+            updatedAt: now,
+          },
+          { merge: true },
+        ),
+      ]);
+    }
   }
 
   return { processed };
@@ -461,6 +726,34 @@ function average(values: number[]): number {
   return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
+function computeCategoryImprovements(analyses: Analysis[]) {
+  if (!analyses.length) return [] as Array<{ label: string; change: number }>;
+
+  const byCategory = new Map<string, { first: number; last: number }>();
+  const chronological = [...analyses].sort((a, b) => a.createdAtMs - b.createdAtMs);
+  for (const analysis of chronological) {
+    for (const category of analysis.categories) {
+      const existing = byCategory.get(category.label);
+      if (!existing) {
+        byCategory.set(category.label, { first: category.value, last: category.value });
+      } else {
+        byCategory.set(category.label, {
+          first: existing.first,
+          last: category.value,
+        });
+      }
+    }
+  }
+
+  return Array.from(byCategory.entries())
+    .map(([label, values]) => ({
+      label,
+      change: values.last - values.first,
+    }))
+    .sort((a, b) => b.change - a.change)
+    .slice(0, 5);
+}
+
 export async function getDashboardOverview(
   ownerEmail: string,
 ): Promise<DashboardOverview> {
@@ -496,12 +789,7 @@ export async function getDashboardOverview(
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
 
-  const mostImproved = topCategories
-    .map((category) => ({
-      label: category.label,
-      change: seededNumber(`${ownerEmail}-${category.label}`, 4, 18),
-    }))
-    .sort((a, b) => b.change - a.change);
+  const mostImproved = computeCategoryImprovements(analyses);
 
   const displayName = ownerEmail.split("@")[0] ?? "Kullanıcı";
   const isPublicFallbackUser =
@@ -566,4 +854,78 @@ export async function getLatestAnalysisRevision(
         : undefined,
     createdAtMs: toMillis(data.createdAt),
   };
+}
+
+export async function deleteAnalysesByIds(
+  ownerEmail: string,
+  analysisIds: string[],
+): Promise<{ deleted: number; skipped: number }> {
+  const db = getAdminDb();
+  const storage = getAdminStorage();
+  const bucket = storage.bucket(getAdminStorageBucketName());
+
+  let deleted = 0;
+  let skipped = 0;
+
+  for (const analysisId of analysisIds) {
+    const analysisRef = db.collection(COLLECTIONS.analyses).doc(analysisId);
+    const analysisDoc = await analysisRef.get();
+    if (!analysisDoc.exists) {
+      skipped += 1;
+      continue;
+    }
+    const analysisData = (analysisDoc.data() ?? {}) as Record<string, unknown>;
+    if (analysisData.ownerEmail !== ownerEmail) {
+      skipped += 1;
+      continue;
+    }
+
+    const jobSnap = await db
+      .collection(COLLECTIONS.jobs)
+      .where("analysisId", "==", analysisId)
+      .get();
+    const revisionSnap = await db
+      .collection(COLLECTIONS.revisions)
+      .where("ownerEmail", "==", ownerEmail)
+      .where("analysisId", "==", analysisId)
+      .get();
+
+    const contentIds = new Set<string>();
+    for (const jobDoc of jobSnap.docs) {
+      const jobData = (jobDoc.data() ?? {}) as Record<string, unknown>;
+      if (typeof jobData.contentItemId === "string" && jobData.contentItemId) {
+        contentIds.add(jobData.contentItemId);
+      }
+    }
+
+    for (const contentItemId of contentIds) {
+      const contentRef = db.collection(COLLECTIONS.contentItems).doc(contentItemId);
+      const contentDoc = await contentRef.get();
+      if (!contentDoc.exists) continue;
+      const contentData = (contentDoc.data() ?? {}) as Record<string, unknown>;
+      if (contentData.ownerEmail !== ownerEmail) continue;
+
+      const storagePath =
+        typeof contentData.storagePath === "string" ? contentData.storagePath : null;
+      if (storagePath) {
+        try {
+          await bucket.file(storagePath).delete({ ignoreNotFound: true });
+        } catch {
+          // storage delete best-effort; proceed with firestore cleanup
+        }
+      }
+      await contentRef.delete();
+    }
+
+    for (const revisionDoc of revisionSnap.docs) {
+      await revisionDoc.ref.delete();
+    }
+    for (const jobDoc of jobSnap.docs) {
+      await jobDoc.ref.delete();
+    }
+    await analysisRef.delete();
+    deleted += 1;
+  }
+
+  return { deleted, skipped };
 }

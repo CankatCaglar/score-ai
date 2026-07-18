@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
   BadgeCheck,
-  BookOpen,
   Bot,
   Briefcase,
   Camera,
@@ -15,7 +14,6 @@ import {
   ExternalLink,
   ImageIcon,
   MessageSquare,
-  MousePointerClick,
   Share2,
 } from "lucide-react";
 import {
@@ -35,13 +33,11 @@ const tabs = [
 type Tab = (typeof tabs)[number];
 
 const categoryIcons: Record<string, typeof ImageIcon> = {
-  "Görsel Kalite": ImageIcon,
-  "Mesaj Netliği": MessageSquare,
-  "CTA Gücü": MousePointerClick,
-  "Hikaye Anlatımı": BookOpen,
-  "Marka Uyumu": BadgeCheck,
-  "Etkileşim Potansiyeli": Bot,
-  "Dönüşüm Hazırlığı": ArrowUpRight,
+  "Visual Intelligence": ImageIcon,
+  "Content Intelligence": MessageSquare,
+  "Brand Intelligence": BadgeCheck,
+  "Channel Intelligence": Bot,
+  "Business Intelligence": ArrowUpRight,
 };
 
 function Card({
@@ -240,12 +236,29 @@ function OverviewTab({ analysis }: { analysis: Analysis }) {
         <Card>
           <p className="text-sm font-semibold text-brand-dark">İçerik Önizleme</p>
           <div className="relative mt-3 aspect-square w-full overflow-hidden rounded-2xl bg-bg-offwhite">
+            {analysis.mediaUrl || analysis.sourceUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`/api/dashboard/media/${analysis.id}`}
+                alt={analysis.title}
+                className="size-full object-contain p-2"
+              />
+            ) : null}
             <span className="absolute right-2 top-2 rounded-md bg-brand-dark/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
               1/1
             </span>
           </div>
           <button
             type="button"
+            onClick={() => {
+              const targetUrl =
+                analysis.mediaUrl || analysis.sourceUrl
+                  ? `/api/dashboard/media/${analysis.id}`
+                  : null;
+              if (targetUrl) {
+                window.open(targetUrl, "_blank", "noopener,noreferrer");
+              }
+            }}
             className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-brand-dark/10 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5"
           >
             İçeriği Görüntüle
