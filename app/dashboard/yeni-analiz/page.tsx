@@ -98,17 +98,39 @@ export default function YeniAnalizPage() {
         method: "POST",
         body: formData,
       });
+      const data = (await response.json().catch(() => ({}))) as {
+        slug?: string;
+        analysisId?: string;
+        jobStatus?: string;
+        message?: string;
+      };
       if (!response.ok) {
-        throw new Error("Analiz başlatılamadı");
+        throw new Error(
+          data.message ||
+            "Analiz baslatildi fakat isleme sirasinda hata olustu. Lutfen farkli bir gorsel deneyin.",
+        );
       }
-      const data = (await response.json()) as { slug: string; analysisId?: string };
+      if (response.status === 202 || data.jobStatus === "pending" || data.jobStatus === "processing") {
+        if (data.slug) {
+          router.push(`/dashboard/analizler/${data.slug}`);
+          router.refresh();
+          return;
+        }
+        throw new Error("Analiz isleme alindi fakat yonlendirme verisi alinamadi.");
+      }
       const target = data.analysisId
         ? `/dashboard/analiz-sonucu?id=${data.analysisId}`
-        : `/dashboard/analizler/${data.slug}`;
+        : data.slug
+          ? `/dashboard/analizler/${data.slug}`
+          : "/dashboard/analizler";
       router.push(target);
       router.refresh();
-    } catch {
-      setError("Analiz başlatılırken bir hata oluştu. Lütfen tekrar deneyin.");
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Analiz baslatilirken bir hata olustu. Lutfen tekrar deneyin.",
+      );
     } finally {
       window.clearInterval(timer);
       setSubmitting(false);

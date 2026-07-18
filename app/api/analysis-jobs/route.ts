@@ -6,7 +6,11 @@ import {
   processPendingAnalysisJobs,
 } from "@/lib/analysis/repository";
 import { getDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
-import { getAdminStorage, getAdminStorageBucketName } from "@/lib/firebase-admin";
+import {
+  getAdminDb,
+  getAdminStorage,
+  getAdminStorageBucketName,
+} from "@/lib/firebase-admin";
 import type { Platform } from "@/lib/analysis/types";
 
 function normalizePlatform(value: string): Platform {
@@ -103,8 +107,38 @@ export async function POST(request: Request) {
 
   await processPendingAnalysisJobs(1);
 
+  const db = getAdminDb();
+  const analysisSnapshot = await db.collection("analyses").doc(result.analysisId).get();
+  const analysisData = (analysisSnapshot.data() ?? {}) as Record<string, unknown>;
+  const jobStatus =
+    typeof analysisData.jobStatus === "string" ? analysisData.jobStatus : "pending";
+  const insight =
+    typeof analysisData.insight === "string" ? analysisData.insight : undefined;
+
+  if (jobStatus === "failed") {
+    return NextResponse.json(
+      {
+        error: "ANALYSIS_FAILED",
+        message: insight ?? "Analiz tamamlanamadi. Lutfen baska bir gorsel deneyin.",
+      },
+      { status: 422 },
+    );
+  }
+
+  if (jobStatus !== "completed") {
+    return NextResponse.json(
+      {
+        ok: true,
+        ...result,
+        jobStatus,
+      },
+      { status: 202 },
+    );
+  }
+
   return NextResponse.json({
     ok: true,
     ...result,
+    jobStatus,
   });
 }

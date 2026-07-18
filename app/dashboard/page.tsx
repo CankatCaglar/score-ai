@@ -59,6 +59,40 @@ function ChangeBadge({ change }: { change: number }) {
   );
 }
 
+function ExpandableInsightText({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const shouldTruncate = text.trim().length > 170;
+
+  return (
+    <div
+      onClick={() => {
+        if (shouldTruncate) setExpanded((current) => !current);
+      }}
+      onKeyDown={(event) => {
+        if (!shouldTruncate) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          setExpanded((current) => !current);
+        }
+      }}
+      role={shouldTruncate ? "button" : undefined}
+      tabIndex={shouldTruncate ? 0 : undefined}
+      aria-label={shouldTruncate ? "AI içgörüsü metnini genişlet veya daralt" : undefined}
+      className={shouldTruncate ? "cursor-pointer" : ""}
+    >
+      <p
+        className={`mt-4 flex-1 text-sm leading-relaxed text-brand-dark ${
+          shouldTruncate && !expanded
+            ? "[display:-webkit-box] overflow-hidden [-webkit-box-orient:vertical] [-webkit-line-clamp:3]"
+            : ""
+        }`}
+      >
+        {text}
+      </p>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -189,10 +223,12 @@ export default function DashboardPage() {
             </div>
             <h2 className="text-sm font-medium text-brand-dark/60">AI İçgörüsü</h2>
           </div>
-          <p className="mt-4 flex-1 text-sm leading-relaxed text-brand-dark">
-            {overview?.aiInsight ??
-              "İlk analizinizi tamamladıktan sonra kişiselleştirilmiş içgörüler burada görünecek."}
-          </p>
+          <ExpandableInsightText
+            text={
+              overview?.aiInsight ??
+              "İlk analizinizi tamamladıktan sonra kişiselleştirilmiş içgörüler burada görünecek."
+            }
+          />
           <Link
             href="/dashboard/icgoruler"
             className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brand-dark hover:underline"

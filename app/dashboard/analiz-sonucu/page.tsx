@@ -227,6 +227,49 @@ function AnalizSonucuPageContent() {
     () => summarizeAiCommentary(payload?.analysis ?? null),
     [payload?.analysis],
   );
+  const jobStatus = payload?.analysis?.jobStatus;
+  const isCompleted = jobStatus === "completed";
+
+  if (!loading && payload?.analysis && !isCompleted) {
+    const isFailed = jobStatus === "failed";
+    return (
+      <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
+        <Link
+          href="/dashboard/analizler"
+          className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark/50 hover:text-brand-dark"
+        >
+          <ChevronLeft className="size-4" strokeWidth={2} />
+          Analiz Sonucu
+        </Link>
+        <div className="mt-4 rounded-2xl border border-brand-dark/10 bg-bg-light p-5">
+          <p className="text-lg font-semibold text-brand-dark">
+            {isFailed ? "Analiz tamamlanamadi" : "Analiz hala isleniyor"}
+          </p>
+          <p className="mt-2 text-sm text-brand-dark/65">
+            {isFailed
+              ? payload.analysis.insight ||
+                "Yuklenen dosya formati veya icerik isleme adiminda bir sorun olustu."
+              : "Islem tamamlandiginda skor ve AI detaylari otomatik olarak guncellenecek."}
+          </p>
+          <div className="mt-4 flex items-center gap-2">
+            <Link
+              href={`/dashboard/analizler/${payload.analysis.slug}`}
+              className="rounded-lg bg-brand-dark px-3.5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              Analiz Detayina Git
+            </Link>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="rounded-lg border border-brand-dark/10 px-3.5 py-2 text-sm font-medium text-brand-dark/70 hover:bg-brand-dark/5"
+            >
+              Yenile
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">

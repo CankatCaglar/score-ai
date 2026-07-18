@@ -42,6 +42,7 @@ export type Analysis = {
   potentialScore: number;
   change: number;
   status: AnalysisStatus;
+  jobStatus: JobStatus;
   evaluation: string;
   strength: string;
   insight: string;
