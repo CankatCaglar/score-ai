@@ -37,15 +37,16 @@ const SCORE_RANGE_OPTIONS: Array<{ value: ScoreRangeValue; label: string }> = [
 ];
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+type PaginationItem = number | "ellipsis";
 
-function buildPaginationItems(currentPage: number, totalPages: number): Array<number | string> {
+function buildPaginationItems(currentPage: number, totalPages: number): PaginationItem[] {
   if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, index) => index + 1);
   }
 
   const pages = new Set<number>([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
   const validPages = [...pages].filter((page) => page >= 1 && page <= totalPages).sort((a, b) => a - b);
-  const items: Array<number | string> = [];
+  const items: PaginationItem[] = [];
 
   for (let index = 0; index < validPages.length; index += 1) {
     const page = validPages[index]!;
