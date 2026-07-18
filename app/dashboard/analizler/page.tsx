@@ -73,6 +73,7 @@ export default function AnalizlerPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -145,11 +146,6 @@ export default function AnalizlerPage() {
 
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0 || deleting) return;
-    const confirmed = window.confirm(
-      `${selectedIds.length} analiz silinsin mi? Bu işlem geri alınamaz.`,
-    );
-    if (!confirmed) return;
-
     setDeleting(true);
     setError(null);
     try {
@@ -162,6 +158,7 @@ export default function AnalizlerPage() {
         throw new Error("Silme işlemi başarısız oldu.");
       }
       setSelectedIds([]);
+      setShowDeleteConfirm(false);
       setRefreshKey((current) => current + 1);
     } catch {
       setError("Analizler silinirken bir hata oluştu.");
@@ -267,7 +264,7 @@ export default function AnalizlerPage() {
             <button
               type="button"
               disabled={selectedIds.length === 0 || deleting}
-              onClick={handleDeleteSelected}
+              onClick={() => setShowDeleteConfirm(true)}
               className="flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Trash2 className="size-4" strokeWidth={2} />
@@ -454,6 +451,47 @@ export default function AnalizlerPage() {
       </div>
       {error && (
         <p className="mt-3 text-sm font-medium text-red-500">{error}</p>
+      )}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-brand-dark/50 px-4"
+          onClick={() => {
+            if (!deleting) setShowDeleteConfirm(false);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-bg-light p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-1 text-lg font-semibold text-brand-dark">
+              Analizleri silmek istediğinize emin misiniz?
+            </div>
+            <p className="text-sm leading-relaxed text-brand-dark/65">
+              <span className="font-semibold text-brand-dark">{selectedIds.length}</span> analiz
+              kalıcı olarak silinecek. Bu işlem geri alınamaz.
+            </p>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setShowDeleteConfirm(false)}
+                className="rounded-lg border border-brand-dark/10 px-3.5 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={handleDeleteSelected}
+                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3.5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Trash2 className="size-4" strokeWidth={2} />
+                {deleting ? "Siliniyor..." : "Evet, Sil"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

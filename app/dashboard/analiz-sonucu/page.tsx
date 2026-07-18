@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -176,11 +177,9 @@ function MetricRow({
   );
 }
 
-export default function AnalizSonucuPage() {
-  const [id] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return new URLSearchParams(window.location.search).get("id");
-  });
+function AnalizSonucuPageContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<ResultPayload | null>(null);
@@ -318,7 +317,7 @@ export default function AnalizSonucuPage() {
             </span>
             <span className="text-[10px] font-medium">puan</span>
           </div>
-          <span className="text-xs font-medium text-brand-dark/50">gelişim</span>
+          <span className="text-xs font-medium text-brand-dark/50">Potansiyel</span>
           <ArrowRight
             className="size-5 text-brand-dark/30 lg:block"
             strokeWidth={2}
@@ -411,5 +410,19 @@ export default function AnalizSonucuPage() {
         </p>
       )}
     </div>
+  );
+}
+
+export default function AnalizSonucuPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="px-4 pb-8 pt-2 text-sm text-brand-dark/60 sm:px-6 lg:px-8 lg:pt-4">
+          Sonuç verileri güncelleniyor...
+        </div>
+      }
+    >
+      <AnalizSonucuPageContent />
+    </Suspense>
   );
 }
