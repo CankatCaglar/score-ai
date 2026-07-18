@@ -730,6 +730,15 @@ function average(values: number[]): number {
   return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
+function averageFloat(values: number[]): number {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
 function computeCategoryImprovements(analyses: Analysis[]) {
   if (!analyses.length) return [] as Array<{ label: string; change: number }>;
 
@@ -765,7 +774,31 @@ export async function getDashboardOverview(
   const recentAnalyses = analyses.slice(0, 4);
   const avgScore = average(analyses.map((analysis) => analysis.score));
   const avgScoreChange = average(analyses.map((analysis) => analysis.change));
-  const monthChange = avgScoreChange * 2;
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const currentPeriodStart = now - 30 * dayMs;
+  const previousPeriodStart = now - 60 * dayMs;
+  const currentPeriod = analyses.filter((analysis) => {
+    const timestamp = analysis.updatedAtMs || analysis.createdAtMs;
+    return timestamp >= currentPeriodStart;
+  });
+  const previousPeriod = analyses.filter((analysis) => {
+    const timestamp = analysis.updatedAtMs || analysis.createdAtMs;
+    return timestamp >= previousPeriodStart && timestamp < currentPeriodStart;
+  });
+  let monthChange = round1(
+    averageFloat(currentPeriod.map((analysis) => analysis.score)) -
+      averageFloat(previousPeriod.map((analysis) => analysis.score)),
+  );
+  if (currentPeriod.length > 0 && previousPeriod.length === 0 && analyses.length > currentPeriod.length) {
+    const historicalBaseline = analyses
+      .slice(currentPeriod.length)
+      .map((analysis) => analysis.score);
+    monthChange = round1(
+      averageFloat(currentPeriod.map((analysis) => analysis.score)) -
+        averageFloat(historicalBaseline),
+    );
+  }
 
   const last8 = analyses.slice(0, 8).reverse();
   const trendData =
@@ -794,6 +827,35 @@ export async function getDashboardOverview(
     .slice(0, 5);
 
   const mostImproved = computeCategoryImprovements(analyses);
+  const topCategory = topCategories[0];
+  const weakestCategory = [...topCategories]
+    .sort((a, b) => a.value - b.value)[0];
+  const latestAnalysis = analyses[0];
+  const topSuggestion = latestAnalysis?.suggestions?.[0];
+  const topSuggestionFocus =
+    topSuggestion?.text?.split(":")[0]?.trim() || "öncelikli kriterler";
+
+  let aiInsight: string;
+  if (!analyses.length) {
+    aiInsight = "İlk analizinizi başlatarak kişiselleştirilmiş içgörüler alın.";
+  } else {
+    const trendDirection =
+      monthChange > 0.4
+        ? "yukarı yönlü"
+        : monthChange < -0.4
+          ? "aşağı yönlü"
+          : "dengede";
+    const topCategoryText = topCategory
+      ? `${topCategory.label} (${topCategory.value}/100)`
+      : "kategori performansı";
+    const weakestCategoryText = weakestCategory
+      ? `${weakestCategory.label} (${weakestCategory.value}/100)`
+      : "gelişim alanları";
+    aiInsight =
+      `Son 30 günlük performans trendi ${trendDirection} (${monthChange >= 0 ? "+" : ""}${monthChange} puan). ` +
+      `En güçlü alan ${topCategoryText}; gelişim için öncelik ${weakestCategoryText}. ` +
+      `Son analizde ${topSuggestionFocus} odaklı aksiyonlar skor artışı için en yüksek potansiyeli gösteriyor.`;
+  }
 
   const displayName = ownerEmail.split("@")[0] ?? "Kullanıcı";
   const isPublicFallbackUser =
@@ -807,10 +869,7 @@ export async function getDashboardOverview(
     avgScore,
     avgScoreChange,
     monthChange,
-    aiInsight:
-      analyses.length > 0
-        ? "Fayda odaklı kısa metin ve güçlü CTA kombinasyonu son analizlerde öne çıkıyor."
-        : "İlk analizinizi başlatarak kişiselleştirilmiş içgörüler alın.",
+    aiInsight,
     trendData,
     recentAnalyses,
     topCategories,
