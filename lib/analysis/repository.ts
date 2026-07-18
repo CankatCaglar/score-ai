@@ -12,6 +12,7 @@ import {
   NCQS_CRITERION_IDS,
   buildCategoryScoresFromEvaluations,
   buildMicroScoresFromEvaluations,
+  calculateCriterionPotentialGainRows,
   calculateCurrentScore,
   calculatePotentialScore,
   mapMainCategories,
@@ -128,27 +129,31 @@ function getModelIdForCache() {
 function buildSuggestionsFromEvaluations(
   evaluations: Record<string, CriterionEvaluation>,
 ): Analysis["suggestions"] {
-  const suggestionRows = CRITERION_DEFINITIONS.map((criterion) => {
-    const evaluation = evaluations[criterion.id];
-    const seviye = evaluation?.seviye ?? 0;
-    const recoverable = criterion.weight * ((3 - seviye) / 3);
-    return {
-      criterionId: criterion.id,
-      recoverable,
-      text: evaluation?.aksiyon_onerisi?.trim() || "Kriter icin aksiyon onerisi uretilmedi.",
-    };
-  })
-    .filter((row) => row.recoverable > 0)
-    .sort((a, b) => b.recoverable - a.recoverable)
-    .slice(0, 6);
+  const potentialRows = calculateCriterionPotentialGainRows(evaluations)
+    .filter((row) => row.gain > 0)
+    .sort((a, b) => b.gain - a.gain);
 
-  return suggestionRows.map((row, index) => ({
-    id: `${row.criterionId}-${index}`,
-    criterionId: row.criterionId,
-    estimatedGain: Math.max(1, Math.round(row.recoverable)),
-    gain: Math.max(1, Math.round(row.recoverable)),
-    text: row.text,
-  }));
+  const totalPotentialGain = Math.max(0, calculatePotentialScore(evaluations) - calculateCurrentScore(evaluations));
+  const targetCents = Math.round(totalPotentialGain * 100);
+  const roundedCents = potentialRows.map((row) => Math.round(row.gain * 100));
+  const roundedTotal = roundedCents.reduce((sum, item) => sum + item, 0);
+  if (roundedCents.length > 0 && roundedTotal !== targetCents) {
+    roundedCents[0] = Math.max(0, roundedCents[0]! + (targetCents - roundedTotal));
+  }
+
+  return potentialRows.map((row, index) => {
+    const evaluation = evaluations[row.criterionId];
+    const criterionLabel = CRITERION_DEFINITIONS.find((item) => item.id === row.criterionId)?.label;
+    const actionText = evaluation?.aksiyon_onerisi?.trim() || "Kriter icin aksiyon onerisi uretilmedi.";
+    const normalizedGain = (roundedCents[index] ?? 0) / 100;
+    return {
+      id: `${row.criterionId}-${index}`,
+      criterionId: row.criterionId,
+      estimatedGain: normalizedGain,
+      gain: normalizedGain,
+      text: criterionLabel ? `${criterionLabel}: ${actionText}` : actionText,
+    };
+  });
 }
 
 function buildSummaryTexts(
@@ -230,6 +235,12 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
   const createdAtMs = toMillis(data.createdAt);
   const updatedAtMs = toMillis(data.updatedAt);
   const status = (data.jobStatus as JobStatus | undefined) ?? "pending";
+  const criteriaEvaluations =
+    data.criteriaEvaluations &&
+    typeof data.criteriaEvaluations === "object" &&
+    !Array.isArray(data.criteriaEvaluations)
+      ? (data.criteriaEvaluations as Record<string, CriterionEvaluation>)
+      : {};
   const categories = mapMainCategories(
     (Array.isArray(data.categories) ? data.categories : []) as Analysis["categories"],
   );
@@ -254,9 +265,7 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
     strength: String(data.strength ?? "Analiz tamamlandığında burada görünecek."),
     insight: String(data.insight ?? "AI içgörüsü hazırlanıyor."),
     categories,
-    suggestions: Array.isArray(data.suggestions)
-      ? (data.suggestions as Analysis["suggestions"])
-      : [],
+    suggestions: buildSuggestionsFromEvaluations(criteriaEvaluations),
     contentType: String(data.contentType ?? "Gönderi"),
     criteriaCount: Number(data.criteriaCount ?? RUBRIC_CRITERIA_COUNT),
     sectorAverage: Number(data.sectorAverage ?? 0),
@@ -282,12 +291,7 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
     createdAtMs,
     updatedAtMs,
     microCriteria,
-    criteriaEvaluations:
-      data.criteriaEvaluations &&
-      typeof data.criteriaEvaluations === "object" &&
-      !Array.isArray(data.criteriaEvaluations)
-        ? (data.criteriaEvaluations as Record<string, CriterionEvaluation>)
-        : undefined,
+    criteriaEvaluations,
   };
 }
 

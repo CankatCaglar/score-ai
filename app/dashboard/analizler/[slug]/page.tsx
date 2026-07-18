@@ -9,6 +9,8 @@ import {
   Bot,
   Briefcase,
   Camera,
+  ChevronDown,
+  ChevronUp,
   ChevronLeft,
   Download,
   ExternalLink,
@@ -39,6 +41,7 @@ const categoryIcons: Record<string, typeof ImageIcon> = {
   "Channel Intelligence": Bot,
   "Business Intelligence": ArrowUpRight,
 };
+const SUGGESTIONS_PREVIEW_COUNT = 5;
 
 function Card({
   children,
@@ -50,6 +53,87 @@ function Card({
   return (
     <div className={`rounded-3xl bg-bg-light p-5 shadow-sm sm:p-6 ${className}`}>
       {children}
+    </div>
+  );
+}
+
+function formatGain(value: number): string {
+  const normalized = Math.round(value * 100) / 100;
+  if (Number.isInteger(normalized)) return String(normalized);
+  return normalized.toFixed(2).replace(/\.?0+$/, "");
+}
+
+function ExpandableSuggestionsList({
+  suggestions,
+  variant,
+}: {
+  suggestions: Analysis["suggestions"];
+  variant: "overview" | "tab";
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const hasMore = suggestions.length > SUGGESTIONS_PREVIEW_COUNT;
+  const visibleSuggestions =
+    expanded || !hasMore ? suggestions : suggestions.slice(0, SUGGESTIONS_PREVIEW_COUNT);
+  const remaining = Math.max(0, suggestions.length - SUGGESTIONS_PREVIEW_COUNT);
+
+  return (
+    <div className="mt-4 space-y-2">
+      {visibleSuggestions.map((s, index) =>
+        variant === "overview" ? (
+          <div
+            key={`${s.id ?? s.text}-${index}`}
+            className="flex items-center gap-3 rounded-xl bg-bg-offwhite px-3 py-2.5"
+          >
+            <ArrowUpRight className="size-4 shrink-0 text-brand-dark" strokeWidth={2.25} />
+            <span className="min-w-0 flex-1 text-xs leading-snug text-brand-dark/75">
+              {s.text}
+            </span>
+            <span className="shrink-0 rounded-full bg-brand-neon/40 px-2 py-0.5 text-[11px] font-semibold text-brand-dark">
+              +{formatGain(s.gain)} puan potansiyeli
+            </span>
+            <button
+              type="button"
+              className="shrink-0 rounded-lg border border-brand-dark/10 px-2.5 py-1 text-[11px] font-medium text-brand-dark/70 hover:bg-brand-dark/5"
+            >
+              Detay
+            </button>
+          </div>
+        ) : (
+          <div
+            key={`${s.id ?? s.text}-${index}`}
+            className="flex flex-wrap items-center gap-3 rounded-2xl border border-brand-dark/8 px-4 py-3"
+          >
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-neon/60">
+              <ArrowUpRight className="size-4 text-brand-dark" strokeWidth={2.25} />
+            </div>
+            <span className="min-w-0 flex-1 text-sm text-brand-dark/80">
+              {s.text}
+            </span>
+            <span className="rounded-full bg-brand-neon/40 px-2.5 py-1 text-xs font-semibold text-brand-dark">
+              +{formatGain(s.gain)} puan potansiyeli
+            </span>
+          </div>
+        ),
+      )}
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setExpanded((current) => !current)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-brand-dark/10 py-2.5 text-sm font-medium text-brand-dark/65 transition-colors hover:bg-brand-dark/5"
+        >
+          {expanded ? (
+            <>
+              <ChevronUp className="size-4" strokeWidth={2} />
+              Daha az göster
+            </>
+          ) : (
+            <>
+              <ChevronDown className="size-4" strokeWidth={2} />
+              +{remaining} öneriyi daha göster
+            </>
+          )}
+        </button>
+      )}
     </div>
   );
 }
@@ -329,31 +413,7 @@ function OverviewTab({ analysis }: { analysis: Analysis }) {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <h2 className="text-base font-semibold text-brand-dark">AI Önerileri</h2>
-          <div className="mt-4 space-y-2">
-            {analysis.suggestions.map((s, index) => (
-              <div
-                key={`${s.id ?? s.text}-${index}`}
-                className="flex items-center gap-3 rounded-xl bg-bg-offwhite px-3 py-2.5"
-              >
-                <ArrowUpRight
-                  className="size-4 shrink-0 text-brand-dark"
-                  strokeWidth={2.25}
-                />
-                <span className="min-w-0 flex-1 text-xs leading-snug text-brand-dark/75">
-                  {s.text}
-                </span>
-                <span className="shrink-0 rounded-full bg-brand-neon/40 px-2 py-0.5 text-[11px] font-semibold text-brand-dark">
-                  +{s.gain} puan potansiyeli
-                </span>
-                <button
-                  type="button"
-                  className="shrink-0 rounded-lg border border-brand-dark/10 px-2.5 py-1 text-[11px] font-medium text-brand-dark/70 hover:bg-brand-dark/5"
-                >
-                  Detay
-                </button>
-              </div>
-            ))}
-          </div>
+          <ExpandableSuggestionsList suggestions={analysis.suggestions} variant="overview" />
         </Card>
 
         <Card>
@@ -488,32 +548,21 @@ function CriteriaTab({ analysis }: { analysis: Analysis }) {
 }
 
 function SuggestionsTab({ analysis }: { analysis: Analysis }) {
+  const totalSuggestionGain = analysis.suggestions.reduce((sum, item) => sum + item.gain, 0);
+  const netPotentialGain = Math.max(0, analysis.potentialScore - analysis.score);
   return (
     <Card>
       <h2 className="text-base font-semibold text-brand-dark">
         AI Önerileri ({analysis.suggestions.length})
       </h2>
       <p className="mt-1 text-sm text-brand-dark/55">
-        Bu önerileri uyguladığınızda içeriğinizin puanı yükselebilir.
+        Bu öneriler kriter bazlı potansiyel artış hesaplarından üretilir.
       </p>
-      <div className="mt-4 space-y-3">
-        {analysis.suggestions.map((s, index) => (
-          <div
-            key={`${s.id ?? s.text}-${index}`}
-            className="flex flex-wrap items-center gap-3 rounded-2xl border border-brand-dark/8 px-4 py-3"
-          >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-neon/60">
-              <ArrowUpRight className="size-4 text-brand-dark" strokeWidth={2.25} />
-            </div>
-            <span className="min-w-0 flex-1 text-sm text-brand-dark/80">
-              {s.text}
-            </span>
-            <span className="rounded-full bg-brand-neon/40 px-2.5 py-1 text-xs font-semibold text-brand-dark">
-              +{s.gain} puan potansiyeli
-            </span>
-          </div>
-        ))}
-      </div>
+      <p className="mt-2 text-xs font-medium text-brand-dark/60">
+        Listelenen toplam: +{formatGain(totalSuggestionGain)} puan · Hedef artış: +
+        {formatGain(netPotentialGain)} puan
+      </p>
+      <ExpandableSuggestionsList suggestions={analysis.suggestions} variant="tab" />
     </Card>
   );
 }

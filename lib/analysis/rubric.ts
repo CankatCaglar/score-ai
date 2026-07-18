@@ -187,17 +187,48 @@ export function calculatePotentialScore(
 ): number {
   const levels = buildLevelMap(evaluations);
   const potential = CRITERION_DEFINITIONS.reduce((sum, criterion) => {
-    const ratio = levelToNormalizedRatio(levels[criterion.id] ?? 0);
+    const level = levels[criterion.id] ?? 0;
+    const ratio = levelToNormalizedRatio(level);
     const currentWeight = criterion.weight * ratio;
-    if (!criterion.improvable || levels[criterion.id] === MAX_CRITERION_LEVEL) {
-      return sum + currentWeight;
-    }
-    const recoverable = criterion.weight * (1 - ratio);
-    const evaluation = evaluations[criterion.id];
-    const practicalRecoverability = inferPracticalRecoverability(criterion, evaluation);
-    return sum + currentWeight + recoverable * practicalRecoverability;
+    return sum + currentWeight + calculateCriterionPotentialGain(criterion, level, evaluations);
   }, 0);
   return round2(Math.max(0, Math.min(100, potential)));
+}
+
+export function calculateCriterionPotentialGainRows(
+  evaluations: Record<string, CriterionEvaluation | undefined>,
+): Array<{
+  criterionId: string;
+  criterionLabel: string;
+  mainCategoryId: string;
+  gain: number;
+}> {
+  const levels = buildLevelMap(evaluations);
+  return CRITERION_DEFINITIONS.map((criterion) => {
+    const level = levels[criterion.id] ?? 0;
+    return {
+      criterionId: criterion.id,
+      criterionLabel: criterion.label,
+      mainCategoryId: criterion.mainCategoryId,
+      gain: calculateCriterionPotentialGain(criterion, level, evaluations),
+    };
+  });
+}
+
+function calculateCriterionPotentialGain(
+  criterion: (typeof CRITERION_DEFINITIONS)[number],
+  level: number,
+  evaluations: Record<string, CriterionEvaluation | undefined>,
+) {
+  if (!criterion.improvable || level === MAX_CRITERION_LEVEL) {
+    return 0;
+  }
+
+  const ratio = levelToNormalizedRatio(level);
+  const recoverable = criterion.weight * (1 - ratio);
+  const evaluation = evaluations[criterion.id];
+  const practicalRecoverability = inferPracticalRecoverability(criterion, evaluation);
+  return recoverable * practicalRecoverability;
 }
 
 function inferPracticalRecoverability(

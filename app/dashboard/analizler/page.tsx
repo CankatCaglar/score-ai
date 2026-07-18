@@ -18,14 +18,61 @@ import {
 import { ScoreRing } from "./ScoreRing";
 import type { Analysis as DashboardAnalysis } from "./data";
 
+type DateRangeValue = "7d" | "30d" | "90d" | "all";
+type ScoreRangeValue = "all" | "0-49" | "50-69" | "70-84" | "85-100";
+
+const DATE_RANGE_OPTIONS: Array<{ value: DateRangeValue; label: string }> = [
+  { value: "7d", label: "Son 7 Gün" },
+  { value: "30d", label: "Son 30 Gün" },
+  { value: "90d", label: "Son 90 Gün" },
+  { value: "all", label: "Tümü" },
+];
+
+const SCORE_RANGE_OPTIONS: Array<{ value: ScoreRangeValue; label: string }> = [
+  { value: "all", label: "Tümü" },
+  { value: "0-49", label: "0 - 49" },
+  { value: "50-69", label: "50 - 69" },
+  { value: "70-84", label: "70 - 84" },
+  { value: "85-100", label: "85 - 100" },
+];
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+
+function buildPaginationItems(currentPage: number, totalPages: number): Array<number | string> {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages = new Set<number>([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
+  const validPages = [...pages].filter((page) => page >= 1 && page <= totalPages).sort((a, b) => a - b);
+  const items: Array<number | string> = [];
+
+  for (let index = 0; index < validPages.length; index += 1) {
+    const page = validPages[index]!;
+    const previous = validPages[index - 1];
+    if (typeof previous === "number" && page - previous > 1) {
+      items.push("ellipsis");
+    }
+    items.push(page);
+  }
+
+  return items;
+}
+
 export default function AnalizlerPage() {
   const [query, setQuery] = useState("");
+  const [dateRange, setDateRange] = useState<DateRangeValue>("30d");
+  const [scoreRange, setScoreRange] = useState<ScoreRangeValue>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [analyses, setAnalyses] = useState<DashboardAnalysis[]>([]);
   const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -35,6 +82,10 @@ export default function AnalizlerPage() {
       try {
         const params = new URLSearchParams();
         if (query.trim()) params.set("query", query.trim());
+        params.set("dateRange", dateRange);
+        params.set("scoreRange", scoreRange);
+        params.set("page", String(page));
+        params.set("pageSize", String(pageSize));
         const response = await fetch(`/api/dashboard/analyses?${params.toString()}`, {
           signal: controller.signal,
           cache: "no-store",
@@ -45,9 +96,13 @@ export default function AnalizlerPage() {
         const data = (await response.json()) as {
           analyses: DashboardAnalysis[];
           total: number;
+          page: number;
+          totalPages: number;
         };
         setAnalyses(data.analyses ?? []);
         setTotal(data.total ?? 0);
+        setPage(data.page ?? 1);
+        setTotalPages(Math.max(1, data.totalPages ?? 1));
         setSelectedIds((prev) =>
           prev.filter((id) => (data.analyses ?? []).some((item) => item.id === id)),
         );
@@ -61,11 +116,13 @@ export default function AnalizlerPage() {
 
     void load();
     return () => controller.abort();
-  }, [query]);
+  }, [dateRange, page, pageSize, query, refreshKey, scoreRange]);
 
-  const filtered = useMemo(() => analyses, [analyses]);
+  const paginationItems = useMemo(() => buildPaginationItems(page, totalPages), [page, totalPages]);
+  const visibleFrom = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const visibleTo = Math.min(total, page * pageSize);
   const allVisibleSelected =
-    filtered.length > 0 && filtered.every((item) => selectedIds.includes(item.id));
+    analyses.length > 0 && analyses.every((item) => selectedIds.includes(item.id));
 
   const toggleSelected = (id: string) => {
     setSelectedIds((prev) =>
@@ -75,12 +132,12 @@ export default function AnalizlerPage() {
 
   const toggleSelectAllVisible = () => {
     if (allVisibleSelected) {
-      setSelectedIds((prev) => prev.filter((id) => !filtered.some((item) => item.id === id)));
+      setSelectedIds((prev) => prev.filter((id) => !analyses.some((item) => item.id === id)));
       return;
     }
     setSelectedIds((prev) => {
       const set = new Set(prev);
-      for (const item of filtered) set.add(item.id);
+      for (const item of analyses) set.add(item.id);
       return [...set];
     });
   };
@@ -103,9 +160,8 @@ export default function AnalizlerPage() {
       if (!response.ok) {
         throw new Error("Silme işlemi başarısız oldu.");
       }
-      setAnalyses((prev) => prev.filter((item) => !selectedIds.includes(item.id)));
-      setTotal((prev) => Math.max(0, prev - selectedIds.length));
       setSelectedIds([]);
+      setRefreshKey((current) => current + 1);
     } catch {
       setError("Analizler silinirken bir hata oluştu.");
     } finally {
@@ -131,7 +187,10 @@ export default function AnalizlerPage() {
               <Search className="size-4 shrink-0 text-brand-dark/40" strokeWidth={2} />
               <input
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Analiz ara..."
                 className="w-full bg-transparent text-sm text-brand-dark placeholder:text-brand-dark/30 outline-none"
               />
@@ -143,31 +202,62 @@ export default function AnalizlerPage() {
               <span className="text-[11px] font-medium text-brand-dark/45">
                 Tarih Aralığı
               </span>
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-lg border border-brand-dark/10 px-3 py-2.5 text-sm font-medium text-brand-dark/80 transition-colors hover:bg-brand-dark/5"
-              >
-                Son 30 Gün
-                <ChevronDown className="size-4 text-brand-dark/40" strokeWidth={2} />
-              </button>
+              <div className="relative">
+                <select
+                  value={dateRange}
+                  onChange={(event) => {
+                    setDateRange(event.target.value as DateRangeValue);
+                    setPage(1);
+                  }}
+                  className="min-w-36 appearance-none rounded-lg border border-brand-dark/10 bg-bg-light px-3 py-2.5 pr-9 text-sm font-medium text-brand-dark/80 outline-none transition-colors hover:bg-brand-dark/5"
+                >
+                  {DATE_RANGE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-brand-dark/40"
+                  strokeWidth={2}
+                />
+              </div>
             </label>
 
             <label className="flex flex-col gap-1">
               <span className="text-[11px] font-medium text-brand-dark/45">
                 Score Aralığı
               </span>
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-lg border border-brand-dark/10 px-3 py-2.5 text-sm font-medium text-brand-dark/80 transition-colors hover:bg-brand-dark/5"
-              >
-                Tümü
-                <ChevronDown className="size-4 text-brand-dark/40" strokeWidth={2} />
-              </button>
+              <div className="relative">
+                <select
+                  value={scoreRange}
+                  onChange={(event) => {
+                    setScoreRange(event.target.value as ScoreRangeValue);
+                    setPage(1);
+                  }}
+                  className="min-w-32 appearance-none rounded-lg border border-brand-dark/10 bg-bg-light px-3 py-2.5 pr-9 text-sm font-medium text-brand-dark/80 outline-none transition-colors hover:bg-brand-dark/5"
+                >
+                  {SCORE_RANGE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-brand-dark/40"
+                  strokeWidth={2}
+                />
+              </div>
             </label>
 
             <button
               type="button"
-              onClick={() => setQuery("")}
+              onClick={() => {
+                setQuery("");
+                setDateRange("30d");
+                setScoreRange("all");
+                setPage(1);
+              }}
               className="flex items-center gap-2 rounded-lg border border-brand-dark/10 px-3 py-2.5 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5"
             >
               <FilterX className="size-4" strokeWidth={2} />
@@ -208,7 +298,7 @@ export default function AnalizlerPage() {
         </div>
 
         <div className="divide-y divide-brand-dark/5">
-          {filtered.map((a: DashboardAnalysis) => {
+          {analyses.map((a: DashboardAnalysis) => {
             const PlatformIcon =
               a.platformType === "instagram" ? Camera : Briefcase;
             return (
@@ -279,7 +369,7 @@ export default function AnalizlerPage() {
               </div>
             );
           })}
-          {!loading && filtered.length === 0 && (
+          {!loading && analyses.length === 0 && (
             <div className="px-4 py-10 text-center text-sm text-brand-dark/55">
               Henüz analiz bulunamadı. Yeni analiz başlatıp içerik yükleyebilirsiniz.
             </div>
@@ -288,46 +378,77 @@ export default function AnalizlerPage() {
 
         <div className="mt-2 flex flex-col items-center justify-between gap-4 border-t border-brand-dark/8 px-4 pt-4 sm:flex-row">
           <span className="text-sm text-brand-dark/50">
-            {loading ? "Yükleniyor..." : `Toplam ${total} analiz`}
+            {loading
+              ? "Yükleniyor..."
+              : total === 0
+                ? "Sonuç yok"
+                : `${visibleFrom}-${visibleTo} / ${total} analiz`}
           </span>
 
           <div className="flex items-center gap-1">
             <button
               type="button"
-              className="flex size-8 items-center justify-center rounded-lg border border-brand-dark/10 text-brand-dark/50 hover:bg-brand-dark/5"
+              disabled={loading || page <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              className="flex size-8 items-center justify-center rounded-lg border border-brand-dark/10 text-brand-dark/50 hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Önceki"
             >
               <ChevronLeft className="size-4" strokeWidth={2} />
             </button>
-            {["1", "2", "3", "…", "6"].map((p, i) => (
-              <button
-                key={`${p}-${i}`}
-                type="button"
-                className={`flex size-8 items-center justify-center rounded-lg text-xs font-semibold ${
-                  p === "1"
-                    ? "bg-brand-dark text-white"
-                    : "border border-brand-dark/10 text-brand-dark/60 hover:bg-brand-dark/5"
-                }`}
-              >
-                {p}
-              </button>
-            ))}
+            {paginationItems.map((item, index) =>
+              item === "ellipsis" ? (
+                <span
+                  key={`ellipsis-${index}`}
+                  className="flex size-8 items-center justify-center text-xs font-semibold text-brand-dark/40"
+                >
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setPage(item)}
+                  className={`flex size-8 items-center justify-center rounded-lg text-xs font-semibold ${
+                    page === item
+                      ? "bg-brand-dark text-white"
+                      : "border border-brand-dark/10 text-brand-dark/60 hover:bg-brand-dark/5"
+                  }`}
+                >
+                  {item}
+                </button>
+              ),
+            )}
             <button
               type="button"
-              className="flex size-8 items-center justify-center rounded-lg border border-brand-dark/10 text-brand-dark/50 hover:bg-brand-dark/5"
+              disabled={loading || page >= totalPages}
+              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+              className="flex size-8 items-center justify-center rounded-lg border border-brand-dark/10 text-brand-dark/50 hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Sonraki"
             >
               <ChevronRight className="size-4" strokeWidth={2} />
             </button>
           </div>
 
-          <button
-            type="button"
-            className="flex items-center gap-2 rounded-lg border border-brand-dark/10 px-3 py-1.5 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5"
-          >
-            10 / sayfa
-            <ChevronDown className="size-4 text-brand-dark/40" strokeWidth={2} />
-          </button>
+          <div className="relative">
+            <select
+              value={pageSize}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value) as (typeof PAGE_SIZE_OPTIONS)[number]);
+                setPage(1);
+              }}
+              className="appearance-none rounded-lg border border-brand-dark/10 bg-bg-light px-3 py-1.5 pr-8 text-sm font-medium text-brand-dark/70 outline-none transition-colors hover:bg-brand-dark/5"
+            >
+              {PAGE_SIZE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option} / sayfa
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-brand-dark/40"
+              strokeWidth={2}
+            />
+          </div>
         </div>
       </div>
       {error && (
