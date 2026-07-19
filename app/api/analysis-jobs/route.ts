@@ -7,6 +7,7 @@ import {
 } from "@/lib/analysis/repository";
 import { getDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
 import {
+  getAdminDb,
   getAdminStorage,
   getAdminStorageBucketName,
 } from "@/lib/firebase-admin";
@@ -51,12 +52,6 @@ async function uploadInputFile(ownerEmail: string, file: File) {
     mediaUrl,
     storagePath: objectPath,
   };
-}
-
-function triggerAnalysisWorkerInBackground() {
-  void processPendingAnalysisJobs(1).catch((error) => {
-    console.error("analysis worker trigger failed", error);
-  });
 }
 
 export async function POST(request: Request) {
@@ -110,14 +105,42 @@ export async function POST(request: Request) {
     sizeBytes,
   });
 
-  triggerAnalysisWorkerInBackground();
+  await processPendingAnalysisJobs(1);
+
+  const db = getAdminDb();
+  const analysisSnapshot = await db.collection("analyses").doc(result.analysisId).get();
+  const analysisData = (analysisSnapshot.data() ?? {}) as Record<string, unknown>;
+  const jobStatus =
+    typeof analysisData.jobStatus === "string" ? analysisData.jobStatus : "pending";
+  const insight =
+    typeof analysisData.insight === "string" ? analysisData.insight : undefined;
+
+  if (jobStatus === "failed") {
+    return NextResponse.json(
+      {
+        error: "ANALYSIS_FAILED",
+        message: insight ?? "Analiz tamamlanamadi. Lutfen baska bir gorsel deneyin.",
+      },
+      { status: 422 },
+    );
+  }
+
+  if (jobStatus !== "completed") {
+    return NextResponse.json(
+      {
+        ok: true,
+        ...result,
+        jobStatus,
+      },
+      { status: 202 },
+    );
+  }
 
   return NextResponse.json(
     {
-    ok: true,
-    ...result,
-      jobStatus: "pending",
+      ok: true,
+      ...result,
+      jobStatus,
     },
-    { status: 202 },
   );
 }
