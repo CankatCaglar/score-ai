@@ -1,7 +1,10 @@
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { createAnalysisJob } from "@/lib/analysis/repository";
+import {
+  createAnalysisJob,
+  processPendingAnalysisJobs,
+} from "@/lib/analysis/repository";
 import { getDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
 import {
   getAdminStorage,
@@ -48,6 +51,12 @@ async function uploadInputFile(ownerEmail: string, file: File) {
     mediaUrl,
     storagePath: objectPath,
   };
+}
+
+function triggerAnalysisWorkerInBackground() {
+  void processPendingAnalysisJobs(1).catch((error) => {
+    console.error("analysis worker trigger failed", error);
+  });
 }
 
 export async function POST(request: Request) {
@@ -100,6 +109,8 @@ export async function POST(request: Request) {
     originalFileName,
     sizeBytes,
   });
+
+  triggerAnalysisWorkerInBackground();
 
   return NextResponse.json(
     {
