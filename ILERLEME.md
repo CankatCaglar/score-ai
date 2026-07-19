@@ -3,8 +3,8 @@
 > Bu dosya, projenin **operasyonel durumunu** kısa ve net takip etmek için tutulur.  
 > Ürün vizyonu için: [README.md](./README.md)
 
-**Son güncelleme:** 15 Temmuz 2026  
-**Mevcut faz:** Faz 1.5 — Landing + Waitlist + Admin Operasyon + Blog CMS + Erken Erişim Kapısı
+**Son güncelleme:** 18 Temmuz 2026  
+**Mevcut faz:** Faz 2.1 — Dashboard Gerçek Veri + AI Analiz Pipeline + Operasyonel Stabilizasyon
 
 ---
 
@@ -18,8 +18,8 @@
 | Blog (`/blog`) | ✅ Canlı | Public blog liste/detay + admin editoryal akış |
 | Erken erişim davet akışı | ✅ Canlı | Token tabanlı invite link, tek kullanımlık doğrulama |
 | Dashboard erişim kontrolü | ✅ Canlı | `waitlist`/`early_access` modları + admin bypass |
-| Dashboard veri katmanı | 🟡 Kısmi | Ekranlar ileri seviye UI, veri/analiz motoru henüz mock |
-| AI analiz motoru (prod) | ⏳ Planlı | Gerçek scoring pipeline henüz bağlı değil |
+| Dashboard veri katmanı | ✅ Canlı | Liste, detay, overview ve sonuç ekranları Firestore + API ile gerçek veriden besleniyor |
+| AI analiz motoru (prod) | ✅ Canlı | Anthropic kategori analizi + rubric tabanlı deterministic skor hesaplama |
 
 ---
 
@@ -75,6 +75,29 @@
 - Admin oturumu olan kullanıcılar dashboard'a doğrudan erişebilir
 - `/admin-dashboard` path'i rewrite ile `/dashboard` altına bağlanır
 
+### 2.7 Dashboard veri ve analiz katmanı (yeni)
+- Gerçek API endpoint'leri:
+  - `/api/dashboard/overview`
+  - `/api/dashboard/analyses` (+ filtre/paginasyon/silme)
+  - `/api/dashboard/analyses/[slug]`
+  - `/api/dashboard/result`
+  - `/api/dashboard/media/[analysisId]`
+- `Yeni Analiz` akışı:
+  - `/api/analysis-jobs` ile dosya/URL alımı
+  - Firebase Storage yükleme + Firestore job oluşturma
+  - `processPendingAnalysisJobs()` ile kuyruğun işlenmesi
+- AI pipeline:
+  - 5 ana kategori için ayrı prompt çalıştırma
+  - Anthropic modelinden 31 kriterde `seviye + açıklama + aksiyon` üretimi
+  - Skorların AI'dan değil rubric algoritmasından hesaplanması (`currentScore`, `potentialScore`, kategori/mikro skorlar)
+- Caching:
+  - Görsel fingerprint + model + rubric/prompt version + platform + brand context hash ile cache key üretimi
+  - Aynı input için tekrar AI çağrısını azaltma
+- Stabilizasyon:
+  - Görsel formatını byte-level doğrulama (PNG/JPEG/JPG/WEBP/GIF)
+  - `jobStatus` (pending/processing/completed/failed) UI/API akışına yansıtıldı
+  - Başarısız analizde 0 puan ekranına düşmek yerine anlamlı hata mesajı
+
 ---
 
 ## 3) Teknik Mimari (Özet)
@@ -87,12 +110,17 @@
 - Vercel Analytics + Yandex Metrica script entegrasyonu
 
 ### Data & Backend
-- Firebase Firestore (`waitlist`, `blog_posts`, `early_access_invites`)
+- Firebase Firestore (`waitlist`, `blog_posts`, `early_access_invites`, `analyses`, `analysis_jobs`, `content_items`, `analysis_revisions`, `analysis_cache`)
 - Firebase Admin SDK (sunucu tarafı admin işlemleri)
 - Server Actions:
   - waitlist kayıt akışı
   - admin waitlist operasyonları
   - blog CRUD ve yayın yönetimi
+- API routes:
+  - Dashboard query katmanı (overview/liste/detay/sonuç/media)
+  - Analysis job ingestion + internal worker endpoint
+- Anthropic SDK tabanlı kategori analiz servisi (`lib/ai/anthropic.ts`)
+- Rubric/puanlama motoru (`lib/analysis/rubric.ts`) ile deterministic skor üretimi
 - Nodemailer (opsiyonel SMTP)
 - jsPDF + AutoTable (PDF export)
 
@@ -156,6 +184,8 @@ npm run build
 ### 5.4 Opsiyonel env
 - SMTP: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
 - Çeviri: `GOOGLE_TRANSLATE_API_KEY`
+- AI: `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_TIMEOUT_MS`
+- Worker: `ANALYSIS_WORKER_SECRET`
 
 > Not: `.env.local` veya service account JSON dosyaları repository'ye commit edilmez.
 
@@ -163,10 +193,10 @@ npm run build
 
 ## 6) Sıradaki Öncelikler (Kısa Roadmap)
 
-### P1 — Ürünleşme
-- Dashboard ekranlarını gerçek backend verisine bağlamak (mock'tan çıkış)
-- `Yeni Analiz` akışını gerçek dosya/URL yükleme + iş kuyruğuna bağlamak
-- Analiz sonucu ekranını gerçek pipeline çıktısıyla beslemek
+### P1 — Ürünleşme (aktif)
+- Dashboard için gerçek `sectorAverage` ve benchmark metodolojisinin devreye alınması
+- `AI insight` metinlerinin çoklu şablon/ton ve daha güçlü veri anlatımıyla zenginleştirilmesi
+- Video input için ya tam destek (frame extraction) ya da ürün seviyesinde net kısıtlama
 
 ### P1 — Güvenlik ve Operasyon
 - Admin login için rate limit / brute-force koruması
@@ -174,9 +204,9 @@ npm run build
 - Invite yönetimi için iptal/yenileme panel aksiyonları
 
 ### P2 — AI Katmanı
-- OpenAI tabanlı scoring pipeline entegrasyonu
-- Rubric/prompt versiyonlama
+- Rubric/prompt versiyonlamayı yönetim ekranına taşıma (operasyonel görünürlük)
 - İçgörü ve öneri kalitesini ölçen internal eval akışı
+- Retry/backoff + job orchestration metriklerinin üretim izlenebilirliği
 
 ---
 
@@ -190,6 +220,9 @@ npm run build
 | 10 Tem 2026 | Waitlist backend v1 (Firestore + SMTP opsiyon), responsive hardening |
 | 11 Tem 2026 | Admin panel v1: güvenli giriş, listeleme/silme, export (CSV/Word/PDF) |
 | 13-15 Tem 2026 | Blog altyapısı (public + admin CMS), erken erişim invite akışı, dashboard access mode ve proxy güncellemeleri |
+| 18 Tem 2026 | Dashboard mock’tan gerçek veriye geçirildi; analysis jobs + worker + Anthropic kategori analizi + rubric skor hesaplama canlıya alındı |
+| 18 Tem 2026 | `monthChange` ve `AI insight` gerçek veri mantığına alındı; insight kartında 3 satır kesme/expand UX eklendi |
+| 18 Tem 2026 | Görsel format doğrulaması sertleştirildi; `jobStatus` UI/API akışına işlendi, başarısız analizde yanlış 0 skor ekranı engellendi |
 
 ---
 
