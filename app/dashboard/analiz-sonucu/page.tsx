@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ArrowRight,
   ArrowUpRight,
   Bot,
@@ -11,6 +12,7 @@ import {
   Download,
   Eye,
   Heart,
+  Loader2,
   Share2,
   Sparkles,
   Target,
@@ -37,6 +39,8 @@ type ResultPayload = {
     newMetrics: { label: string; value: number }[];
     summary: string;
     canvaEditUrl?: string;
+    beforeMediaUrl?: string;
+    afterMediaUrl?: string;
   } | null;
 };
 
@@ -183,6 +187,8 @@ function AnalizSonucuPageContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<ResultPayload | null>(null);
+  const [generatingPotential, setGeneratingPotential] = useState(false);
+  const [potentialError, setPotentialError] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -223,12 +229,59 @@ function AnalizSonucuPageContent() {
   const newScore = payload?.analysis.potentialScore ?? revision?.newScore ?? oldScore;
   const scoreDiff = newScore - oldScore;
   const previewUrl = buildPreviewUrl(payload?.analysis);
+  const potentialPreviewUrl = payload?.analysis?.potentialImageUrl
+    ? `/api/dashboard/potential-media/${payload.analysis.id}`
+    : undefined;
+  const potentialStatus = payload?.analysis?.potentialImageStatus;
+  const alreadyGenerated = Boolean(potentialPreviewUrl);
+  const potentialBusy = generatingPotential || potentialStatus === "processing";
   const aiSummary = useMemo(
     () => summarizeAiCommentary(payload?.analysis ?? null),
     [payload?.analysis],
   );
   const jobStatus = payload?.analysis?.jobStatus;
   const isCompleted = jobStatus === "completed";
+
+  const handleGeneratePotentialImage = async () => {
+    if (!payload?.analysis?.id || potentialBusy || alreadyGenerated) return;
+    setGeneratingPotential(true);
+    setPotentialError(null);
+    try {
+      const response = await fetch("/api/dashboard/potential-image", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ analysisId: payload.analysis.id }),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        analysis?: Analysis;
+        revision?: ResultPayload["revision"];
+        message?: string;
+      };
+      if (!response.ok) {
+        throw new Error(data.message || "Potansiyel gorsel uretilemedi.");
+      }
+      if (!data.analysis) {
+        throw new Error("Guncel analiz verisi alinamadi.");
+      }
+      setPayload((current) =>
+        current
+          ? {
+              ...current,
+              analysis: data.analysis!,
+              revision: data.revision ?? current.revision,
+            }
+          : current,
+      );
+    } catch (generationError) {
+      setPotentialError(
+        generationError instanceof Error
+          ? generationError.message
+          : "Potansiyel gorsel uretimi basarisiz oldu.",
+      );
+    } finally {
+      setGeneratingPotential(false);
+    }
+  };
 
   if (!loading && payload?.analysis && !isCompleted) {
     const isFailed = jobStatus === "failed";
@@ -374,7 +427,14 @@ function AnalizSonucuPageContent() {
           </span>
           <div className="mt-4 flex items-start justify-between gap-4">
             <div className="relative aspect-square w-32 shrink-0 overflow-hidden rounded-2xl bg-brand-dark/10">
-              {previewUrl ? (
+              {potentialPreviewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={potentialPreviewUrl}
+                  alt={`${payload?.analysis?.title ?? "İçerik"} potansiyel`}
+                  className="size-full object-contain p-2"
+                />
+              ) : previewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={previewUrl}
@@ -401,6 +461,50 @@ function AnalizSonucuPageContent() {
               revision?.summary ??
               "Bu skor, mevcut eksiklerin optimize edilmesiyle ulaşılabilecek potansiyel seviyeyi temsil eder."}
           </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleGeneratePotentialImage}
+              disabled={potentialBusy || alreadyGenerated}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-dark px-3.5 py-2 text-xs font-semibold text-brand-neon transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              {alreadyGenerated ? (
+                <>
+                  <Sparkles className="size-3.5" strokeWidth={2} />
+                  Potansiyel gorsel bir kez uretildi
+                </>
+              ) : potentialBusy ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" strokeWidth={2} />
+                  Potansiyel gorsel uretiliyor...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="size-3.5" strokeWidth={2} />
+                  Potansiyel Gorsel Uret
+                </>
+              )}
+            </button>
+            {potentialPreviewUrl && (
+              <button
+                type="button"
+                onClick={() =>
+                  window.open(potentialPreviewUrl, "_blank", "noopener,noreferrer")}
+                className="inline-flex items-center gap-1 rounded-lg border border-brand-dark/10 px-3 py-2 text-xs font-medium text-brand-dark/70 hover:bg-brand-dark/5"
+              >
+                Potansiyel Gorseli Ac
+              </button>
+            )}
+          </div>
+          {payload?.analysis?.potentialImageStatus === "failed" && (
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs text-red-600">
+              <AlertTriangle className="size-3.5" strokeWidth={2} />
+              {payload.analysis.potentialImageError || "Uretim adimi basarisiz oldu."}
+            </p>
+          )}
+          {potentialError && (
+            <p className="mt-2 text-xs text-red-600">{potentialError}</p>
+          )}
         </div>
       </div>
 

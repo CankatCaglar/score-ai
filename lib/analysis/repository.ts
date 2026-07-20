@@ -330,6 +330,30 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
       typeof data.sourceUrl === "string" ? String(data.sourceUrl) : undefined,
     mediaUrl:
       typeof data.mediaUrl === "string" ? String(data.mediaUrl) : undefined,
+    potentialImageStatus:
+      typeof data.potentialImageStatus === "string"
+        ? (data.potentialImageStatus as Analysis["potentialImageStatus"])
+        : undefined,
+    potentialImageUrl:
+      typeof data.potentialImageUrl === "string"
+        ? String(data.potentialImageUrl)
+        : undefined,
+    potentialImageMimeType:
+      typeof data.potentialImageMimeType === "string"
+        ? String(data.potentialImageMimeType)
+        : undefined,
+    potentialImagePrompt:
+      typeof data.potentialImagePrompt === "string"
+        ? String(data.potentialImagePrompt)
+        : undefined,
+    potentialImageModel:
+      typeof data.potentialImageModel === "string"
+        ? String(data.potentialImageModel)
+        : undefined,
+    potentialImageError:
+      typeof data.potentialImageError === "string"
+        ? String(data.potentialImageError)
+        : undefined,
     jobId: typeof data.jobId === "string" ? String(data.jobId) : undefined,
     revisionId:
       typeof data.revisionId === "string" ? String(data.revisionId) : undefined,
@@ -414,6 +438,13 @@ export async function createAnalysisJob(
     mediaUrl: input.mediaUrl ?? null,
     storagePath: input.storagePath ?? null,
     mimeType: input.mimeType ?? null,
+    potentialImageStatus: "idle",
+    potentialImageUrl: null,
+    potentialImageMimeType: null,
+    potentialImageStoragePath: null,
+    potentialImagePrompt: null,
+    potentialImageModel: null,
+    potentialImageError: null,
     jobStatus: "pending",
     createdAt: now,
     updatedAt: now,
@@ -1030,6 +1061,18 @@ export async function deleteAnalysesByIds(
         }
       }
       await contentRef.delete();
+    }
+
+    const potentialImageStoragePath =
+      typeof analysisData.potentialImageStoragePath === "string"
+        ? analysisData.potentialImageStoragePath
+        : null;
+    if (potentialImageStoragePath) {
+      try {
+        await bucket.file(potentialImageStoragePath).delete({ ignoreNotFound: true });
+      } catch {
+        // storage delete best-effort; proceed with firestore cleanup
+      }
     }
 
     for (const revisionDoc of revisionSnap.docs) {

@@ -25,6 +25,7 @@
     "react-icons": "^5.7.0",
     "react-social-icons": "^6.26.0",
     "recharts": "^3.9.2",
+    "sharp": "^0.35.3",
     "simple-icons": "^16.26.0",
     "sonner": "^2.0.7"
   },

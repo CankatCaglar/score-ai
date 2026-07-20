@@ -58,6 +58,12 @@ export type Analysis = {
   ownerEmail: string;
   sourceUrl?: string;
   mediaUrl?: string;
+  potentialImageStatus?: "idle" | "processing" | "completed" | "failed";
+  potentialImageUrl?: string;
+  potentialImageMimeType?: string;
+  potentialImagePrompt?: string;
+  potentialImageModel?: string;
+  potentialImageError?: string;
   jobId?: string;
   revisionId?: string;
   createdAtMs: number;
