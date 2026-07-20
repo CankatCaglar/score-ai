@@ -41,7 +41,7 @@ function readLimit(request: Request): number {
   const { searchParams } = new URL(request.url);
   const limitParam = Number(searchParams.get("limit") ?? "3");
   const limitHeader = Number(request.headers.get("x-worker-limit") ?? "");
-  const raw = Number.isFinite(limitHeader) ? limitHeader : limitParam;
+  const raw = Number.isFinite(limitHeader) ? limitHeader : limitParam
   return Number.isFinite(raw) ? Math.max(1, Math.min(20, raw)) : 3;
 }
 

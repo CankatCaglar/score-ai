@@ -50,6 +50,16 @@ const loadingSteps = [
   "Rapor ekranina yonlendiriliyor...",
 ];
 
+function normalizeSourceUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^(www\.)?(instagram|linkedin)\.com\//i.test(trimmed)) {
+    return `https://${trimmed.replace(/^\/+/, "")}`;
+  }
+  return trimmed;
+}
+
 export default function YeniAnalizPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,7 +87,8 @@ export default function YeniAnalizPage() {
 
   const submitJob = async () => {
     setError(null);
-    if (!selectedFile && !url.trim()) {
+    const normalizedUrl = normalizeSourceUrl(url);
+    if (!selectedFile && !normalizedUrl) {
       setError("Lütfen bir görsel/video seçin veya bir post linki yapıştırın.");
       return;
     }
@@ -91,7 +102,7 @@ export default function YeniAnalizPage() {
     try {
       const formData = new FormData();
       formData.set("platformType", platformType);
-      if (url.trim()) formData.set("sourceUrl", url.trim());
+      if (normalizedUrl) formData.set("sourceUrl", normalizedUrl);
       if (selectedFile) formData.set("file", selectedFile);
 
       const response = await fetch("/api/analysis-jobs", {

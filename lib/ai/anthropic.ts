@@ -11,6 +11,8 @@ const DEFAULT_FETCH_HEADERS = {
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
   accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8,text/html;q=0.7",
 };
+const SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
+type SupportedImageType = (typeof SUPPORTED_IMAGE_TYPES)[number];
 
 type AnalyzeCategoryInput = {
   categoryId: NcqsCategoryId;
@@ -59,10 +61,12 @@ async function fetchImageAsBase64(
   imageUrl: string,
   depth = 0,
 ): Promise<{
-  mediaType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+  mediaType: SupportedImageType;
   data: string;
 }> {
-  const response = await fetch(imageUrl, {
+  const resolvedSocialMediaUrl = await resolveSocialMediaUrl(imageUrl);
+  const targetUrl = resolvedSocialMediaUrl ?? imageUrl;
+  const response = await fetch(targetUrl, {
     method: "GET",
     headers: DEFAULT_FETCH_HEADERS,
   });
@@ -78,28 +82,17 @@ async function fetchImageAsBase64(
       );
     }
     const html = await response.text();
-    const ogImageMatch = html.match(
-      /<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]+content=["']([^"']+)["'][^>]*>/i,
-    );
-    const candidateUrl = ogImageMatch?.[1]?.trim();
+    const candidateUrl = extractImageCandidateFromHtml(html);
     if (!candidateUrl) {
       throw new Error(
         "URL bir HTML sayfasi dondurdu ve dogrudan gorsel linki bulunamadi. Dogrudan gorsel URL kullanin.",
       );
     }
-    const resolved = new URL(candidateUrl, imageUrl).toString();
+    const resolved = new URL(candidateUrl, targetUrl).toString();
     return fetchImageAsBase64(resolved, depth + 1);
   }
 
-  const mediaType = contentType.includes("image/png")
-    ? "image/png"
-    : contentType.includes("image/webp")
-      ? "image/webp"
-      : contentType.includes("image/gif")
-        ? "image/gif"
-        : contentType.includes("image/jpeg") || contentType.includes("image/jpg")
-          ? "image/jpeg"
-          : null;
+  const mediaType = contentTypeToImageType(contentType);
   if (!mediaType) {
     throw new Error(`Desteklenmeyen gorsel turu: ${contentType || "unknown"}`);
   }
@@ -113,6 +106,217 @@ async function fetchImageAsBase64(
     mediaType,
     data: bytes.toString("base64"),
   };
+}
+
+function contentTypeToImageType(contentType: string): SupportedImageType | null {
+  if (contentType.includes("image/png")) return "image/png";
+  if (contentType.includes("image/webp")) return "image/webp";
+  if (contentType.includes("image/gif")) return "image/gif";
+  if (contentType.includes("image/jpeg") || contentType.includes("image/jpg")) {
+    return "image/jpeg";
+  }
+  return null;
+}
+
+function isInstagramUrl(url: URL) {
+  return /(^|\.)instagram\.com$/i.test(url.hostname);
+}
+
+function isLinkedInUrl(url: URL) {
+  return /(^|\.)linkedin\.com$/i.test(url.hostname);
+}
+
+function parseMetaTagAttrs(tag: string) {
+  const attrs: Record<string, string> = {};
+  for (const match of tag.matchAll(/([a-zA-Z:-]+)\s*=\s*["']([^"']*)["']/g)) {
+    attrs[match[1].toLowerCase()] = match[2];
+  }
+  return attrs;
+}
+
+function unescapeScriptUrl(value: string) {
+  return value
+    .replace(/\\u0026/g, "&")
+    .replace(/\\\//g, "/")
+    .replace(/\\u003d/g, "=");
+}
+
+function normalizeInstagramCdnCandidate(value: string) {
+  const normalized = unescapeScriptUrl(value).trim();
+  if (!normalized) return null;
+  if (!/^https?:\/\//i.test(normalized)) return null;
+  return normalized;
+}
+
+function pickInstagramImageFromApiPayload(
+  payload: Record<string, unknown>,
+  imgIndexFromUrl: number | null,
+) {
+  const root = (payload.graphql ?? payload.data ?? payload.items) as
+    | Record<string, unknown>
+    | undefined;
+  const media = (root?.shortcode_media ??
+    root?.xdt_shortcode_media ??
+    root) as Record<string, unknown> | undefined;
+  if (!media) return null;
+
+  const sidecar = media.edge_sidecar_to_children as
+    | { edges?: Array<{ node?: Record<string, unknown> }> }
+    | undefined;
+  const edges = Array.isArray(sidecar?.edges) ? sidecar.edges : [];
+  if (edges.length > 0) {
+    const index = Math.max(1, imgIndexFromUrl ?? 1) - 1;
+    const selectedNode = edges[index]?.node ?? edges[0]?.node;
+    const sidecarUrl =
+      (selectedNode?.display_url as string | undefined) ||
+      ((selectedNode?.thumbnail_resources as Array<{ src?: string }> | undefined)?.[0]
+        ?.src as string | undefined);
+    const normalized = sidecarUrl ? normalizeInstagramCdnCandidate(sidecarUrl) : null;
+    if (normalized) return normalized;
+  }
+
+  const displayUrl = typeof media.display_url === "string" ? media.display_url : null;
+  if (displayUrl) {
+    const normalized = normalizeInstagramCdnCandidate(displayUrl);
+    if (normalized) return normalized;
+  }
+
+  const thumbnailUrl =
+    typeof media.thumbnail_src === "string"
+      ? media.thumbnail_src
+      : typeof media.thumbnail_url === "string"
+        ? media.thumbnail_url
+        : null;
+  if (thumbnailUrl) {
+    const normalized = normalizeInstagramCdnCandidate(thumbnailUrl);
+    if (normalized) return normalized;
+  }
+
+  return null;
+}
+
+async function resolveInstagramViaPublicApi(url: URL): Promise<string | null> {
+  const shortcodeMatch = url.pathname.match(/\/(?:p|reel|tv)\/([^/?#]+)/i);
+  const shortcode = shortcodeMatch?.[1]?.trim();
+  if (!shortcode) return null;
+
+  const imgIndexRaw = Number(url.searchParams.get("img_index") ?? "");
+  const imgIndex = Number.isFinite(imgIndexRaw) && imgIndexRaw > 0 ? imgIndexRaw : null;
+
+  const endpoint = new URL(`https://www.instagram.com/p/${shortcode}/`);
+  endpoint.searchParams.set("__a", "1");
+  endpoint.searchParams.set("__d", "dis");
+
+  try {
+    const response = await fetch(endpoint.toString(), {
+      method: "GET",
+      headers: {
+        ...DEFAULT_FETCH_HEADERS,
+        accept: "application/json,text/plain,*/*",
+        "x-ig-app-id": "936619743392459",
+      },
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as Record<string, unknown>;
+    return pickInstagramImageFromApiPayload(payload, imgIndex);
+  } catch {
+    return null;
+  }
+}
+
+function extractImageCandidateFromHtml(html: string): string | null {
+  const metaPriority = new Map([
+    ["og:image:secure_url", 1],
+    ["og:image", 2],
+    ["twitter:image", 3],
+    ["twitter:image:src", 4],
+  ]);
+  let bestCandidate: { priority: number; value: string } | null = null;
+  for (const metaTag of html.match(/<meta\b[^>]*>/gi) ?? []) {
+    const attrs = parseMetaTagAttrs(metaTag);
+    const key = (attrs.property || attrs.name || "").toLowerCase();
+    const content = attrs.content?.trim();
+    if (!content) continue;
+    const priority = metaPriority.get(key);
+    if (!priority) continue;
+    if (!bestCandidate || priority < bestCandidate.priority) {
+      bestCandidate = { priority, value: content };
+    }
+  }
+  if (bestCandidate?.value) return bestCandidate.value;
+
+  const scriptPatterns = [
+    /"display_url"\s*:\s*"([^"]+)"/i,
+    /"thumbnail_url"\s*:\s*"([^"]+)"/i,
+    /"image_url"\s*:\s*"([^"]+)"/i,
+    /"image"\s*:\s*\{\s*"url"\s*:\s*"([^"]+)"/i,
+  ];
+  for (const pattern of scriptPatterns) {
+    const match = html.match(pattern);
+    const value = match?.[1]?.trim();
+    if (value) return unescapeScriptUrl(value);
+  }
+  return null;
+}
+
+async function resolveSocialMediaUrl(rawUrl: string): Promise<string | null> {
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+
+  if (!isInstagramUrl(parsedUrl) && !isLinkedInUrl(parsedUrl)) {
+    return null;
+  }
+
+  const candidates: string[] = [];
+  if (isInstagramUrl(parsedUrl)) {
+    const endpoint = new URL("https://www.instagram.com/oembed/");
+    endpoint.searchParams.set("url", parsedUrl.toString());
+    endpoint.searchParams.set("omitscript", "true");
+    if (process.env.INSTAGRAM_OEMBED_ACCESS_TOKEN?.trim()) {
+      endpoint.searchParams.set(
+        "access_token",
+        process.env.INSTAGRAM_OEMBED_ACCESS_TOKEN.trim(),
+      );
+    }
+    candidates.push(endpoint.toString());
+  }
+  if (isLinkedInUrl(parsedUrl)) {
+    const endpoint = new URL("https://www.linkedin.com/oembed");
+    endpoint.searchParams.set("url", parsedUrl.toString());
+    candidates.push(endpoint.toString());
+  }
+
+  for (const endpoint of candidates) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: { accept: "application/json" },
+      });
+      if (!response.ok) continue;
+      const payload = (await response.json()) as Record<string, unknown>;
+      const imageUrl = typeof payload.thumbnail_url === "string"
+        ? payload.thumbnail_url
+        : typeof payload.url === "string"
+          ? payload.url
+          : null;
+      if (imageUrl?.trim()) {
+        return imageUrl.trim();
+      }
+    } catch {
+      // fallback to HTML metadata extraction flow
+    }
+  }
+
+  if (isInstagramUrl(parsedUrl)) {
+    const fromPublicApi = await resolveInstagramViaPublicApi(parsedUrl);
+    if (fromPublicApi) return fromPublicApi;
+  }
+
+  return null;
 }
 
 function extractTextContent(message: unknown) {
