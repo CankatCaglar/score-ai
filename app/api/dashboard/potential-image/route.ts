@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import sharp from "sharp";
-import { generatePotentialImageWithRecraft } from "@/lib/ai/recraft";
+import {
+  detectImageDimensions,
+  generatePotentialImageWithRecraft,
+  pickClosestRecraftSize,
+} from "@/lib/ai/recraft";
 import { CRITERION_DEFINITIONS } from "@/lib/analysis/rubric";
 import { getDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
 import {
@@ -37,42 +40,6 @@ function contentTypeToExtension(contentType: string | null) {
   return { ext: ".jpg", mimeType: "image/jpeg" };
 }
 
-function normalizeImageMimeType(value: string | null | undefined): string | null {
-  const normalized = (value ?? "").toLowerCase().trim();
-  if (!normalized) return null;
-  if (normalized.includes("image/jpeg") || normalized.includes("image/jpg")) {
-    return "image/jpeg";
-  }
-  if (normalized.includes("image/png")) return "image/png";
-  if (normalized.includes("image/webp")) return "image/webp";
-  if (normalized.includes("image/gif")) return "image/gif";
-  return null;
-}
-
-async function convertImageToMimeType(bytes: Buffer, targetMimeType: string) {
-  const normalizedTarget = normalizeImageMimeType(targetMimeType);
-  if (!normalizedTarget) {
-    throw new Error(`Desteklenmeyen hedef format: ${targetMimeType}`);
-  }
-
-  let pipeline = sharp(bytes, { animated: true });
-  if (normalizedTarget === "image/png") {
-    pipeline = pipeline.png({ compressionLevel: 9 });
-  } else if (normalizedTarget === "image/jpeg") {
-    pipeline = pipeline.jpeg({ quality: 92 });
-  } else if (normalizedTarget === "image/webp") {
-    pipeline = pipeline.webp({ quality: 90 });
-  } else if (normalizedTarget === "image/gif") {
-    pipeline = pipeline.gif();
-  }
-
-  const convertedBytes = await pipeline.toBuffer();
-  if (!convertedBytes.length) {
-    throw new Error("Format donusumu sonrasi bos gorsel olustu.");
-  }
-  return { bytes: convertedBytes, mimeType: normalizedTarget };
-}
-
 function buildPotentialImagePrompt(params: {
   title: string;
   platformType: "instagram" | "linkedin";
@@ -80,7 +47,6 @@ function buildPotentialImagePrompt(params: {
   potentialScore: number;
   suggestions: string[];
   criteriaChecklist: string[];
-  originalMimeType?: string;
 }) {
   const platformText = params.platformType === "instagram" ? "Instagram feed post" : "LinkedIn feed post";
   const suggestionsText =
@@ -93,26 +59,43 @@ function buildPotentialImagePrompt(params: {
       : "No explicit low-score checklist available; apply only minor readability and hierarchy improvements.";
 
   return [
-    `Create a professional ${platformText} by strictly editing the reference image; do not create a new concept.`,
+    `Create a professional ${platformText} by editing the reference image only.`,
     `Current score is ${params.score}/100 and target potential score is ${params.potentialScore}/100.`,
-    `Output file format must stay exactly same as input (${params.originalMimeType ?? "original format"}).`,
-    "MANDATORY PRESERVATION RULES (do not violate):",
-    "- Keep the same product packshot, bottle/pack shape, logo positions, and brand marks",
-    "- Brand logos, product name text, and product title text are immutable",
-    "- Keep all existing text in the same language and same wording (no new claims, no lorem text)",
-    "- Keep typography family/style very close; only micro-adjust kerning/line-height/contrast",
-    "- Keep composition, crop, camera angle and scene structure nearly identical",
-    "- Keep color system and brand palette consistent with the source image",
-    "- Do NOT add new logos, new people, new products, or unrelated backgrounds",
-    "- Do NOT redesign from scratch; this is an optimization pass only",
-    "Apply these high-impact optimization directives:",
+    "You MUST obey these non-negotiable brand-safety and consistency rules:",
+    "",
+    "1) Product Integrity (must stay unchanged)",
+    "- The main product itself must remain exactly the same model, color, form factor, packaging and material.",
+    "- Never swap the product with another product or another variant.",
+    "- Product identity continuity is mandatory.",
+    "",
+    "2) Brand Identity & Logos (must stay unchanged)",
+    "- Keep all logos, co-brand logos, icons, brand marks and trademark elements exactly as in the reference.",
+    "- Keep existing brand color palette and typographic character.",
+    "- Do not invent new logos or replace brand text with unrelated text.",
+    "",
+    "3) Core Narrative & Concept (must stay unchanged)",
+    "- Preserve the same main story, theme and emotional message from the original visual.",
+    "- Do not create a new campaign concept.",
+    "- Only strengthen the existing narrative by improving clarity, contrast and visual emphasis.",
+    "",
+    "4) Compositional Focus (must stay unchanged)",
+    "- Keep the product in the same dominant focus area and similar camera/kadraj logic.",
+    "- Keep overall scene structure highly similar.",
+    "- Only add or optimize missing supporting layers when required by checklist (e.g., CTA, value proposition, badge).",
+    "",
+    "Text/Typography constraints:",
+    "- Preserve original language and wording as much as possible.",
+    "- No nonsense text, no gibberish, no lorem ipsum.",
+    "- Keep font family/style close to original; only minor readability refinements allowed.",
+    "",
+    "Optimization directives from analysis:",
     suggestionsText,
-    "Apply only the following rubric-linked checklist:",
+    "Rubric-linked checklist (only these changes are allowed):",
     checklistText,
-    "Output constraints:",
-    "- Keep content policy-safe, realistic and brand-ready",
-    "- Change intensity must be low-to-moderate and fully traceable to checklist items",
-    "- Preserve visual identity first, optimize performance second",
+    "Output quality gate:",
+    "- Make balanced, moderate improvements only.",
+    "- Keep identity and consistency first, optimization second.",
+    "- Final result must look like an improved version of the same creative, not a new design.",
     `Campaign context title: ${params.title}`,
   ].join("\n");
 }
@@ -146,14 +129,7 @@ async function resolveReferenceImageUrl(
   const data = (doc.data() ?? {}) as Record<string, unknown>;
   const storagePath =
     typeof data.storagePath === "string" ? data.storagePath : null;
-  const mimeType =
-    typeof data.mimeType === "string" ? data.mimeType : null;
-  if (!storagePath) {
-    return {
-      url: fallbackUrl ?? null,
-      mimeType: normalizeImageMimeType(mimeType),
-    };
-  }
+  if (!storagePath) return fallbackUrl ?? null;
 
   try {
     const storage = getAdminStorage();
@@ -163,15 +139,9 @@ async function resolveReferenceImageUrl(
       action: "read",
       expires: Date.now() + 30 * 60 * 1000,
     });
-    return {
-      url: signedUrl,
-      mimeType: normalizeImageMimeType(mimeType),
-    };
+    return signedUrl;
   } catch {
-    return {
-      url: fallbackUrl ?? null,
-      mimeType: normalizeImageMimeType(mimeType),
-    };
+    return fallbackUrl ?? null;
   }
 }
 
@@ -190,6 +160,23 @@ async function downloadGeneratedImage(imageUrl: string) {
   }
   const inferred = contentTypeToExtension(response.headers.get("content-type"));
   return { bytes, mimeType: inferred.mimeType };
+}
+
+async function resolveReferenceSize(referenceImageUrl: string): Promise<string | undefined> {
+  try {
+    const response = await fetch(referenceImageUrl, {
+      method: "GET",
+      headers: DOWNLOAD_HEADERS,
+      redirect: "follow",
+    });
+    if (!response.ok) return undefined;
+    const bytes = Buffer.from(await response.arrayBuffer());
+    const dimensions = detectImageDimensions(bytes);
+    if (!dimensions) return undefined;
+    return pickClosestRecraftSize(dimensions.width, dimensions.height);
+  } catch {
+    return undefined;
+  }
 }
 
 export async function POST(request: Request) {
@@ -240,11 +227,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const reference = await resolveReferenceImageUrl(
+  const referenceImageUrl = await resolveReferenceImageUrl(
     analysis.id,
     analysis.mediaUrl || analysis.sourceUrl,
   );
-  const referenceImageUrl = reference.url;
   if (!referenceImageUrl) {
     return NextResponse.json(
       { error: "REFERENCE_IMAGE_MISSING", message: "Kaynak gorsel bulunamadi." },
@@ -284,34 +270,26 @@ export async function POST(request: Request) {
       potentialScore: analysis.potentialScore,
       suggestions: suggestionTexts,
       criteriaChecklist: lowScoreCriteriaChecklist,
-      originalMimeType: reference.mimeType ?? undefined,
     });
 
+    const referenceSize = await resolveReferenceSize(referenceImageUrl);
     const generated = await generatePotentialImageWithRecraft({
       prompt,
       referenceImageUrl,
+      size: referenceSize,
     });
     const downloaded = await downloadGeneratedImage(generated.imageUrl);
-    const sourceMimeType = reference.mimeType;
-    const generatedMimeType = normalizeImageMimeType(downloaded.mimeType);
-    let finalBytes = downloaded.bytes;
-    let finalMimeType = downloaded.mimeType;
-    if (sourceMimeType && generatedMimeType && sourceMimeType !== generatedMimeType) {
-      const converted = await convertImageToMimeType(downloaded.bytes, sourceMimeType);
-      finalBytes = converted.bytes;
-      finalMimeType = converted.mimeType;
-    }
     const stored = await uploadGeneratedImage(
       ownerEmail,
-      finalBytes,
-      finalMimeType,
+      downloaded.bytes,
+      downloaded.mimeType,
     );
 
     await analysisRef.set(
       {
         potentialImageStatus: "completed",
         potentialImageUrl: stored.mediaUrl,
-        potentialImageMimeType: finalMimeType,
+        potentialImageMimeType: downloaded.mimeType,
         potentialImageStoragePath: stored.storagePath,
         potentialImagePrompt: generated.prompt,
         potentialImageModel: generated.modelUsed,
