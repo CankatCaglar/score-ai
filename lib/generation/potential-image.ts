@@ -178,6 +178,30 @@ function extractBrandColorsFromText(input?: string): string[] {
   return Array.from(unique).slice(0, 6);
 }
 
+function sanitizeCampaignTitleForPrompt(title: string): string | null {
+  const trimmed = title.trim();
+  if (!trimmed) return null;
+  const lowered = trimmed.toLowerCase();
+  const blockedMarkers = [
+    "snapinsta",
+    "instagram",
+    "linkedin",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    "post analizi",
+  ];
+  if (blockedMarkers.some((marker) => lowered.includes(marker))) {
+    return null;
+  }
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  const longNumericCount = parts.filter((part) => /^[0-9]{7,}$/.test(part)).length;
+  if (longNumericCount >= 1) return null;
+  if (/^[a-z0-9_-]{10,}$/i.test(trimmed)) return null;
+  return trimmed;
+}
+
 function tryExtractUrlFromUnknown(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") {
@@ -334,6 +358,7 @@ function buildBackgroundPrompt(input: {
   suggestions: string[];
 }) {
   const platformText = input.platformType === "instagram" ? "Instagram feed" : "LinkedIn feed";
+  const promptTitle = sanitizeCampaignTitleForPrompt(input.title);
   const brandColorText =
     input.brandColors.length > 0
       ? input.brandColors.join(", ")
@@ -362,7 +387,7 @@ function buildBackgroundPrompt(input: {
     `Generate a premium ${platformText} background-only layer.`,
     "Hard rule: the output must NOT include any product, logo, packaging, bottle, person face, hands, or readable brand text.",
     "Produce only atmosphere and supporting visual context for later compositing.",
-    `Campaign title: ${input.title}`,
+    promptTitle ? `Campaign context: ${promptTitle}` : "Campaign context: branded social ad creative.",
     `Brand color harmony palette: ${brandColorText}`,
     "Creative goals:",
     "- Scroll stopper visual depth with controlled lighting and realistic shadows.",
@@ -386,6 +411,7 @@ function buildFallbackBackgroundPrompt(input: {
   brandColors: string[];
 }) {
   const platformText = input.platformType === "instagram" ? "Instagram feed" : "LinkedIn feed";
+  const promptTitle = sanitizeCampaignTitleForPrompt(input.title);
   const brandColorText =
     input.brandColors.length > 0
       ? input.brandColors.join(", ")
@@ -395,7 +421,7 @@ function buildFallbackBackgroundPrompt(input: {
     `Respect color harmony: ${brandColorText}.`,
     "No product, no logo, no text, no human face.",
     "Keep center safe area empty for product overlay.",
-    `Campaign title: ${input.title}`,
+    promptTitle ? `Campaign context: ${promptTitle}` : "Campaign context: branded social ad creative.",
   ].join("\n");
 }
 
@@ -407,6 +433,7 @@ function buildStage3Prompt(input: {
   textBlocks: DetectedTextBlock[];
   language: string;
 }) {
+  const promptTitle = sanitizeCampaignTitleForPrompt(input.title);
   const suggestionsText =
     input.suggestions.length > 0
       ? input.suggestions.slice(0, 6).map((item, index) => `${index + 1}. ${item}`).join("\n")
@@ -425,7 +452,7 @@ function buildStage3Prompt(input: {
     "You are performing final typography and text-layout optimization on a prepared ad creative.",
     "Do NOT generate a new product, new logo, new brand name, or new face.",
     `Current score: ${input.score}/100. Target potential score: ${input.potentialScore}/100.`,
-    `Campaign title: ${input.title}`,
+    promptTitle ? `Campaign context: ${promptTitle}` : "Campaign context: branded social ad creative.",
     `Detected language: ${input.language}`,
     "Immutable identity rules:",
     "- NEVER alter product model, color, form, texture, packaging, logo, badge, or trademark.",

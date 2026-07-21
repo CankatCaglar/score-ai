@@ -20,17 +20,28 @@ const SOURCE_FETCH_HEADERS = {
 };
 
 function normalizePlatform(value: string): Platform {
-  return value === "linkedin" ? "linkedin" : "instagram";
+  void value;
+  return "instagram";
 }
 
 function normalizeIncomingSourceUrl(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  if (/^(www\.)?(instagram|linkedin)\.com\//i.test(trimmed)) {
+  if (/^(www\.)?instagram\.com\//i.test(trimmed)) {
     return `https://${trimmed.replace(/^\/+/, "")}`;
   }
   return trimmed;
+}
+
+function isLinkedInSourceUrl(sourceUrl: string): boolean {
+  if (!sourceUrl) return false;
+  try {
+    const parsed = new URL(sourceUrl);
+    return /(^|\.)linkedin\.com$/i.test(parsed.hostname);
+  } catch {
+    return /(^|\.)linkedin\.com\//i.test(sourceUrl);
+  }
 }
 
 function guessTitle(sourceUrl?: string, fileName?: string): string {
@@ -40,8 +51,17 @@ function guessTitle(sourceUrl?: string, fileName?: string): string {
   if (!sourceUrl) return "Yeni Analiz";
   try {
     const parsed = new URL(sourceUrl);
+    if (/(^|\.)instagram\.com$/i.test(parsed.hostname)) {
+      return "Instagram Post Analizi";
+    }
+    if (/(^|\.)linkedin\.com$/i.test(parsed.hostname)) {
+      return "LinkedIn Post Analizi";
+    }
     const chunk = parsed.pathname.split("/").filter(Boolean).slice(-1)[0];
-    if (chunk) return `Post Analizi ${chunk}`;
+    if (chunk) {
+      const looksTechnical = /^[a-z0-9_-]{8,}$/i.test(chunk) || /^[0-9]{6,}$/.test(chunk);
+      if (!looksTechnical) return `Post Analizi ${chunk}`;
+    }
   } catch {
     // noop
   }
@@ -492,6 +512,17 @@ export async function POST(request: Request) {
   const file = formData.get("file");
   const hasFile = file instanceof File && file.size > 0;
   const hasUrl = sourceUrl.length > 0;
+
+  if (hasUrl && isLinkedInSourceUrl(sourceUrl)) {
+    return NextResponse.json(
+      {
+        error: "LINKEDIN_NOT_SUPPORTED",
+        message:
+          "LinkedIn link analizi su an devre disi. Lutfen Instagram post linki veya dogrudan gorsel yukleyin.",
+      },
+      { status: 422 },
+    );
+  }
 
   if (!hasFile && !hasUrl) {
     return NextResponse.json(

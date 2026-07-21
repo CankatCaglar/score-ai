@@ -54,7 +54,7 @@ function normalizeSourceUrl(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "";
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  if (/^(www\.)?(instagram|linkedin)\.com\//i.test(trimmed)) {
+  if (/^(www\.)?instagram\.com\//i.test(trimmed)) {
     return `https://${trimmed.replace(/^\/+/, "")}`;
   }
   return trimmed;
@@ -66,9 +66,7 @@ export default function YeniAnalizPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [url, setUrl] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [platformType, setPlatformType] = useState<"instagram" | "linkedin">(
-    "instagram",
-  );
+  const platformType = "instagram" as const;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
@@ -265,25 +263,9 @@ export default function YeniAnalizPage() {
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium text-brand-dark/45">Platform:</span>
-          {[
-            { id: "instagram", label: "Instagram" },
-            { id: "linkedin", label: "LinkedIn" },
-          ].map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() =>
-                setPlatformType(item.id as "instagram" | "linkedin")
-              }
-              className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                platformType === item.id
-                  ? "bg-brand-dark text-white"
-                  : "bg-brand-dark/5 text-brand-dark/70 hover:bg-brand-dark/10"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+          <span className="rounded-full bg-brand-dark px-3 py-1 text-xs font-semibold text-white">
+            Instagram
+          </span>
         </div>
         <div className="mt-4 flex justify-center">
           <button
