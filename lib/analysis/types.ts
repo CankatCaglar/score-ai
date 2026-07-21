@@ -64,6 +64,16 @@ export type Analysis = {
   potentialImagePrompt?: string;
   potentialImageModel?: string;
   potentialImageError?: string;
+  potentialImageTriggerSource?: "manual";
+  potentialImageDebug?: {
+    stage1SubjectUrl?: string;
+    stage2BackgroundUrl?: string;
+    stage3CompositeReferenceUrl?: string;
+    backgroundPrompt?: string;
+    preservedTextCount?: number;
+    textExtractionConfidence?: number;
+    stage3ModelUsed?: string;
+  };
   jobId?: string;
   revisionId?: string;
   createdAtMs: number;

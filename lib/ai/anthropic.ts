@@ -32,6 +32,31 @@ type AnalyzeCategoryResult = {
   rawResponse: string;
 };
 
+export type DetectedTextBlock = {
+  text: string;
+  role: "headline" | "subheadline" | "body" | "cta" | "brand" | "legal" | "unknown";
+  bbox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  confidence: number;
+};
+
+type ExtractVisualTextLayoutInput = {
+  imageUrl?: string;
+  imageBase64?: string;
+  imageMediaType?: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+};
+
+export type ExtractVisualTextLayoutResult = {
+  modelUsed: string;
+  language: string;
+  blocks: DetectedTextBlock[];
+  rawResponse: string;
+};
+
 function getAnthropicClient() {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -351,6 +376,37 @@ function cleanJsonText(rawText: string) {
   return trimmed;
 }
 
+function isLikelyTechnicalOverlayText(text: string) {
+  const normalized = text.trim().toLowerCase();
+  if (!normalized) return false;
+  const explicitMarkers = [
+    "snapinsta",
+    "screenshot",
+    "screen shot",
+    "screen_record",
+    "instagram.com",
+    "tiktok.com",
+    "facebook.com",
+    "x.com/",
+    "twitter.com",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    "img_",
+    "dsc_",
+  ];
+  if (explicitMarkers.some((marker) => normalized.includes(marker))) return true;
+
+  const tokenParts = normalized.split(/\s+/).filter(Boolean);
+  const longNumericTokenCount = tokenParts.filter((part) => /^[0-9]{7,}$/.test(part)).length;
+  // Ex: "snapinsta.to 742575218 105923304..." style watermark
+  if (normalized.includes(".to") && longNumericTokenCount >= 1) return true;
+  if (longNumericTokenCount >= 3 && tokenParts.length <= 8) return true;
+
+  return false;
+}
+
 function parseAndValidateEvaluations(
   rawText: string,
   criteriaKeys: string[],
@@ -471,4 +527,127 @@ export async function analyzeCategoryWithAnthropic(
     const message = error instanceof Error ? error.message : "Bilinmeyen Anthropic hatasi.";
     throw new Error(`Anthropic kategori analizi basarisiz (${input.categoryId}): ${message}`);
   }
+}
+
+export async function extractVisualTextLayoutWithAnthropic(
+  input: ExtractVisualTextLayoutInput,
+): Promise<ExtractVisualTextLayoutResult> {
+  const client = getAnthropicClient();
+  const modelUsed = getAnthropicModel();
+  const timeoutMs = getTimeoutMs();
+  const image =
+    input.imageBase64 && input.imageMediaType
+      ? { data: input.imageBase64, mediaType: input.imageMediaType }
+      : input.imageUrl
+        ? await fetchImageAsBase64(input.imageUrl)
+        : null;
+  if (!image) {
+    throw new Error("OCR icin gorsel kaynagi bulunamadi.");
+  }
+
+  const schemaText = `{
+  "language": "tr|en|mixed|unknown",
+  "blocks": [
+    {
+      "text": "exact visible text",
+      "role": "headline|subheadline|body|cta|brand|legal|unknown",
+      "bbox": { "x": 0.0, "y": 0.0, "width": 0.0, "height": 0.0 },
+      "confidence": 0.0
+    }
+  ]
+}`;
+
+  const messages: MessageParam[] = [
+    {
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: [
+            "Read all visible text from this ad image and return JSON only.",
+            "Text must be preserved exactly as seen (no rewriting).",
+            "bbox values are normalized between 0 and 1 against image width/height.",
+            "If uncertain about a token, keep it as seen and lower confidence.",
+            "Exclude non-creative technical overlays: platform watermarks, downloader signatures (e.g. SnapInsta), filenames, timestamps, or UI/debug strings.",
+            `JSON schema:\n${schemaText}`,
+          ].join("\n\n"),
+          cache_control: { type: "ephemeral" },
+        },
+        {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: image.mediaType,
+            data: image.data,
+          },
+        },
+      ],
+    },
+  ];
+
+  const response = await withTimeout(
+    client.messages.create({
+      model: modelUsed,
+      max_tokens: 2048,
+      messages,
+    }),
+    timeoutMs,
+  );
+
+  const rawText = extractTextContent(response);
+  const parsed = JSON.parse(cleanJsonText(rawText)) as {
+    language?: unknown;
+    blocks?: unknown;
+  };
+
+  const blocksRaw = Array.isArray(parsed.blocks) ? parsed.blocks : [];
+  const blocks: DetectedTextBlock[] = blocksRaw
+    .map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+      const record = item as Record<string, unknown>;
+      const bboxRaw =
+        record.bbox && typeof record.bbox === "object" && !Array.isArray(record.bbox)
+          ? (record.bbox as Record<string, unknown>)
+          : null;
+      if (!bboxRaw) return null;
+      const text = String(record.text ?? "").trim();
+      if (!text) return null;
+      if (isLikelyTechnicalOverlayText(text)) return null;
+      const roleRaw = String(record.role ?? "unknown").toLowerCase();
+      const role: DetectedTextBlock["role"] =
+        roleRaw === "headline" ||
+        roleRaw === "subheadline" ||
+        roleRaw === "body" ||
+        roleRaw === "cta" ||
+        roleRaw === "brand" ||
+        roleRaw === "legal"
+          ? roleRaw
+          : "unknown";
+      const x = Number(bboxRaw.x ?? 0);
+      const y = Number(bboxRaw.y ?? 0);
+      const width = Number(bboxRaw.width ?? 0);
+      const height = Number(bboxRaw.height ?? 0);
+      const confidenceRaw = Number(record.confidence ?? 0);
+      return {
+        text,
+        role,
+        bbox: {
+          x: Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0,
+          y: Number.isFinite(y) ? Math.max(0, Math.min(1, y)) : 0,
+          width: Number.isFinite(width) ? Math.max(0, Math.min(1, width)) : 0,
+          height: Number.isFinite(height) ? Math.max(0, Math.min(1, height)) : 0,
+        },
+        confidence: Number.isFinite(confidenceRaw)
+          ? Math.max(0, Math.min(1, confidenceRaw))
+          : 0,
+      };
+    })
+    .filter((item): item is DetectedTextBlock => Boolean(item));
+
+  return {
+    modelUsed,
+    language: String(parsed.language ?? "unknown"),
+    blocks,
+    rawResponse: rawText,
+  };
 }

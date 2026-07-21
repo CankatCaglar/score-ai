@@ -354,6 +354,16 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
       typeof data.potentialImageError === "string"
         ? String(data.potentialImageError)
         : undefined,
+    potentialImageTriggerSource:
+      typeof data.potentialImageTriggerSource === "string"
+        ? "manual"
+        : undefined,
+    potentialImageDebug:
+      data.potentialImageDebug &&
+      typeof data.potentialImageDebug === "object" &&
+      !Array.isArray(data.potentialImageDebug)
+        ? (data.potentialImageDebug as Analysis["potentialImageDebug"])
+        : undefined,
     jobId: typeof data.jobId === "string" ? String(data.jobId) : undefined,
     revisionId:
       typeof data.revisionId === "string" ? String(data.revisionId) : undefined,

@@ -8,6 +8,13 @@ type RecraftGenerateInput = {
   size?: string;
 };
 
+type RecraftTypographyLayoutInput = {
+  prompt: string;
+  referenceImageUrl: string;
+  textManifest: unknown;
+  size?: string;
+};
+
 const RECRAFT_SUPPORTED_SIZES = [
   "1024x1024",
   "1365x1024",
@@ -326,4 +333,59 @@ export async function generatePotentialImageWithRecraft(
   }
 
   throw new Error(`Recraft gorsel uretimi basarisiz. ${lastError ?? ""}`.trim());
+}
+
+export async function generateTypographyLayoutWithRecraft(
+  input: RecraftTypographyLayoutInput,
+): Promise<RecraftGenerateResult> {
+  const config = getRecraftConfig();
+  const basePayload: Record<string, unknown> = {
+    model: config.model,
+    prompt: input.prompt,
+    response_format: "url",
+    image_url: input.referenceImageUrl,
+    reference_image_url: input.referenceImageUrl,
+    image: { url: input.referenceImageUrl },
+    text_layout_manifest: input.textManifest,
+  };
+  const resolvedSize = input.size?.trim() || config.imageSize || "";
+  const payloadAttempts: Array<Record<string, unknown>> = [];
+  if (resolvedSize) {
+    payloadAttempts.push({ ...basePayload, size: resolvedSize });
+  } else {
+    payloadAttempts.push({ ...basePayload });
+  }
+  if (resolvedSize && resolvedSize !== "1024x1024") {
+    payloadAttempts.push({ ...basePayload, size: "1024x1024" });
+  }
+
+  const endpoint = `${config.baseUrl}/v1/images/generations`;
+
+  let lastError: string | null = null;
+  for (const payload of payloadAttempts) {
+    try {
+      const parsed = await requestRecraftEndpoint(
+        endpoint,
+        payload,
+        config.apiKey,
+        config.timeoutMs,
+      );
+      const imageUrl = tryExtractUrlFromUnknown(parsed);
+      if (!imageUrl) {
+        throw new Error("Recraft typography/layout yanitinda gorsel URL bulunamadi.");
+      }
+      return {
+        imageUrl,
+        modelUsed: config.model,
+        prompt: input.prompt,
+        endpointUsed: endpoint,
+      };
+    } catch (error) {
+      lastError =
+        error instanceof Error ? error.message : "Bilinmeyen Recraft typography/layout hatasi.";
+      const isSizeError = /image size|doesn'?t support/i.test(lastError);
+      if (!isSizeError) break;
+    }
+  }
+  throw new Error(`Recraft typography/layout basarisiz. ${lastError ?? ""}`.trim());
 }
