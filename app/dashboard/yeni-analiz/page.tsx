@@ -66,7 +66,7 @@ export default function YeniAnalizPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [url, setUrl] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const platformType = "instagram" as const;
+  const [platformType] = useState<"instagram">("instagram");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(0);

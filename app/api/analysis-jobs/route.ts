@@ -19,11 +19,6 @@ const SOURCE_FETCH_HEADERS = {
   accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8,text/html;q=0.7",
 };
 
-function normalizePlatform(value: string): Platform {
-  void value;
-  return "instagram";
-}
-
 function normalizeIncomingSourceUrl(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -35,12 +30,12 @@ function normalizeIncomingSourceUrl(value: string): string {
 }
 
 function isLinkedInSourceUrl(sourceUrl: string): boolean {
-  if (!sourceUrl) return false;
+  if (!sourceUrl.trim()) return false;
   try {
     const parsed = new URL(sourceUrl);
     return /(^|\.)linkedin\.com$/i.test(parsed.hostname);
   } catch {
-    return /(^|\.)linkedin\.com\//i.test(sourceUrl);
+    return /(^|\.)linkedin\.com\//i.test(sourceUrl.trim().toLowerCase());
   }
 }
 
@@ -508,7 +503,7 @@ export async function POST(request: Request) {
 
   const formData = await request.formData();
   const sourceUrl = normalizeIncomingSourceUrl(String(formData.get("sourceUrl") ?? ""));
-  const platformType = normalizePlatform(String(formData.get("platformType") ?? ""));
+  const platformType: Platform = "instagram";
   const file = formData.get("file");
   const hasFile = file instanceof File && file.size > 0;
   const hasUrl = sourceUrl.length > 0;
@@ -518,7 +513,7 @@ export async function POST(request: Request) {
       {
         error: "LINKEDIN_NOT_SUPPORTED",
         message:
-          "LinkedIn link analizi su an devre disi. Lutfen Instagram post linki veya dogrudan gorsel yukleyin.",
+          "LinkedIn link analizi su an desteklenmiyor. Lutfen Instagram post linki veya dogrudan gorsel yukleyin.",
       },
       { status: 422 },
     );

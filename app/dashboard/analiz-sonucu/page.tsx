@@ -12,14 +12,48 @@ import {
   Download,
   Eye,
   Heart,
+  Info,
   Loader2,
   Share2,
   Sparkles,
   Target,
   Type,
 } from "lucide-react";
+import { PotentialResultModal } from "@/components/analysis/PotentialResultModal";
+import { assessPotentialImageEligibility } from "@/lib/analysis/edge-cases";
 import { CRITERION_DEFINITIONS } from "@/lib/analysis/rubric";
 import type { Analysis, CriterionEvaluation } from "@/lib/analysis/types";
+
+const CANVA_MAGIC_LAYERS_URL = "https://www.canva.com/?highlight=magicLayers";
+
+async function triggerDownload(url: string, fileName: string) {
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) throw new Error("İndirme başarısız");
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+
+function titleToFileSlug(title: string): string {
+  return (
+    title
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 48) || "score-ai"
+  );
+}
 
 const metricIcons = {
   "Dikkat Çekicilik": Eye,
@@ -163,12 +197,12 @@ function MetricRow({
 }) {
   const Icon = metricIcons[label];
   return (
-    <div className="flex items-center justify-between gap-3 py-2">
-      <div className="flex items-center gap-2 text-sm text-brand-dark/70">
-        <Icon className="size-4 text-brand-dark/40" strokeWidth={1.75} />
-        {label}
+    <div className="flex min-w-0 items-center justify-between gap-2 py-2">
+      <div className="flex min-w-0 items-center gap-2 text-xs text-brand-dark/70 sm:text-sm">
+        <Icon className="size-4 shrink-0 text-brand-dark/40" strokeWidth={1.75} />
+        <span className="truncate">{label}</span>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         <span className="font-semibold tabular-nums text-brand-dark">
           {value}
           <span className="text-brand-dark/30">/100</span>
@@ -189,6 +223,10 @@ function AnalizSonucuPageContent() {
   const [payload, setPayload] = useState<ResultPayload | null>(null);
   const [generatingPotential, setGeneratingPotential] = useState(false);
   const [potentialError, setPotentialError] = useState<string | null>(null);
+  const [showPotentialModal, setShowPotentialModal] = useState(false);
+  const [openingCanva, setOpeningCanva] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [canvaError, setCanvaError] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -235,6 +273,13 @@ function AnalizSonucuPageContent() {
   const potentialStatus = payload?.analysis?.potentialImageStatus;
   const alreadyGenerated = Boolean(potentialPreviewUrl);
   const potentialBusy = generatingPotential || potentialStatus === "processing";
+  const edgeEligibility = useMemo(() => {
+    if (payload?.analysis?.potentialImageEligibility) {
+      return payload.analysis.potentialImageEligibility;
+    }
+    return assessPotentialImageEligibility(payload?.analysis?.criteriaEvaluations);
+  }, [payload?.analysis]);
+  const potentialBlocked = !edgeEligibility.eligible;
   const aiSummary = useMemo(
     () => summarizeAiCommentary(payload?.analysis ?? null),
     [payload?.analysis],
@@ -242,10 +287,36 @@ function AnalizSonucuPageContent() {
   const jobStatus = payload?.analysis?.jobStatus;
   const isCompleted = jobStatus === "completed";
 
+  const openInCanva = () => {
+    setCanvaError(null);
+    setOpeningCanva(true);
+    window.open(CANVA_MAGIC_LAYERS_URL, "_blank", "noopener,noreferrer");
+    window.setTimeout(() => setOpeningCanva(false), 400);
+  };
+
+  const handleDownloadImage = async () => {
+    const downloadUrl = potentialPreviewUrl ?? previewUrl;
+    if (!downloadUrl || downloading) return;
+    setDownloading(true);
+    try {
+      const title = payload?.analysis?.title ?? "score-ai";
+      const suffix = potentialPreviewUrl ? "potansiyel" : "orijinal";
+      await triggerDownload(
+        downloadUrl,
+        `${titleToFileSlug(title)}-${suffix}.png`,
+      );
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const handleGeneratePotentialImage = async () => {
-    if (!payload?.analysis?.id || potentialBusy || alreadyGenerated) return;
+    if (!payload?.analysis?.id || potentialBusy || alreadyGenerated || potentialBlocked) {
+      return;
+    }
     setGeneratingPotential(true);
     setPotentialError(null);
+    setCanvaError(null);
     try {
       const response = await fetch("/api/dashboard/potential-image", {
         method: "POST",
@@ -256,8 +327,22 @@ function AnalizSonucuPageContent() {
         analysis?: Analysis;
         revision?: ResultPayload["revision"];
         message?: string;
+        eligibility?: Analysis["potentialImageEligibility"];
       };
       if (!response.ok) {
+        if (data.eligibility && !data.eligibility.eligible && data.analysis) {
+          setPayload((current) =>
+            current
+              ? {
+                  ...current,
+                  analysis: {
+                    ...data.analysis!,
+                    potentialImageEligibility: data.eligibility,
+                  },
+                }
+              : current,
+          );
+        }
         throw new Error(data.message || "Potansiyel gorsel uretilemedi.");
       }
       if (!data.analysis) {
@@ -272,6 +357,7 @@ function AnalizSonucuPageContent() {
             }
           : current,
       );
+      setShowPotentialModal(true);
     } catch (generationError) {
       setPotentialError(
         generationError instanceof Error
@@ -334,9 +420,9 @@ function AnalizSonucuPageContent() {
         Analiz Sonucu
       </Link>
 
-      <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
+      <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight text-brand-dark sm:text-3xl">
             Analiz tamamlandı! <span className="align-middle">🎉</span>
           </h1>
           <p className="mt-1 text-sm text-brand-dark/55">
@@ -344,165 +430,233 @@ function AnalizSonucuPageContent() {
             edildi.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className="flex items-center gap-1.5 rounded-lg border border-brand-dark/10 px-3.5 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5"
+            disabled={(!potentialPreviewUrl && !previewUrl) || downloading}
+            onClick={() => {
+              void handleDownloadImage();
+            }}
+            className="flex items-center gap-1.5 rounded-lg border border-brand-dark/10 px-3 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3.5"
           >
-            <Download className="size-4" strokeWidth={2} />
+            {downloading ? (
+              <Loader2 className="size-4 animate-spin" strokeWidth={2} />
+            ) : (
+              <Download className="size-4" strokeWidth={2} />
+            )}
             İndir
           </button>
           <button
             type="button"
-            className="flex items-center gap-1.5 rounded-lg border border-brand-dark/10 px-3.5 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5"
+            className="flex items-center gap-1.5 rounded-lg border border-brand-dark/10 px-3 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 sm:px-3.5"
           >
             <Share2 className="size-4" strokeWidth={2} />
             Paylaş
           </button>
           <button
             type="button"
-            className="flex items-center gap-1.5 rounded-lg bg-brand-dark px-3.5 py-2 text-sm font-semibold text-brand-neon transition-opacity hover:opacity-90"
-            onClick={() => {
-              if (revision?.canvaEditUrl) {
-                window.open(revision.canvaEditUrl, "_blank", "noopener,noreferrer");
-              }
-            }}
+            disabled={!alreadyGenerated || openingCanva}
+            className="flex items-center gap-1.5 rounded-lg bg-brand-dark px-3 py-2 text-sm font-semibold text-brand-neon transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3.5"
+            onClick={openInCanva}
+            title={
+              alreadyGenerated
+                ? "Canva Sihirli Katmanlar sayfasını aç"
+                : "Önce potansiyel görseli üretin"
+            }
           >
-            <Sparkles className="size-4" strokeWidth={2} />
+            {openingCanva ? (
+              <Loader2 className="size-4 animate-spin" strokeWidth={2} />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src="/brands/canva/canva-icon-logo.svg"
+                alt=""
+                className="size-4 shrink-0"
+                decoding="async"
+              />
+            )}
             Canva&apos;da Aç
           </button>
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 items-center gap-4 lg:grid-cols-[1fr_auto_1fr]">
-        <div className="rounded-3xl border-2 border-red-100 bg-bg-light p-6 shadow-sm">
-          <span className="inline-block rounded-md bg-red-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-red-500">
-            Mevcut İçeriğiniz
-          </span>
-          <div className="mt-4 flex items-start justify-between gap-4">
-            <div className="relative aspect-square w-32 shrink-0 overflow-hidden rounded-2xl bg-bg-offwhite">
+      <div className="mt-8 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <div className="@container min-w-0 rounded-3xl border-2 border-red-100 bg-bg-light p-4 shadow-sm sm:p-6">
+          <div className="flex items-start justify-between gap-2 sm:gap-3">
+            <span className="inline-block max-w-[65%] text-[10px] font-bold uppercase tracking-wide text-red-500 sm:text-xs">
+              Mevcut İçeriğiniz
+            </span>
+            <div className="flex shrink-0 items-baseline">
+              <span className="text-3xl font-bold text-red-500 sm:text-4xl">{oldScore}</span>
+              <span className="text-base font-medium text-red-500/40 sm:text-lg">/100</span>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-col items-center gap-4 @[26rem]:flex-row @[26rem]:items-start">
+            <div className="relative w-fit max-w-full shrink-0 overflow-hidden rounded-2xl">
               {previewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={previewUrl}
                   alt={payload?.analysis?.title ?? "İçerik önizleme"}
-                  className="size-full object-contain p-2"
+                  className="block h-auto max-h-64 w-auto max-w-full @[26rem]:max-h-52 @[26rem]:max-w-[11.5rem]"
                 />
               ) : null}
             </div>
-            <div className="flex items-baseline">
-              <span className="text-4xl font-bold text-red-500">{oldScore}</span>
-              <span className="text-lg font-medium text-red-500/40">/100</span>
+            <div className="w-full min-w-0 flex-1 divide-y divide-brand-dark/5 @[26rem]:flex @[26rem]:flex-col @[26rem]:justify-center @[26rem]:self-stretch">
+              {oldMetrics.map((m) => (
+                <MetricRow key={m.label} label={m.label} value={m.value} />
+              ))}
             </div>
           </div>
-          <div className="mt-4 divide-y divide-brand-dark/5">
-            {oldMetrics.map((m) => (
-              <MetricRow key={m.label} label={m.label} value={m.value} />
-            ))}
-          </div>
-          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2.5 text-xs leading-snug text-red-600">
+          <p className="mt-4 text-xs leading-snug text-red-600">
             {aiSummary.weaknesses[0] ?? "Geliştirilebilecek alanlar kriter analizinde listelendi."}
           </p>
         </div>
 
-        <div className="flex flex-col items-center gap-2 py-4">
-          <div className="flex size-20 flex-col items-center justify-center rounded-full bg-brand-neon/30 text-brand-dark">
-            <span className="text-xl font-bold leading-none">
-              {scoreDiff >= 0 ? "+" : ""}
-              {scoreDiff}
-            </span>
-            <span className="text-[10px] font-medium">puan</span>
+        <div className="flex flex-col items-center gap-3 self-center py-4 xl:sticky xl:top-8 xl:gap-3.5 xl:px-1">
+          <div className="flex size-10 items-center justify-center rounded-full bg-brand-neon shadow-sm sm:size-11">
+            <ArrowRight
+              className="size-4 rotate-90 text-brand-dark sm:size-5 xl:rotate-0"
+              strokeWidth={2.25}
+            />
           </div>
-          <span className="text-xs font-medium text-brand-dark/50">Potansiyel</span>
-          <ArrowRight
-            className="size-5 text-brand-dark/30 lg:block"
-            strokeWidth={2}
-          />
+          <span className="text-2xl font-bold leading-none tracking-tight text-brand-dark sm:text-3xl">
+            {scoreDiff >= 0 ? "+" : ""}
+            {scoreDiff}
+          </span>
+          <span className="text-sm font-semibold text-brand-dark">Potansiyel</span>
         </div>
 
-        <div className="rounded-3xl border-2 border-brand-neon/40 bg-bg-light p-6 shadow-sm">
-          <span className="inline-flex items-center gap-1 rounded-md bg-brand-neon/25 px-3 py-1 text-xs font-bold uppercase tracking-wide text-brand-dark">
-            <Sparkles className="size-3.5" strokeWidth={2} />
-            Potansiyel Hedef (Score AI)
-          </span>
-          <div className="mt-4 flex items-start justify-between gap-4">
-            <div className="relative aspect-square w-32 shrink-0 overflow-hidden rounded-2xl bg-brand-dark/10">
+        <div className="@container min-w-0 rounded-3xl border-2 border-brand-neon/40 bg-bg-light p-4 shadow-sm sm:p-6">
+          <div className="flex items-start justify-between gap-2 sm:gap-3">
+            <span className="inline-flex max-w-[65%] items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-brand-dark sm:text-xs">
+              <Sparkles className="size-3.5 shrink-0" strokeWidth={2} />
+              <span className="truncate">Potansiyel Hedef (Score AI)</span>
+            </span>
+            <div className="flex shrink-0 items-baseline">
+              <span className="text-3xl font-bold text-brand-dark sm:text-4xl">{newScore}</span>
+              <span className="text-base font-medium text-brand-dark/30 sm:text-lg">/100</span>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-col items-center gap-4 @[26rem]:flex-row @[26rem]:items-start">
+            <div className="relative w-fit max-w-full shrink-0 overflow-hidden rounded-2xl">
               {potentialPreviewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={potentialPreviewUrl}
                   alt={`${payload?.analysis?.title ?? "İçerik"} potansiyel`}
-                  className="size-full object-contain p-2"
+                  className="block h-auto max-h-64 w-auto max-w-full @[26rem]:max-h-52 @[26rem]:max-w-[11.5rem]"
                 />
               ) : previewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={previewUrl}
                   alt={`${payload?.analysis?.title ?? "İçerik"} potansiyel`}
-                  className="size-full object-contain p-2 opacity-75"
+                  className="block h-auto max-h-64 w-auto max-w-full opacity-75 @[26rem]:max-h-52 @[26rem]:max-w-[11.5rem]"
                 />
               ) : null}
-              <span className="absolute bottom-3 left-3 rounded-md bg-brand-neon px-2 py-0.5 text-[10px] font-bold text-brand-dark">
+              <span className="absolute bottom-2 left-2 rounded-md bg-brand-neon px-2 py-0.5 text-[10px] font-bold text-brand-dark">
                 Potansiyel
               </span>
             </div>
-            <div className="flex items-baseline">
-              <span className="text-4xl font-bold text-brand-dark">{newScore}</span>
-              <span className="text-lg font-medium text-brand-dark/30">/100</span>
+            <div className="w-full min-w-0 flex-1 divide-y divide-brand-dark/5 @[26rem]:flex @[26rem]:flex-col @[26rem]:justify-center @[26rem]:self-stretch">
+              {newMetrics.map((m) => (
+                <MetricRow key={m.label} label={m.label} value={m.value} improved />
+              ))}
             </div>
           </div>
-          <div className="mt-4 divide-y divide-brand-dark/5">
-            {newMetrics.map((m) => (
-              <MetricRow key={m.label} label={m.label} value={m.value} improved />
-            ))}
-          </div>
-          <p className="mt-4 rounded-lg bg-brand-neon/15 px-3 py-2.5 text-xs leading-snug text-brand-dark">
+          <p className="mt-4 text-xs leading-snug text-brand-dark">
             {aiSummary.actions[0] ??
               revision?.summary ??
               "Bu skor, mevcut eksiklerin optimize edilmesiyle ulaşılabilecek potansiyel seviyeyi temsil eder."}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleGeneratePotentialImage}
-              disabled={potentialBusy || alreadyGenerated}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-dark px-3.5 py-2 text-xs font-semibold text-brand-neon transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-55"
-            >
-              {alreadyGenerated ? (
-                <>
-                  <Sparkles className="size-3.5" strokeWidth={2} />
-                  Potansiyel gorsel bir kez uretildi
-                </>
-              ) : potentialBusy ? (
-                <>
-                  <Loader2 className="size-3.5 animate-spin" strokeWidth={2} />
-                  Potansiyel gorsel uretiliyor...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="size-3.5" strokeWidth={2} />
-                  Potansiyel Gorsel Uret
-                </>
-              )}
-            </button>
+            {potentialBlocked && !alreadyGenerated ? (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                <Info className="size-3.5 shrink-0" strokeWidth={2} />
+                Potansiyel üretim uygun değil
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={handleGeneratePotentialImage}
+                disabled={potentialBusy || alreadyGenerated || potentialBlocked}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-dark px-3.5 py-2 text-xs font-semibold text-brand-neon transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-55"
+              >
+                {alreadyGenerated ? (
+                  <>
+                    <Sparkles className="size-3.5" strokeWidth={2} />
+                    Potansiyel gorsel bir kez uretildi
+                  </>
+                ) : potentialBusy ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" strokeWidth={2} />
+                    Potansiyel gorsel uretiliyor...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="size-3.5" strokeWidth={2} />
+                    Potansiyel Gorsel Uret
+                  </>
+                )}
+              </button>
+            )}
             {potentialPreviewUrl && (
               <button
                 type="button"
-                onClick={() =>
-                  window.open(potentialPreviewUrl, "_blank", "noopener,noreferrer")}
+                onClick={() => setShowPotentialModal(true)}
                 className="inline-flex items-center gap-1 rounded-lg border border-brand-dark/10 px-3 py-2 text-xs font-medium text-brand-dark/70 hover:bg-brand-dark/5"
               >
-                Potansiyel Gorseli Ac
+                Sonucu Gör
               </button>
             )}
           </div>
+          {potentialBlocked && !alreadyGenerated && (
+            <div className="mt-3 rounded-2xl border border-amber-200/80 bg-amber-50/90 p-3.5 text-brand-dark">
+              <p className="text-sm font-semibold text-amber-950">
+                {edgeEligibility.headline}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
+                {edgeEligibility.summary}
+              </p>
+              <ul className="mt-3 space-y-2.5">
+                {edgeEligibility.issues.map((issue) => (
+                  <li
+                    key={issue.criterionId}
+                    className="rounded-xl border border-amber-200/70 bg-white/70 px-3 py-2.5"
+                  >
+                    <p className="text-xs font-semibold text-amber-950">
+                      {issue.title}
+                      <span className="ml-1.5 font-medium text-amber-800/70">
+                        · {issue.label}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-amber-900/75">
+                      {issue.detail}
+                    </p>
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-brand-dark/70">
+                      <span className="font-semibold text-brand-dark">Tekrar deneyin:</span>{" "}
+                      {issue.retryHint}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/dashboard/yeni-analiz"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand-dark px-3 py-2 text-xs font-semibold text-brand-neon transition-opacity hover:opacity-90"
+              >
+                Yeni analiz başlat
+                <ArrowRight className="size-3.5" strokeWidth={2} />
+              </Link>
+            </div>
+          )}
           {payload?.analysis?.potentialImageStatus === "failed" && (
             <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs text-red-600">
               <AlertTriangle className="size-3.5" strokeWidth={2} />
               {payload.analysis.potentialImageError || "Uretim adimi basarisiz oldu."}
             </p>
           )}
-          {potentialError && (
+          {potentialError && !potentialBlocked && (
             <p className="mt-2 text-xs text-red-600">{potentialError}</p>
           )}
         </div>
@@ -556,6 +710,18 @@ function AnalizSonucuPageContent() {
           {error ?? "Sonuç verileri güncelleniyor..."}
         </p>
       )}
+
+      <PotentialResultModal
+        open={showPotentialModal}
+        title={payload?.analysis?.title ?? "Analiz"}
+        currentScore={oldScore}
+        potentialScore={newScore}
+        previewUrl={potentialPreviewUrl}
+        openingCanva={openingCanva}
+        canvaError={canvaError}
+        onClose={() => setShowPotentialModal(false)}
+        onOpenCanva={openInCanva}
+      />
     </div>
   );
 }

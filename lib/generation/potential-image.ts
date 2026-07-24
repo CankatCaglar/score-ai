@@ -9,6 +9,7 @@ import {
   generateTypographyLayoutWithRecraft,
   pickClosestRecraftSize,
 } from "@/lib/ai/recraft";
+import { assessPotentialImageEligibility } from "@/lib/analysis/edge-cases";
 import { CRITERION_DEFINITIONS } from "@/lib/analysis/rubric";
 import type { CriterionEvaluation, Platform } from "@/lib/analysis/types";
 import {
@@ -105,6 +106,7 @@ type ErrorCode =
   | "ANALYSIS_NOT_READY"
   | "POTENTIAL_IMAGE_PROCESSING"
   | "POTENTIAL_IMAGE_ALREADY_GENERATED"
+  | "POTENTIAL_IMAGE_EDGE_CASE"
   | "REFERENCE_IMAGE_MISSING"
   | "STAGE1_SUBJECT_EXTRACTION_FAILED"
   | "STAGE2_BACKGROUND_GENERATION_FAILED"
@@ -114,12 +116,14 @@ type ErrorCode =
 export class PotentialImagePipelineError extends Error {
   code: ErrorCode;
   status: number;
+  details?: unknown;
 
-  constructor(code: ErrorCode, message: string, status = 422) {
+  constructor(code: ErrorCode, message: string, status = 422, details?: unknown) {
     super(message);
     this.name = "PotentialImagePipelineError";
     this.code = code;
     this.status = status;
+    this.details = details;
   }
 }
 
@@ -656,7 +660,7 @@ function chooseFalImageSize(width: number, height: number): string {
   return "square_hd";
 }
 
-async function fitSubjectToCanvas(subjectBytes: Buffer, width: number, height: number) {
+  async function fitSubjectToCanvas(subjectBytes: Buffer, width: number, height: number) {
   const subjectImage = sharp(subjectBytes, { failOn: "none" }).ensureAlpha();
   const meta = await subjectImage.metadata();
   if (meta.width === width && meta.height === height) {
@@ -724,6 +728,7 @@ async function composeSubjectOnBackground(params: {
       overlayRaw[rawIdx + 3] = !isSubject && !isSafeTop ? blendAlpha : 0;
     }
   }
+
 
   const overlay = await sharp(overlayRaw, {
     raw: { width, height, channels: 4 },
@@ -926,6 +931,18 @@ export async function generatePotentialImageForAnalysis(
       409,
     );
   }
+
+  const eligibility = assessPotentialImageEligibility(analysis.criteriaEvaluations);
+  if (!eligibility.eligible) {
+    throw new PotentialImagePipelineError(
+      "POTENTIAL_IMAGE_EDGE_CASE",
+      eligibility.headline ||
+        "Bu gorsel kritik maddelerde uc noktada; potansiyel gorsel uretilemez.",
+      422,
+      eligibility,
+    );
+  }
+
   if (analysis.potentialImageStatus === "processing") {
     throw new PotentialImagePipelineError(
       "POTENTIAL_IMAGE_PROCESSING",

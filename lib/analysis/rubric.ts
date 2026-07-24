@@ -282,7 +282,6 @@ export function buildCategoryScoresFromEvaluations(
     };
   });
 }
-
 export function buildMicroScoresFromEvaluations(
   evaluations: Record<string, CriterionEvaluation | undefined>,
 ): MicroCriterionScore[] {
@@ -294,7 +293,6 @@ export function buildMicroScoresFromEvaluations(
     value: Math.round(levelToNormalizedRatio(levels[criterion.id] ?? 0) * 100),
   }));
 }
-
 export function mapMainCategories(scores: CategoryScore[]): CategoryScore[] {
   return MAIN_CATEGORY_DEFINITIONS.map((category) => {
     const found = scores.find((score) => score.id === category.id);

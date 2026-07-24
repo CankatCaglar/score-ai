@@ -74,6 +74,20 @@ export type Analysis = {
     textExtractionConfidence?: number;
     stage3ModelUsed?: string;
   };
+  canvaEditUrl?: string;
+  potentialImageEligibility?: {
+    eligible: boolean;
+    headline: string;
+    summary: string;
+    issues: Array<{
+      criterionId: string;
+      label: string;
+      polarity: "too_low" | "too_high" | "broken";
+      title: string;
+      detail: string;
+      retryHint: string;
+    }>;
+  };
   jobId?: string;
   revisionId?: string;
   createdAtMs: number;

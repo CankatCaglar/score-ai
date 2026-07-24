@@ -49,6 +49,18 @@ export async function POST(request: Request) {
           { status: 409 },
         );
       }
+      if (error.code === "POTENTIAL_IMAGE_EDGE_CASE") {
+        const analysis = await getAnalysisById(ownerEmail, analysisId);
+        return NextResponse.json(
+          {
+            error: "POTENTIAL_IMAGE_EDGE_CASE",
+            message: error.message,
+            eligibility: error.details ?? analysis?.potentialImageEligibility,
+            analysis,
+          },
+          { status: 422 },
+        );
+      }
       return NextResponse.json(
         {
           error: error.code,

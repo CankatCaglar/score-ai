@@ -21,6 +21,7 @@ import {
   RUBRIC_CRITERIA_COUNT,
   RUBRIC_VERSION,
 } from "@/lib/analysis/rubric";
+import { assessPotentialImageEligibility } from "@/lib/analysis/edge-cases";
 import { CATEGORY_PROMPTS } from "@/lib/analysis/prompts";
 import type {
   Analysis,
@@ -364,6 +365,9 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
       !Array.isArray(data.potentialImageDebug)
         ? (data.potentialImageDebug as Analysis["potentialImageDebug"])
         : undefined,
+    canvaEditUrl:
+      typeof data.canvaEditUrl === "string" ? String(data.canvaEditUrl) : undefined,
+    potentialImageEligibility: assessPotentialImageEligibility(criteriaEvaluations),
     jobId: typeof data.jobId === "string" ? String(data.jobId) : undefined,
     revisionId:
       typeof data.revisionId === "string" ? String(data.revisionId) : undefined,
