@@ -1,7 +1,6 @@
 import path from "node:path";
 import { Resvg } from "@resvg/resvg-js";
 import sharp from "sharp";
-import type { OverlayTextElement } from "@/lib/ai/anthropic";
 
 /**
  * Hybrid Typography Overlay
@@ -10,6 +9,21 @@ import type { OverlayTextElement } from "@/lib/ai/anthropic";
  * mask occupancy grid so text never covers locked product/logo silhouettes —
  * not just a single bounding box.
  */
+
+export type OverlayTextElement = {
+  kind: "headline" | "subheadline" | "cta" | "badge";
+  text: string;
+  bbox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  align: "left" | "center" | "right";
+  textColor: string;
+  backgroundColor: string | null;
+  fontWeight: "regular" | "bold";
+};
 
 const FONT_DIR = path.join(process.cwd(), "assets", "fonts");
 const FONT_FILES = [

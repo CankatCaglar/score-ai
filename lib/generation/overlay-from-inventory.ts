@@ -1,5 +1,5 @@
-import type { DetectedTextBlock, OverlayTextElement } from "@/lib/ai/anthropic";
-import type { LayoutZone } from "@/lib/generation/text-overlay";
+import type { DetectedTextBlock } from "@/lib/ai/anthropic";
+import type { LayoutZone, OverlayTextElement } from "@/lib/generation/text-overlay";
 
 /**
  * Builds a typography overlay from remembered OCR inventory.
