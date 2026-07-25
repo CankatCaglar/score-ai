@@ -804,10 +804,24 @@ export async function generatePotentialImage(
   const preferredFalSize = chooseFalImageSize(originalMeta.width, originalMeta.height);
 
   const stage1SubjectUrl = await stage1ExtractSubject(input.originalImageUrl);
-  const textLayout = await extractVisualTextLayoutWithAnthropic({
-    imageBase64: originalDownloaded.bytes.toString("base64"),
-    imageMediaType: normalizeSupportedImageType(originalDownloaded.mimeType),
-  });
+  let textLayout: Awaited<ReturnType<typeof extractVisualTextLayoutWithAnthropic>>;
+  try {
+    textLayout = await extractVisualTextLayoutWithAnthropic({
+      imageBase64: originalDownloaded.bytes.toString("base64"),
+      imageMediaType: normalizeSupportedImageType(originalDownloaded.mimeType),
+    });
+  } catch (error) {
+    console.error(
+      "[generatePotentialImage] text layout extraction failed, continuing without OCR",
+      error instanceof Error ? error.message : error,
+    );
+    textLayout = {
+      modelUsed: "fallback",
+      language: "unknown",
+      blocks: [],
+      rawResponse: "",
+    };
+  }
   const textConfidence = averageTextConfidence(textLayout.blocks);
 
   const backgroundPrompt = buildBackgroundPrompt({
@@ -1044,8 +1058,12 @@ export async function generatePotentialImageForAnalysis(
       status: analysis.potentialImageStatus === "completed" ? "already_generated" : "generated",
     };
   } catch (error) {
-    const message =
+    const rawMessage =
       error instanceof Error ? error.message : "Potansiyel gorsel uretimi basarisiz.";
+    const message =
+      /unterminated string in json|unexpected token|json at position/i.test(rawMessage)
+        ? "Gorsel metin analizi gecici olarak basarisiz oldu. Lutfen tekrar deneyin."
+        : rawMessage;
     await analysisRef.set(
       {
         potentialImageStatus: "failed",

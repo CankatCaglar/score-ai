@@ -369,11 +369,88 @@ function extractTextContent(message: unknown) {
 }
 
 function cleanJsonText(rawText: string) {
-  const trimmed = rawText.trim();
+  let trimmed = rawText.trim();
   if (trimmed.startsWith("```")) {
-    return trimmed.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+    trimmed = trimmed.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  }
+
+  const firstBrace = trimmed.indexOf("{");
+  const lastBrace = trimmed.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return trimmed.slice(firstBrace, lastBrace + 1);
   }
   return trimmed;
+}
+
+function repairTruncatedJson(rawText: string) {
+  let text = cleanJsonText(rawText);
+  if (!text) return text;
+
+  // Close an open string if truncation cut mid-value.
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') inString = !inString;
+  }
+  if (inString) text += '"';
+
+  const stack: string[] = [];
+  inString = false;
+  escaped = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "{" || ch === "[") stack.push(ch);
+    if (ch === "}" || ch === "]") stack.pop();
+  }
+
+  // Drop trailing comma before we close containers.
+  text = text.replace(/,\s*$/, "");
+  while (stack.length) {
+    const open = stack.pop();
+    text += open === "{" ? "}" : "]";
+  }
+  return text;
+}
+
+function parseJsonObject(rawText: string): Record<string, unknown> {
+  const attempts = [cleanJsonText(rawText), repairTruncatedJson(rawText)];
+  let lastError: Error | null = null;
+
+  for (const candidate of attempts) {
+    if (!candidate) continue;
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  throw lastError ?? new Error("AI cevabi gecerli JSON degil.");
 }
 
 function isLikelyTechnicalOverlayText(text: string) {
@@ -411,10 +488,7 @@ function parseAndValidateEvaluations(
   rawText: string,
   criteriaKeys: string[],
 ): Record<string, CriterionEvaluation> {
-  const parsed = JSON.parse(cleanJsonText(rawText)) as Record<string, unknown>;
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("AI cevabi JSON obje degil.");
-  }
+  const parsed = parseJsonObject(rawText);
 
   const result: Record<string, CriterionEvaluation> = {};
   for (const criterionKey of criteriaKeys) {
@@ -588,17 +662,32 @@ export async function extractVisualTextLayoutWithAnthropic(
   const response = await withTimeout(
     client.messages.create({
       model: modelUsed,
-      max_tokens: 2048,
+      max_tokens: 4096,
       messages,
     }),
     timeoutMs,
   );
 
   const rawText = extractTextContent(response);
-  const parsed = JSON.parse(cleanJsonText(rawText)) as {
-    language?: unknown;
-    blocks?: unknown;
-  };
+  let parsed: { language?: unknown; blocks?: unknown };
+  try {
+    parsed = parseJsonObject(rawText) as {
+      language?: unknown;
+      blocks?: unknown;
+    };
+  } catch (error) {
+    // Truncated/malformed OCR JSON should not block image generation.
+    console.error(
+      "[extractVisualTextLayoutWithAnthropic] JSON parse failed, using empty layout",
+      error instanceof Error ? error.message : error,
+    );
+    return {
+      modelUsed,
+      language: "unknown",
+      blocks: [],
+      rawResponse: rawText,
+    };
+  }
 
   const blocksRaw = Array.isArray(parsed.blocks) ? parsed.blocks : [];
   const blocks: DetectedTextBlock[] = blocksRaw
