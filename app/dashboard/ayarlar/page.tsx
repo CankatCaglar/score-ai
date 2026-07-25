@@ -21,6 +21,7 @@ import { FaFacebookF, FaInstagram, FaLinkedinIn } from "react-icons/fa6";
 import { toast } from "sonner";
 import {
   getCurrentUserProfile,
+  updateCurrentUserPhoto,
   updateCurrentUserProfile,
 } from "@/actions/profile";
 import { changePassword } from "@/lib/auth/client";
@@ -64,13 +65,19 @@ function SelectField({
   const ref = useRef<HTMLDivElement>(null);
   useClickOutside(ref, () => setOpen(false));
 
+  useEffect(() => {
+    if (!open || !ref.current) return;
+    ref.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [open]);
+
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-sm font-medium text-brand-dark/70">{label}</label>
-      <div ref={ref} className="relative">
+      <div ref={ref} className={`relative ${open ? "z-50" : "z-10"}`}>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
           className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-brand-dark/12 bg-white px-3.5 py-2.5 text-sm text-brand-dark transition-colors hover:border-brand-dark/25 focus:outline-none"
         >
           <span className={value ? "text-brand-dark" : "text-brand-dark/35"}>
@@ -83,7 +90,7 @@ function SelectField({
         </button>
 
         {open && (
-          <div className="absolute left-0 right-0 top-full z-30 mt-1.5 overflow-hidden rounded-xl border border-brand-dark/10 bg-white shadow-lg shadow-brand-dark/8">
+          <div className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-56 overflow-y-auto overscroll-contain rounded-xl border border-brand-dark/10 bg-white py-1 shadow-lg shadow-brand-dark/8">
             <button
               type="button"
               onClick={() => {
@@ -258,6 +265,7 @@ function Toggle({
 
 function ProfilTab() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -268,6 +276,8 @@ function ProfilTab() {
   const [language, setLanguage] = useState("");
   const [timezone, setTimezone] = useState("");
   const [country, setCountry] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -298,6 +308,14 @@ function ProfilTab() {
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (photoPreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(photoPreview);
+      }
+    };
+  }, [photoPreview]);
+
   const initials = profile
     ? initialsFromProfile({
         ...profile,
@@ -307,9 +325,55 @@ function ProfilTab() {
       })
     : "SC";
 
+  const displayPhoto = photoPreview || profile?.photoURL || null;
+
+  const handlePhotoPick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    const allowed =
+      /^image\/(jpeg|jpg|png|webp|gif)$/i.test(file.type) ||
+      /\.(jpe?g|png|webp|gif)$/i.test(file.name);
+    if (!allowed) {
+      toast.error("Yalnızca PNG, JPEG, JPG, WEBP veya GIF yükleyebilirsiniz.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Görsel en fazla 5 MB olabilir.");
+      return;
+    }
+
+    if (photoPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(photoPreview);
+    }
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
+      if (photoFile) {
+        const formData = new FormData();
+        formData.append("photo", photoFile);
+        const photoResult = await updateCurrentUserPhoto(formData);
+        if (!photoResult.ok || !photoResult.profile) {
+          toast.error(photoResult.error ?? "Profil fotoğrafı kaydedilemedi.");
+          return;
+        }
+        setProfile(photoResult.profile);
+        if (photoPreview?.startsWith("blob:")) {
+          URL.revokeObjectURL(photoPreview);
+        }
+        setPhotoFile(null);
+        setPhotoPreview(null);
+      }
+
       const result = await updateCurrentUserProfile({
         firstName,
         lastName,
@@ -354,10 +418,10 @@ function ProfilTab() {
 
       <div className="flex items-center gap-4">
         <div className="relative shrink-0">
-          {profile?.photoURL ? (
+          {displayPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={profile.photoURL}
+              src={displayPhoto}
               alt=""
               className="size-16 rounded-full object-cover"
             />
@@ -368,28 +432,38 @@ function ProfilTab() {
           )}
           <button
             type="button"
-            onClick={() =>
-              toast.message("Yakında", {
-                description: "Profil fotoğrafı yükleme bir sonraki adımda eklenecek.",
-              })
-            }
+            onClick={handlePhotoPick}
             className="absolute -bottom-1 -right-1 flex size-6 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-brand-dark text-white transition-colors hover:bg-brand-dark/80"
+            aria-label="Profil fotoğrafı değiştir"
           >
             <Camera className="size-3" strokeWidth={2} />
           </button>
         </div>
-        <button
-          type="button"
-          onClick={() =>
-            toast.message("Yakında", {
-              description: "Profil fotoğrafı yükleme bir sonraki adımda eklenecek.",
-            })
-          }
-          className="flex cursor-pointer items-center gap-2 rounded-xl border border-brand-dark/15 bg-white px-4 py-2 text-sm font-medium text-brand-dark transition-colors hover:bg-brand-dark/5"
-        >
-          <Camera className="size-4" strokeWidth={1.75} />
-          Fotoğraf Değiştir
-        </button>
+        <div className="flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={handlePhotoPick}
+            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-brand-dark/15 bg-white px-4 py-2 text-sm font-medium text-brand-dark transition-colors hover:bg-brand-dark/5"
+          >
+            <Camera className="size-4 shrink-0" strokeWidth={1.75} />
+            <span>Fotoğraf Değiştir</span>
+          </button>
+          <p className="text-xs text-brand-dark/45">
+            PNG, JPEG, JPG veya WEBP · en fazla 5 MB
+          </p>
+          {photoFile && (
+            <p className="text-xs text-brand-dark/55">
+              Yeni fotoğraf seçildi — kaydettikten sonra kalıcı olur.
+            </p>
+          )}
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif"
+          className="hidden"
+          onChange={handlePhotoChange}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -998,7 +1072,7 @@ export default function AyarlarPage() {
   const [activeTab, setActiveTab] = useState<Tab>("profil");
 
   return (
-    <div className="px-4 pb-20 pt-2 sm:px-6 lg:px-8 lg:pt-4">
+    <div className="px-4 pb-40 pt-2 sm:px-6 lg:px-8 lg:pb-48 lg:pt-4">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight text-brand-dark lg:text-3xl">
           Ayarlar
@@ -1027,7 +1101,7 @@ export default function AyarlarPage() {
           ))}
         </nav>
 
-        <div className="min-w-0 flex-1 rounded-2xl border border-brand-dark/8 bg-white p-5 sm:p-6">
+        <div className="relative z-0 min-w-0 flex-1 overflow-visible rounded-2xl border border-brand-dark/8 bg-white p-5 sm:p-6">
           {activeTab === "profil" && <ProfilTab />}
           {activeTab === "guvenlik" && <GuvenlikTab />}
           {activeTab === "bildirimler" && <BildirimlerTab />}

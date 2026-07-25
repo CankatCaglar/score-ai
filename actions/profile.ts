@@ -1,8 +1,15 @@
 "use server";
 
+import { randomUUID } from "crypto";
+import path from "path";
 import { cookies } from "next/headers";
 import { FieldValue } from "firebase-admin/firestore";
-import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
+import {
+  getAdminAuth,
+  getAdminDb,
+  getAdminStorage,
+  getAdminStorageBucketName,
+} from "@/lib/firebase-admin";
 import {
   USER_COOKIE_NAME,
   USER_SESSION_TTL_SECONDS,
@@ -19,6 +26,92 @@ import {
   userDocIdFromEmail,
   type UserProfile,
 } from "@/lib/user-profile";
+
+const ALLOWED_PHOTO_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+function detectImageMimeType(
+  bytes: Buffer,
+  declaredType: string,
+): string | null {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  ) {
+    return "image/png";
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  ) {
+    return "image/webp";
+  }
+  if (
+    bytes.length >= 6 &&
+    bytes[0] === 0x47 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x38
+  ) {
+    return "image/gif";
+  }
+
+  const normalized = declaredType.toLowerCase().trim();
+  if (normalized === "image/jpg") return "image/jpeg";
+  if (ALLOWED_PHOTO_MIME_TYPES.has(normalized)) return normalized;
+  return null;
+}
+
+function extensionForMime(mimeType: string): string {
+  switch (mimeType) {
+    case "image/png":
+      return ".png";
+    case "image/webp":
+      return ".webp";
+    case "image/gif":
+      return ".gif";
+    default:
+      return ".jpg";
+  }
+}
+
+async function resolvePublicPhotoUrl(
+  objectPath: string,
+): Promise<string> {
+  const storage = getAdminStorage();
+  const bucket = storage.bucket(getAdminStorageBucketName());
+  const object = bucket.file(objectPath);
+
+  try {
+    await object.makePublic();
+    return `https://storage.googleapis.com/${bucket.name}/${objectPath}`;
+  } catch {
+    const [signedUrl] = await object.getSignedUrl({
+      action: "read",
+      expires: "2099-12-31",
+    });
+    return signedUrl;
+  }
+}
 
 function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
@@ -170,6 +263,115 @@ export async function updateCurrentUserProfile(
     photoURL: session.picture,
     provider: session.provider,
   });
+
+  const token = createUserSessionToken({
+    email,
+    uid: session.uid,
+    emailVerified: session.emailVerified,
+    name: profile.displayName,
+    picture: profile.photoURL,
+    provider: session.provider,
+  });
+
+  cookieStore.set(USER_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: USER_SESSION_TTL_SECONDS,
+  });
+
+  return { ok: true, profile };
+}
+
+export async function updateCurrentUserPhoto(
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string; profile?: UserProfile }> {
+  const cookieStore = await cookies();
+  const session = verifyUserSessionToken(
+    cookieStore.get(USER_COOKIE_NAME)?.value,
+  );
+  if (!session) {
+    return { ok: false, error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+  }
+
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size <= 0) {
+    return { ok: false, error: "Geçerli bir görsel seçin." };
+  }
+  if (file.size > MAX_PHOTO_BYTES) {
+    return { ok: false, error: "Görsel en fazla 5 MB olabilir." };
+  }
+
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const mimeType = detectImageMimeType(bytes, file.type || "");
+  if (!mimeType) {
+    return {
+      ok: false,
+      error: "Yalnızca PNG, JPEG, JPG, WEBP veya GIF yükleyebilirsiniz.",
+    };
+  }
+
+  const email = normalizeEmail(session.email);
+  const db = getAdminDb();
+  const ref = db.collection("users").doc(userDocIdFromEmail(email));
+  const existing = await ref.get();
+  const existingData = existing.data() as Record<string, unknown> | undefined;
+  const previousStoragePath =
+    typeof existingData?.photoStoragePath === "string"
+      ? existingData.photoStoragePath
+      : null;
+
+  const storage = getAdminStorage();
+  const bucket = storage.bucket(getAdminStorageBucketName());
+  const ext =
+    extensionForMime(mimeType) ||
+    path.extname(file.name).toLowerCase() ||
+    ".jpg";
+  const objectPath = `profile-photos/${userDocIdFromEmail(email)}/avatar-${Date.now()}-${randomUUID()}${ext}`;
+  const object = bucket.file(objectPath);
+
+  await object.save(bytes, {
+    metadata: { contentType: mimeType },
+    resumable: false,
+  });
+
+  const photoURL = await resolvePublicPhotoUrl(objectPath);
+
+  await ref.set(
+    {
+      photoURL,
+      photoStoragePath: objectPath,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  if (previousStoragePath && previousStoragePath !== objectPath) {
+    try {
+      await bucket.file(previousStoragePath).delete({ ignoreNotFound: true });
+    } catch (error) {
+      console.error("[updateCurrentUserPhoto] delete previous", error);
+    }
+  }
+
+  try {
+    await getAdminAuth().updateUser(session.uid, { photoURL });
+  } catch (error) {
+    console.error("[updateCurrentUserPhoto] auth photoURL", error);
+  }
+
+  const snap = await ref.get();
+  const profile = mapUserDoc(
+    email,
+    snap.data() as Record<string, unknown> | undefined,
+    {
+      emailVerified: session.emailVerified,
+      displayName: session.name,
+      photoURL,
+      provider: session.provider,
+    },
+  );
 
   const token = createUserSessionToken({
     email,
