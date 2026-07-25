@@ -4,6 +4,7 @@ import {
   EARLY_ACCESS_COOKIE_NAME,
   verifyEarlyAccessToken,
 } from "@/lib/early-access-auth";
+import { USER_COOKIE_NAME, verifyUserSessionToken } from "@/lib/user-auth";
 
 const APP_MODE = (process.env.APP_ACCESS_MODE ?? "waitlist").toLowerCase();
 const PUBLIC_DASHBOARD_OWNER_EMAIL =
@@ -40,13 +41,20 @@ export function getDashboardUserEmailFromToken(
 export function getDashboardUserEmailFromCookieHeader(
   cookieHeader: string | null,
 ): string | null {
-  const earlyAccessToken = getCookieValue(cookieHeader, EARLY_ACCESS_COOKIE_NAME);
-  const earlyAccessEmail = getDashboardUserEmailFromToken(earlyAccessToken);
-  if (earlyAccessEmail) return earlyAccessEmail;
+  const userToken = getCookieValue(cookieHeader, USER_COOKIE_NAME);
+  const userSession = verifyUserSessionToken(userToken);
+  if (userSession?.email && userSession.emailVerified) {
+    return normalizeEmail(userSession.email);
+  }
 
   const adminToken = getCookieValue(cookieHeader, ADMIN_COOKIE_NAME);
   const adminSession = verifySessionToken(adminToken);
   if (adminSession?.sub) return normalizeEmail(adminSession.sub);
+
+  // Legacy early-access kimliği: yalnızca kullanıcı oturumu yokken fallback.
+  const earlyAccessToken = getCookieValue(cookieHeader, EARLY_ACCESS_COOKIE_NAME);
+  const earlyAccessEmail = getDashboardUserEmailFromToken(earlyAccessToken);
+  if (earlyAccessEmail) return earlyAccessEmail;
 
   return getPublicModeFallbackEmail();
 }

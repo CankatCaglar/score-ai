@@ -4,12 +4,14 @@ import {
   initializeApp,
   type App,
 } from "firebase-admin/app";
+import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { getStorage, type Storage } from "firebase-admin/storage";
 
 let cachedApp: App | null = null;
 let cachedDb: Firestore | null = null;
 let cachedStorage: Storage | null = null;
+let cachedAuth: Auth | null = null;
 let cachedBucketName: string | null = null;
 
 function normalizeBucketName(input?: string | null): string | null {
@@ -77,4 +79,11 @@ export function getAdminStorage(): Storage {
   const app = getOrInitAdminApp();
   cachedStorage = getStorage(app);
   return cachedStorage;
+}
+
+export function getAdminAuth(): Auth {
+  if (cachedAuth) return cachedAuth;
+  const app = getOrInitAdminApp();
+  cachedAuth = getAuth(app);
+  return cachedAuth;
 }

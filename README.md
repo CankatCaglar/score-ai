@@ -106,10 +106,15 @@ npm run build
 
 ### Erişim modu / erken erişim
 
-- `APP_ACCESS_MODE` (`waitlist` veya `early_access`)
+- `APP_ACCESS_MODE` (`waitlist`, `early_access` veya `public`)
 - `EARLY_ACCESS_SESSION_SECRET` (opsiyonel; yoksa `ADMIN_SESSION_SECRET` fallback)
 - `APP_BASE_URL` (invite link üretimi için)
 - `EARLY_ACCESS_INVITE_EXPIRY_DAYS` (opsiyonel)
+
+### End-user Auth (Firebase Auth)
+
+- `USER_SESSION_SECRET` (HMAC oturum cookie; min 16 karakter)
+- `NEXT_PUBLIC_APP_URL` (local continue URL, örn. `http://localhost:3000`)
 
 ### Opsiyonel
 

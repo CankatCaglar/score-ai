@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bell,
   Camera,
@@ -16,8 +16,25 @@ import {
   Smartphone,
   User,
 } from "lucide-react";
+import { onAuthStateChanged } from "firebase/auth";
 import { FaFacebookF, FaInstagram, FaLinkedinIn } from "react-icons/fa6";
+import { toast } from "sonner";
+import {
+  getCurrentUserProfile,
+  updateCurrentUserProfile,
+} from "@/actions/profile";
+import { changePassword } from "@/lib/auth/client";
+import { auth } from "@/lib/firebase";
+import {
+  PROFILE_COUNTRIES,
+  PROFILE_LANGUAGES,
+  PROFILE_SECTORS,
+  PROFILE_TIMEZONES,
+  initialsFromProfile,
+  type UserProfile,
+} from "@/lib/user-profile";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { useRouter } from "next/navigation";
 
 type Tab = "profil" | "guvenlik" | "bildirimler" | "entegrasyonlar";
 
@@ -32,14 +49,17 @@ const tabs: { id: Tab; label: string; icon: typeof User }[] = [
 
 function SelectField({
   label,
-  value: defaultValue,
+  value,
+  onChange,
   options,
+  placeholder = "Seçin",
 }: {
   label: string;
   value: string;
+  onChange: (value: string) => void;
   options: string[];
+  placeholder?: string;
 }) {
-  const [selected, setSelected] = useState(defaultValue);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useClickOutside(ref, () => setOpen(false));
@@ -53,7 +73,9 @@ function SelectField({
           onClick={() => setOpen((v) => !v)}
           className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-brand-dark/12 bg-white px-3.5 py-2.5 text-sm text-brand-dark transition-colors hover:border-brand-dark/25 focus:outline-none"
         >
-          <span>{selected}</span>
+          <span className={value ? "text-brand-dark" : "text-brand-dark/35"}>
+            {value || placeholder}
+          </span>
           <ChevronDown
             className={`size-4 shrink-0 text-brand-dark/40 transition-transform duration-150 ${open ? "rotate-180" : ""}`}
             strokeWidth={1.75}
@@ -62,22 +84,32 @@ function SelectField({
 
         {open && (
           <div className="absolute left-0 right-0 top-full z-30 mt-1.5 overflow-hidden rounded-xl border border-brand-dark/10 bg-white shadow-lg shadow-brand-dark/8">
+            <button
+              type="button"
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+              className="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-brand-dark/45 transition-colors hover:bg-brand-dark/5"
+            >
+              {placeholder}
+            </button>
             {options.map((opt) => (
               <button
                 key={opt}
                 type="button"
                 onClick={() => {
-                  setSelected(opt);
+                  onChange(opt);
                   setOpen(false);
                 }}
                 className={`flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-brand-dark/5 ${
-                  selected === opt
+                  value === opt
                     ? "bg-brand-dark/4 font-medium text-brand-dark"
                     : "text-brand-dark/70"
                 }`}
               >
                 <span className="flex-1">{opt}</span>
-                {selected === opt && (
+                {value === opt && (
                   <Check className="size-3.5 shrink-0 text-brand-dark" strokeWidth={2.5} />
                 )}
               </button>
@@ -94,21 +126,33 @@ function SelectField({
 function InputField({
   label,
   value,
+  onChange,
   type = "text",
   hint,
+  placeholder,
+  disabled,
+  readOnly,
 }: {
   label: string;
   value: string;
+  onChange?: (value: string) => void;
   type?: string;
   hint?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  readOnly?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-sm font-medium text-brand-dark/70">{label}</label>
       <input
-        defaultValue={value}
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
         type={type}
-        className="w-full rounded-xl border border-brand-dark/12 bg-white px-3.5 py-2.5 text-sm text-brand-dark placeholder:text-brand-dark/30 transition-colors focus:border-brand-dark/30 focus:outline-none"
+        placeholder={placeholder}
+        disabled={disabled}
+        readOnly={readOnly}
+        className="w-full rounded-xl border border-brand-dark/12 bg-white px-3.5 py-2.5 text-sm text-brand-dark placeholder:text-brand-dark/30 transition-colors focus:border-brand-dark/30 focus:outline-none disabled:cursor-not-allowed disabled:bg-brand-dark/4 disabled:text-brand-dark/60 read-only:bg-brand-dark/4"
       />
       {hint && (
         <p className="flex items-center gap-1 text-xs text-green-600">
@@ -120,9 +164,18 @@ function InputField({
   );
 }
 
-function PasswordField({ label }: { label: string }) {
+function PasswordField({
+  label,
+  value,
+  onChange,
+  autoComplete,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete?: string;
+}) {
   const [show, setShow] = useState(false);
-  const [value, setValue] = useState("••••••••••");
 
   const isStrong =
     value.length > 8 &&
@@ -137,7 +190,8 @@ function PasswordField({ label }: { label: string }) {
         <input
           type={show ? "text" : "password"}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete={autoComplete}
           className="w-full rounded-xl border border-brand-dark/12 bg-white px-3.5 py-2.5 pr-10 text-sm text-brand-dark transition-colors focus:border-brand-dark/30 focus:outline-none"
         />
         <button
@@ -203,6 +257,92 @@ function Toggle({
 // ─── Profil Tab ───────────────────────────────────────────────────────────────
 
 function ProfilTab() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [company, setCompany] = useState("");
+  const [sector, setSector] = useState("");
+  const [language, setLanguage] = useState("");
+  const [timezone, setTimezone] = useState("");
+  const [country, setCountry] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await getCurrentUserProfile();
+        if (cancelled) return;
+        if (!data) {
+          toast.error("Profil yüklenemedi. Lütfen tekrar giriş yapın.");
+          return;
+        }
+        setProfile(data);
+        setFirstName(data.firstName);
+        setLastName(data.lastName);
+        setCompany(data.company);
+        setSector(data.sector);
+        setLanguage(data.language);
+        setTimezone(data.timezone);
+        setCountry(data.country);
+      } catch {
+        if (!cancelled) toast.error("Profil yüklenirken bir hata oluştu.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const initials = profile
+    ? initialsFromProfile({
+        ...profile,
+        firstName,
+        lastName,
+        displayName: `${firstName} ${lastName}`.trim() || profile.displayName,
+      })
+    : "SC";
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const result = await updateCurrentUserProfile({
+        firstName,
+        lastName,
+        company,
+        sector,
+        language,
+        timezone,
+        country,
+      });
+      if (!result.ok || !result.profile) {
+        toast.error(result.error ?? "Profil kaydedilemedi.");
+        return;
+      }
+      setProfile(result.profile);
+      toast.success("Profil bilgileriniz kaydedildi.");
+      router.refresh();
+    } catch {
+      toast.error("Profil kaydedilirken bir hata oluştu.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-8 w-48 animate-pulse rounded-lg bg-brand-dark/5" />
+        <div className="h-16 w-16 animate-pulse rounded-full bg-brand-dark/5" />
+        <div className="h-40 animate-pulse rounded-2xl bg-brand-dark/5" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -214,11 +354,25 @@ function ProfilTab() {
 
       <div className="flex items-center gap-4">
         <div className="relative shrink-0">
-          <div className="flex size-16 items-center justify-center rounded-full bg-brand-dark/10 text-base font-semibold text-brand-dark">
-            EA
-          </div>
+          {profile?.photoURL ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={profile.photoURL}
+              alt=""
+              className="size-16 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex size-16 items-center justify-center rounded-full bg-brand-dark/10 text-base font-semibold text-brand-dark">
+              {initials}
+            </div>
+          )}
           <button
             type="button"
+            onClick={() =>
+              toast.message("Yakında", {
+                description: "Profil fotoğrafı yükleme bir sonraki adımda eklenecek.",
+              })
+            }
             className="absolute -bottom-1 -right-1 flex size-6 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-brand-dark text-white transition-colors hover:bg-brand-dark/80"
           >
             <Camera className="size-3" strokeWidth={2} />
@@ -226,6 +380,11 @@ function ProfilTab() {
         </div>
         <button
           type="button"
+          onClick={() =>
+            toast.message("Yakında", {
+              description: "Profil fotoğrafı yükleme bir sonraki adımda eklenecek.",
+            })
+          }
           className="flex cursor-pointer items-center gap-2 rounded-xl border border-brand-dark/15 bg-white px-4 py-2 text-sm font-medium text-brand-dark transition-colors hover:bg-brand-dark/5"
         >
           <Camera className="size-4" strokeWidth={1.75} />
@@ -234,50 +393,81 @@ function ProfilTab() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <InputField label="Ad" value="Ece" />
-        <InputField label="Soyad" value="Aksoy" />
+        <InputField
+          label="Ad"
+          value={firstName}
+          onChange={setFirstName}
+          placeholder="Adınız"
+        />
+        <InputField
+          label="Soyad"
+          value={lastName}
+          onChange={setLastName}
+          placeholder="Soyadınız"
+        />
         <div className="sm:col-span-2">
           <InputField
             label="E-posta"
-            value="ece.aksoy@example.com"
-            hint="E-posta adresiniz doğrulandı"
+            value={profile?.email ?? ""}
+            readOnly
+            hint={
+              profile?.emailVerified
+                ? "E-posta adresiniz doğrulandı"
+                : undefined
+            }
           />
+          {profile && !profile.emailVerified && (
+            <p className="mt-1 text-xs text-amber-600">
+              E-posta adresiniz henüz doğrulanmadı.
+            </p>
+          )}
         </div>
         <div className="sm:col-span-2">
-          <InputField label="Şirket" value="Nera Digital" />
+          <InputField
+            label="Şirket"
+            value={company}
+            onChange={setCompany}
+            placeholder="Şirket veya marka adı"
+          />
         </div>
         <SelectField
           label="Sektör"
-          value="Pazarlama Ajansı"
-          options={["Pazarlama Ajansı", "E-ticaret", "SaaS", "Medya", "Diğer"]}
+          value={sector}
+          onChange={setSector}
+          options={[...PROFILE_SECTORS]}
+          placeholder="Sektör seçin"
         />
         <SelectField
           label="Dil"
-          value="Türkçe"
-          options={["Türkçe", "English", "Deutsch"]}
+          value={language}
+          onChange={setLanguage}
+          options={[...PROFILE_LANGUAGES]}
+          placeholder="Dil seçin"
         />
         <SelectField
           label="Saat Dilimi"
-          value="(GMT+03:00) İstanbul"
-          options={[
-            "(GMT+03:00) İstanbul",
-            "(GMT+00:00) London",
-            "(GMT-05:00) New York",
-          ]}
+          value={timezone}
+          onChange={setTimezone}
+          options={[...PROFILE_TIMEZONES]}
+          placeholder="Saat dilimi seçin"
         />
         <SelectField
           label="Ülke"
-          value="Türkiye"
-          options={["Türkiye", "Almanya", "Amerika"]}
+          value={country}
+          onChange={setCountry}
+          options={[...PROFILE_COUNTRIES]}
+          placeholder="Ülke seçin"
         />
       </div>
 
       <div className="flex justify-end">
         <button
           type="button"
-          className="cursor-pointer rounded-xl bg-brand-neon px-5 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
+          onClick={handleSave}
+          disabled={saving}
+          className="cursor-pointer rounded-xl bg-brand-neon px-5 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Değişiklikleri Kaydet
+          {saving ? "Kaydediliyor…" : "Değişiklikleri Kaydet"}
         </button>
       </div>
     </div>
@@ -373,6 +563,118 @@ function TwoFactorSection() {
   );
 }
 
+function ChangePasswordSection() {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isPasswordUser, setIsPasswordUser] = useState(true);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setIsPasswordUser(true);
+        return;
+      }
+      setIsPasswordUser(
+        user.providerData.some((p) => p.providerId === "password"),
+      );
+    });
+    return () => unsub();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword) {
+      toast.error("Mevcut ve yeni şifre gerekli.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("Yeni şifre en az 6 karakter olmalı.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Yeni şifreler eşleşmiyor.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await changePassword({
+        currentPassword,
+        newPassword,
+      });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      toast.success("Şifreniz güncellendi.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isPasswordUser) {
+    return (
+      <div className="rounded-2xl border border-brand-dark/8 bg-white p-5">
+        <h3 className="font-semibold text-brand-dark">Şifre Değiştir</h3>
+        <p className="mt-2 text-sm text-brand-dark/55">
+          Bu hesap Google ile bağlandı. Şifre yönetimi Google hesabınız
+          üzerinden yapılır.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-brand-dark/8 bg-white p-5">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-brand-dark">Şifre Değiştir</h3>
+          <p className="mt-0.5 text-xs text-brand-dark/50">
+            Güvenliğiniz için mevcut şifrenizi doğrulayın.
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+          Aktif
+        </span>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-3.5">
+        <PasswordField
+          label="Mevcut Şifre"
+          value={currentPassword}
+          onChange={setCurrentPassword}
+          autoComplete="current-password"
+        />
+        <PasswordField
+          label="Yeni Şifre"
+          value={newPassword}
+          onChange={setNewPassword}
+          autoComplete="new-password"
+        />
+        <PasswordField
+          label="Yeni Şifre Tekrarı"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          autoComplete="new-password"
+        />
+        <div className="flex justify-end pt-1">
+          <button
+            type="submit"
+            disabled={loading}
+            className="cursor-pointer rounded-xl bg-brand-neon px-5 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {loading ? "Güncelleniyor…" : "Şifreyi Güncelle"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function GuvenlikTab() {
   return (
     <div className="space-y-6">
@@ -384,32 +686,7 @@ function GuvenlikTab() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-brand-dark/8 bg-white p-5">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <h3 className="font-semibold text-brand-dark">Şifre Değiştir</h3>
-              <p className="mt-0.5 text-xs text-brand-dark/50">
-                Son güncelleme: 42 gün önce yapıldı.
-              </p>
-            </div>
-            <span className="shrink-0 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
-              Aktif
-            </span>
-          </div>
-          <div className="space-y-3.5">
-            <PasswordField label="Mevcut Şifre" />
-            <PasswordField label="Yeni Şifre" />
-            <PasswordField label="Yeni Şifre Tekrarı" />
-            <div className="flex justify-end pt-1">
-              <button
-                type="button"
-                className="cursor-pointer rounded-xl bg-brand-neon px-5 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
-              >
-                Şifreyi Güncelle
-              </button>
-            </div>
-          </div>
-        </div>
+        <ChangePasswordSection />
 
         <div className="rounded-2xl border border-brand-dark/8 bg-white p-5">
           <h3 className="mb-1 font-semibold text-brand-dark">İki Aşamalı Doğrulama</h3>

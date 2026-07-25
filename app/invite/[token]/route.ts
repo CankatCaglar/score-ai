@@ -89,7 +89,9 @@ export async function GET(
     return redirectToLanding(request, "invite_invalid");
   }
 
-  const response = NextResponse.redirect(new URL("/dashboard", request.url));
+  const response = NextResponse.redirect(
+    new URL("/giris?next=%2Fdashboard", request.url),
+  );
   response.cookies.set(EARLY_ACCESS_COOKIE_NAME, createEarlyAccessToken(inviteEmail), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
