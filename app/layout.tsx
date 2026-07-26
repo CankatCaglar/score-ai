@@ -28,11 +28,6 @@ export async function generateMetadata(): Promise<Metadata> {
     description: isEnglish
       ? "AI-powered platform to analyze, score, and improve your content performance."
       : "Yapay zeka destekli içerik analizi ve puanlama platformu",
-    icons: {
-      icon: "/favicon.png",
-      shortcut: "/favicon.png",
-      apple: "/favicon.png",
-    },
   };
 }
 

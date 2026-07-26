@@ -9,10 +9,10 @@ import {
   Bell,
   Brain,
   ChevronDown,
+  ChevronLeft,
   CreditCard,
   HelpCircle,
   LayoutDashboard,
-  Lightbulb,
   LogOut,
   Menu,
   Plus,
@@ -50,7 +50,6 @@ const toolsNav: NavItem[] = [
   { label: "Brand DNA", href: "/dashboard/brand-brain", icon: Brain },
   { label: "Benchmark", href: "/dashboard/benchmark", icon: Trophy },
   { label: "Creative Memory", href: "/dashboard/creative-memory", icon: Sparkles },
-  { label: "AI İçgörüler", href: "/dashboard/icgoruler", icon: Lightbulb },
 ];
 
 const settingsNav: NavItem[] = [
@@ -342,6 +341,7 @@ export function DashboardShell({
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isAnalysisDetail = /^\/dashboard\/analizler\/.+/.test(pathname);
 
   const handleLogout = async () => {
     try {
@@ -392,18 +392,28 @@ export function DashboardShell({
 
       <div className="flex h-screen min-w-0 flex-1 flex-col overflow-y-auto bg-bg-offwhite">
         <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 bg-bg-offwhite px-4 sm:px-6 lg:h-16 lg:px-8">
-          <div className="flex items-center gap-3 lg:hidden">
+          <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              className="flex size-9 cursor-pointer items-center justify-center rounded-lg text-brand-dark/70 transition-colors hover:bg-brand-dark/5 hover:text-brand-dark"
+              className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-brand-dark/70 transition-colors hover:bg-brand-dark/5 hover:text-brand-dark lg:hidden"
               aria-label="Menüyü aç"
             >
               <Menu className="size-5" strokeWidth={1.75} />
             </button>
-            <Link href="/dashboard">
-              <Logo className="h-6 w-auto text-brand-dark" />
-            </Link>
+            {isAnalysisDetail ? (
+              <Link
+                href="/dashboard/analizler"
+                className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark/50 transition-colors hover:text-brand-dark"
+              >
+                <ChevronLeft className="size-4" strokeWidth={2} />
+                Analizler
+              </Link>
+            ) : (
+              <Link href="/dashboard" className="lg:hidden">
+                <Logo className="h-6 w-auto text-brand-dark" />
+              </Link>
+            )}
           </div>
 
           <div className="ml-auto flex items-center gap-3 sm:gap-4">

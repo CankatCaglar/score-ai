@@ -11,7 +11,6 @@ import {
   Camera,
   ChevronDown,
   ChevronUp,
-  ChevronLeft,
   Download,
   ExternalLink,
   ImageIcon,
@@ -178,7 +177,7 @@ export default function AnalizDetayPage() {
 
   if (loading) {
     return (
-      <div className="px-4 pb-8 pt-2 text-sm text-brand-dark/60 sm:px-6 lg:px-8 lg:pt-4">
+      <div className="px-4 pb-8 pt-1 text-sm text-brand-dark/60 sm:px-6 lg:px-8">
         Analiz detayları yükleniyor...
       </div>
     );
@@ -186,15 +185,8 @@ export default function AnalizDetayPage() {
 
   if (!analysis) {
     return (
-      <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
-        <Link
-          href="/dashboard/analizler"
-          className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark/50 hover:text-brand-dark"
-        >
-          <ChevronLeft className="size-4" strokeWidth={2} />
-          Analizler
-        </Link>
-        <p className="mt-5 rounded-xl bg-bg-light px-4 py-3 text-sm text-brand-dark/70">
+      <div className="px-4 pb-8 pt-1 sm:px-6 lg:px-8">
+        <p className="rounded-xl bg-bg-light px-4 py-3 text-sm text-brand-dark/70">
           {error ?? "Bu analiz bulunamadı."}
         </p>
       </div>
@@ -205,16 +197,8 @@ export default function AnalizDetayPage() {
     analysis.platformType === "instagram" ? Camera : Briefcase;
 
   return (
-    <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
-      <Link
-        href="/dashboard/analizler"
-        className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark/50 hover:text-brand-dark"
-      >
-        <ChevronLeft className="size-4" strokeWidth={2} />
-        Analizler
-      </Link>
-
-      <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
+    <div className="px-4 pb-8 pt-1 sm:px-6 lg:px-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
             {analysis.title}
@@ -285,7 +269,7 @@ export default function AnalizDetayPage() {
 function OverviewTab({ analysis }: { analysis: Analysis }) {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         <Card className="flex flex-col items-center justify-center text-center">
           <p className="text-xs font-medium text-brand-dark/50">Genel Score</p>
           <div className="mt-3">
@@ -302,18 +286,18 @@ function OverviewTab({ analysis }: { analysis: Analysis }) {
           <p className="text-sm font-semibold text-brand-dark">
             Kısa Değerlendirme
           </p>
-          <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brand-neon/25 px-2.5 py-1 text-xs font-semibold text-brand-dark">
+          <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-brand-neon/75 px-2.5 py-1 text-xs font-semibold text-brand-dark">
             <Bot className="size-3.5" strokeWidth={2} />
             Score AI
           </span>
           <p className="mt-3 text-sm leading-relaxed text-brand-dark/80">
             {analysis.evaluation}
           </p>
-          <div className="mt-4 rounded-xl bg-brand-neon/15 px-4 py-3">
+          <div className="mt-4 rounded-xl bg-brand-neon/60 px-4 py-4">
             <p className="text-xs font-semibold text-brand-dark">
               Öne Çıkan Güçlü Yön
             </p>
-            <p className="mt-1 text-sm text-brand-dark/75">{analysis.strength}</p>
+            <p className="mt-1.5 text-sm text-brand-dark/75">{analysis.strength}</p>
           </div>
         </Card>
 

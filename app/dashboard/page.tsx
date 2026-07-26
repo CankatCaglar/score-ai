@@ -8,8 +8,8 @@ import {
   Bot,
   Brain,
   ChevronRight,
-  Lightbulb,
   Plus,
+  Sparkles,
   Target,
   TrendingUp,
   UploadCloud,
@@ -23,7 +23,7 @@ const quickActions = [
   { label: "Yeni Analiz Başlat", href: "/dashboard/yeni-analiz", icon: UploadCloud },
   { label: "Brand DNA'yı Güncelle", href: "/dashboard/brand-brain", icon: Brain },
   { label: "Benchmark Karşılaştır", href: "/dashboard/benchmark", icon: Target },
-  { label: "AI Önerilerini Gör", href: "/dashboard/icgoruler", icon: Lightbulb },
+  { label: "Creative Memory", href: "/dashboard/creative-memory", icon: Sparkles },
 ];
 
 function Card({
@@ -229,13 +229,6 @@ export default function DashboardPage() {
               "İlk analizinizi tamamladıktan sonra kişiselleştirilmiş içgörüler burada görünecek."
             }
           />
-          <Link
-            href="/dashboard/icgoruler"
-            className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brand-dark hover:underline"
-          >
-            Tüm içgörüleri gör
-            <ChevronRight className="size-4" strokeWidth={2} />
-          </Link>
         </Card>
       </div>
       <Card>
