@@ -7,9 +7,8 @@ const inputClassName =
   "w-full rounded-xl border border-brand-dark/12 bg-white pl-10 pr-4 text-brand-dark outline-none transition placeholder:text-brand-dark/30 focus:border-brand-neon focus:ring-2 focus:ring-brand-neon/20";
 
 function fieldInputClass(compact?: boolean) {
-  return `${inputClassName} ${
-    compact ? "h-10 text-sm" : "h-11 text-[15px]"
-  }`;
+  // text-base (16px): iOS Safari 16px altındaki input'larda focus'ta zoom yapmasın.
+  return `${inputClassName} ${compact ? "h-11 text-base" : "h-12 text-base"}`;
 }
 
 export function AuthTextField({
@@ -131,7 +130,7 @@ export function AuthSubmitButton({
       type="submit"
       disabled={disabled || loading}
       className={`flex w-full cursor-pointer items-center justify-center rounded-xl bg-brand-dark text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${
-        compact ? "h-10" : "h-11"
+        compact ? "h-11" : "h-12"
       }`}
     >
       {loading ? "Lütfen bekleyin…" : children}
@@ -166,7 +165,7 @@ export function GoogleSignInButton({
       onClick={onClick}
       disabled={loading}
       className={`flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl border border-brand-dark/12 bg-white text-sm font-semibold text-brand-dark transition hover:bg-brand-dark/3 disabled:cursor-not-allowed disabled:opacity-50 ${
-        compact ? "h-10" : "h-11"
+        compact ? "h-11" : "h-12"
       }`}
     >
       <svg className="size-4 shrink-0" viewBox="0 0 24 24" aria-hidden>
