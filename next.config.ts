@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/dashboard/potential-image": ["./assets/fonts/**/*"],
   },
+  // Profile photo uploads allow up to 5 MB; leave headroom for multipart framing.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "6mb",
+    },
+  },
 };
 
 export default nextConfig;

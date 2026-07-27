@@ -9,25 +9,24 @@ import {
   Bot,
   Briefcase,
   Camera,
+  Check,
   ChevronDown,
   ChevronUp,
   Download,
   ExternalLink,
   ImageIcon,
+  Loader2,
   MessageSquare,
+  Pencil,
   Share2,
+  X,
 } from "lucide-react";
-import {
-  buildCriteria,
-  scoreColor,
-  type Analysis,
-} from "../data";
+import { type Analysis } from "../data";
 import { ScoreRing } from "../ScoreRing";
 
 const tabs = [
   "Genel Bakış",
-  "Kriterler",
-  "AI Önerileri",
+  "Score AI Önerileri",
   "Karşılaştırma",
   "İçgörüler",
 ] as const;
@@ -41,6 +40,50 @@ const categoryIcons: Record<string, typeof ImageIcon> = {
   "Business Intelligence": ArrowUpRight,
 };
 const SUGGESTIONS_PREVIEW_COUNT = 5;
+
+async function triggerDownload(url: string, fileName: string) {
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) throw new Error("İndirme başarısız");
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+
+function titleToFileSlug(title: string): string {
+  const map: Record<string, string> = {
+    ç: "c",
+    ğ: "g",
+    ı: "i",
+    ö: "o",
+    ş: "s",
+    ü: "u",
+    Ç: "c",
+    Ğ: "g",
+    İ: "i",
+    Ö: "o",
+    Ş: "s",
+    Ü: "u",
+  };
+  return (
+    title
+      .trim()
+      .replace(/[çğıöşüÇĞİÖŞÜ]/g, (char) => map[char] ?? char)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 48) || "score-ai"
+  );
+}
 
 function Card({
   children,
@@ -143,6 +186,11 @@ export default function AnalizDetayPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("Genel Bakış");
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [savingTitle, setSavingTitle] = useState(false);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -164,6 +212,7 @@ export default function AnalizDetayPage() {
         }
         const data = (await response.json()) as { analysis: Analysis };
         setAnalysis(data.analysis);
+        setTitleDraft(data.analysis.title);
       } catch (fetchError) {
         if ((fetchError as Error).name === "AbortError") return;
         setError("Analiz detayları yüklenemedi.");
@@ -174,6 +223,57 @@ export default function AnalizDetayPage() {
     void load();
     return () => controller.abort();
   }, [params.slug]);
+
+  const saveTitle = async () => {
+    if (!analysis || savingTitle) return;
+    const nextTitle = titleDraft.trim().replace(/\s+/g, " ");
+    if (!nextTitle) {
+      setTitleError("Başlık boş olamaz.");
+      return;
+    }
+    if (nextTitle === analysis.title) {
+      setEditingTitle(false);
+      setTitleError(null);
+      return;
+    }
+    setSavingTitle(true);
+    setTitleError(null);
+    try {
+      const response = await fetch(`/api/dashboard/analyses/${params.slug}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: nextTitle }),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        analysis?: Analysis;
+        error?: string;
+      };
+      if (!response.ok || !data.analysis) {
+        throw new Error(data.error || "Başlık kaydedilemedi.");
+      }
+      setAnalysis(data.analysis);
+      setTitleDraft(data.analysis.title);
+      setEditingTitle(false);
+    } catch {
+      setTitleError("Başlık kaydedilemedi.");
+    } finally {
+      setSavingTitle(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!analysis || downloading) return;
+    if (!analysis.mediaUrl && !analysis.sourceUrl) return;
+    setDownloading(true);
+    try {
+      await triggerDownload(
+        `/api/dashboard/media/${analysis.id}`,
+        `${titleToFileSlug(analysis.title)}.png`,
+      );
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -199,10 +299,81 @@ export default function AnalizDetayPage() {
   return (
     <div className="px-4 pb-8 pt-1 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
-            {analysis.title}
-          </h1>
+        <div className="min-w-0 flex-1">
+          {editingTitle ? (
+            <div className="flex max-w-xl flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <input
+                  value={titleDraft}
+                  onChange={(event) => setTitleDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void saveTitle();
+                    }
+                    if (event.key === "Escape") {
+                      setTitleDraft(analysis.title);
+                      setEditingTitle(false);
+                      setTitleError(null);
+                    }
+                  }}
+                  maxLength={80}
+                  autoFocus
+                  className="w-full rounded-xl border border-brand-dark/15 bg-white px-3 py-2 text-2xl font-semibold tracking-tight text-brand-dark outline-none focus:border-brand-dark/30"
+                />
+                <button
+                  type="button"
+                  onClick={() => void saveTitle()}
+                  disabled={savingTitle}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-neon text-brand-dark transition-opacity hover:opacity-90 disabled:opacity-60"
+                  aria-label="Başlığı kaydet"
+                >
+                  {savingTitle ? (
+                    <Loader2 className="size-4 animate-spin" strokeWidth={2} />
+                  ) : (
+                    <Check className="size-4" strokeWidth={2.25} />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTitleDraft(analysis.title);
+                    setEditingTitle(false);
+                    setTitleError(null);
+                  }}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-brand-dark/10 text-brand-dark/60 transition-colors hover:bg-brand-dark/5"
+                  aria-label="Düzenlemeyi iptal et"
+                >
+                  <X className="size-4" strokeWidth={2} />
+                </button>
+              </div>
+              {titleError ? (
+                <p className="text-xs text-red-500">{titleError}</p>
+              ) : (
+                <p className="text-xs text-brand-dark/40">
+                  Enter ile kaydet, Esc ile iptal.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-start gap-2">
+              <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
+                {analysis.title}
+              </h1>
+              <button
+                type="button"
+                onClick={() => {
+                  setTitleDraft(analysis.title);
+                  setEditingTitle(true);
+                  setTitleError(null);
+                }}
+                className="mt-1.5 flex size-8 shrink-0 items-center justify-center rounded-lg text-brand-dark/40 transition-colors hover:bg-brand-dark/5 hover:text-brand-dark"
+                aria-label="Başlığı düzenle"
+              >
+                <Pencil className="size-4" strokeWidth={1.75} />
+              </button>
+            </div>
+          )}
           <p className="mt-1 flex items-center gap-1.5 text-sm text-brand-dark/45">
             <PlatformIcon className="size-4" strokeWidth={1.75} />
             {analysis.platform}
@@ -211,9 +382,15 @@ export default function AnalizDetayPage() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className="flex items-center gap-1.5 rounded-lg border border-brand-dark/10 px-3.5 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5"
+            onClick={() => void handleDownload()}
+            disabled={downloading || (!analysis.mediaUrl && !analysis.sourceUrl)}
+            className="flex items-center gap-1.5 rounded-lg border border-brand-dark/10 px-3.5 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Download className="size-4" strokeWidth={2} />
+            {downloading ? (
+              <Loader2 className="size-4 animate-spin" strokeWidth={2} />
+            ) : (
+              <Download className="size-4" strokeWidth={2} />
+            )}
             İndir
           </button>
           <button
@@ -236,8 +413,6 @@ export default function AnalizDetayPage() {
       <div className="mt-5 flex gap-1 overflow-x-auto border-b border-brand-dark/10">
         {tabs.map((t) => {
           const active = t === tab;
-          const label =
-            t === "Kriterler" ? `Kriterler (${analysis.criteriaCount})` : t;
           return (
             <button
               key={t}
@@ -249,7 +424,7 @@ export default function AnalizDetayPage() {
                   : "border-transparent text-brand-dark/45 hover:text-brand-dark/70"
               }`}
             >
-              {label}
+              {t}
             </button>
           );
         })}
@@ -257,14 +432,13 @@ export default function AnalizDetayPage() {
 
       <div className="mt-6">
         {tab === "Genel Bakış" && <OverviewTab analysis={analysis} />}
-        {tab === "Kriterler" && <CriteriaTab analysis={analysis} />}
-        {tab === "AI Önerileri" && <SuggestionsTab analysis={analysis} />}
+        {tab === "Score AI Önerileri" && <SuggestionsTab analysis={analysis} />}
         {tab === "Karşılaştırma" && <ComparisonTab analysis={analysis} />}
         {tab === "İçgörüler" && <InsightsTab analysis={analysis} />}
       </div>
     </div>
   );
-}
+} 
 
 function OverviewTab({ analysis }: { analysis: Analysis }) {
   return (
@@ -378,7 +552,6 @@ function OverviewTab({ analysis }: { analysis: Analysis }) {
               ["Analiz Tarihi", analysis.date],
               ["Platform", analysis.platform.split(" ")[0]],
               ["İçerik Türü", analysis.contentType],
-              ["Kriter Sayısı", `${analysis.criteriaCount} mikro kriter`],
             ].map(([label, value]) => (
               <div
                 key={label}
@@ -396,7 +569,7 @@ function OverviewTab({ analysis }: { analysis: Analysis }) {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
-          <h2 className="text-base font-semibold text-brand-dark">AI Önerileri</h2>
+          <h2 className="text-base font-semibold text-brand-dark">Score AI Önerileri</h2>
           <ExpandableSuggestionsList suggestions={analysis.suggestions} variant="overview" />
         </Card>
 
@@ -491,61 +664,32 @@ function Comparison({ analysis }: { analysis: Analysis }) {
   );
 }
 
-function CriteriaTab({ analysis }: { analysis: Analysis }) {
-  const groups = buildCriteria(analysis);
-  return (
-    <div className="space-y-4">
-      {groups.map((group) => (
-        <Card key={group.category}>
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-brand-dark">
-              {group.category}
-            </h3>
-            <span className="text-sm font-semibold text-brand-dark">
-              {group.average}
-              <span className="text-brand-dark/30">/100</span>
-            </span>
-          </div>
-          <div className="mt-4 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-            {group.items.map((item) => (
-              <div key={item.label} className="flex items-center gap-3">
-                <span
-                  className="size-1.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: scoreColor(item.value) }}
-                />
-                <span className="flex-1 truncate text-sm text-brand-dark/70">
-                  {item.label}
-                </span>
-                <span
-                  className="text-sm font-semibold tabular-nums"
-                  style={{ color: scoreColor(item.value) }}
-                >
-                  {item.value}
-                </span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
 function SuggestionsTab({ analysis }: { analysis: Analysis }) {
   const totalSuggestionGain = analysis.suggestions.reduce((sum, item) => sum + item.gain, 0);
   const netPotentialGain = Math.max(0, analysis.potentialScore - analysis.score);
   return (
     <Card>
-      <h2 className="text-base font-semibold text-brand-dark">
-        AI Önerileri ({analysis.suggestions.length})
-      </h2>
-      <p className="mt-1 text-sm text-brand-dark/55">
-        Bu öneriler kriter bazlı potansiyel artış hesaplarından üretilir.
-      </p>
-      <p className="mt-2 text-xs font-medium text-brand-dark/60">
-        Listelenen toplam: +{formatGain(totalSuggestionGain)} puan · Hedef artış: +
-        {formatGain(netPotentialGain)} puan
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-brand-dark">
+            Score AI Önerileri ({analysis.suggestions.length})
+          </h2>
+          <p className="mt-1 text-sm text-brand-dark/55">
+            Bu öneriler kriter bazlı potansiyel artış hesaplarından üretilir.
+          </p>
+          <p className="mt-2 text-xs font-medium text-brand-dark/60">
+            Listelenen toplam: +{formatGain(totalSuggestionGain)} puan · Hedef artış: +
+            {formatGain(netPotentialGain)} puan
+          </p>
+        </div>
+        <Link
+          href={`/dashboard/analiz-sonucu?id=${analysis.id}`}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-neon px-3 py-2 text-xs font-semibold text-brand-dark transition-opacity hover:opacity-90"
+        >
+          <ExternalLink className="size-3.5" strokeWidth={2} />
+          Sonucu Gör
+        </Link>
+      </div>
       <ExpandableSuggestionsList suggestions={analysis.suggestions} variant="tab" />
     </Card>
   );
@@ -555,9 +699,18 @@ function ComparisonTab({ analysis }: { analysis: Analysis }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Card>
-        <h2 className="text-base font-semibold text-brand-dark">
-          Benzer İçeriklerle Karşılaştırma
-        </h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-base font-semibold text-brand-dark">
+            Benzer İçeriklerle Karşılaştırma
+          </h2>
+          <Link
+            href="/dashboard/benchmark"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-neon px-3 py-2 text-xs font-semibold text-brand-dark transition-opacity hover:opacity-90"
+          >
+            Benchmark
+            <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
+          </Link>
+        </div>
         <Comparison analysis={analysis} />
       </Card>
       <Card>
@@ -588,8 +741,17 @@ function ComparisonTab({ analysis }: { analysis: Analysis }) {
 function InsightsTab({ analysis }: { analysis: Analysis }) {
   return (
     <Card className="bg-brand-dark! text-white">
-      <div className="flex size-10 items-center justify-center rounded-full bg-brand-neon/20">
-        <Bot className="size-5 text-brand-neon" strokeWidth={1.75} />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex size-10 items-center justify-center rounded-full bg-brand-neon/20">
+          <Bot className="size-5 text-brand-neon" strokeWidth={1.75} />
+        </div>
+        <Link
+          href="/dashboard/creative-memory"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-neon px-3 py-2 text-xs font-semibold text-brand-dark transition-opacity hover:opacity-90"
+        >
+          Creative Memory
+          <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
+        </Link>
       </div>
       <p className="mt-4 text-sm font-semibold text-brand-neon">Score AI İçgörüsü</p>
       <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/80">

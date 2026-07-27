@@ -93,6 +93,7 @@ function ExpandableInsightText({ text }: { text: string }) {
   );
 }
 
+
 export default function DashboardPage() {
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);

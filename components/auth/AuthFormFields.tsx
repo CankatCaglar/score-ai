@@ -31,6 +31,7 @@ export function AuthTextField({
   autoComplete?: string;
   icon?: LucideIcon;
   compact?: boolean;
+
 }) {
   return (
     <div>

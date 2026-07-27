@@ -6,6 +6,7 @@ import {
   Camera,
   Check,
   ChevronDown,
+  CreditCard,
   Eye,
   EyeOff,
   Link2,
@@ -37,13 +38,14 @@ import {
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useRouter } from "next/navigation";
 
-type Tab = "profil" | "guvenlik" | "bildirimler" | "entegrasyonlar";
+type Tab = "profil" | "guvenlik" | "bildirimler" | "entegrasyonlar" | "fatura";
 
 const tabs: { id: Tab; label: string; icon: typeof User }[] = [
   { id: "profil", label: "Profil", icon: User },
   { id: "guvenlik", label: "Güvenlik", icon: Lock },
   { id: "bildirimler", label: "Bildirimler", icon: Bell },
   { id: "entegrasyonlar", label: "Entegrasyonlar", icon: Link2 },
+  { id: "fatura", label: "Fatura ve Plan", icon: CreditCard },
 ];
 
 // ─── Custom Select ────────────────────────────────────────────────────────────
@@ -1066,6 +1068,67 @@ function EntegrasyonlarTab() {
   );
 }
 
+// ─── Fatura ve Plan Tab ───────────────────────────────────────────────────────
+
+function FaturaVePlanTab() {
+  const plan = ((): "normal" | "pro" => "normal")();
+  const isPro = plan === "pro";
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-brand-dark">Fatura ve Plan</h2>
+        <p className="mt-0.5 text-sm text-brand-dark/50">
+          Abonelik ve ödeme bilgilerinizi yönetin.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-brand-dark/8 bg-white p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-brand-dark/45">
+              Mevcut plan
+            </p>
+            <p className="mt-1 text-xl font-semibold text-brand-dark">
+              {isPro ? "Pro" : "Normal"}
+            </p>
+            <p className="mt-1 text-sm text-brand-dark/50">
+              {isPro
+                ? "Gelişmiş analiz araçları ve öncelikli destek dahil."
+                : "Temel analiz özellikleri aktif."}
+            </p>
+          </div>
+          {!isPro && (
+            <button
+              type="button"
+              className="cursor-pointer rounded-xl bg-brand-neon px-4 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
+            >
+              Pro&apos;ya yükselt
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-brand-dark/8 bg-white p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-dark/8">
+            <CreditCard className="size-4 text-brand-dark/60" strokeWidth={1.75} />
+          </div>
+          <div>
+            <h3 className="font-semibold text-brand-dark">Ödeme bilgileri</h3>
+            <p className="mt-0.5 text-xs text-brand-dark/50">
+              Kayıtlı kart ve fatura geçmişiniz burada görünecek.
+            </p>
+          </div>
+        </div>
+        <p className="rounded-xl bg-brand-dark/3 px-3.5 py-3 text-sm text-brand-dark/55">
+          Henüz kayıtlı bir ödeme yöntemi yok.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AyarlarPage() {
@@ -1106,6 +1169,7 @@ export default function AyarlarPage() {
           {activeTab === "guvenlik" && <GuvenlikTab />}
           {activeTab === "bildirimler" && <BildirimlerTab />}
           {activeTab === "entegrasyonlar" && <EntegrasyonlarTab />}
+          {activeTab === "fatura" && <FaturaVePlanTab />}
         </div>
       </div>
     </div>

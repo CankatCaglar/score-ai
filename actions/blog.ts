@@ -1,9 +1,58 @@
 "use server";
 
+import { randomUUID } from "crypto";
+import path from "path";
 import { cookies } from "next/headers";
 import { FieldValue } from "firebase-admin/firestore";
 import { ADMIN_COOKIE_NAME, verifySessionToken } from "@/lib/admin-auth";
-import { getAdminDb } from "@/lib/firebase-admin";
+import {
+  getAdminDb,
+  getAdminStorage,
+  getAdminStorageBucketName,
+} from "@/lib/firebase-admin";
+
+const ALLOWED_COVER_MIME_TYPES = new Set(["image/jpeg", "image/png"]);
+const MAX_COVER_BYTES = 5 * 1024 * 1024;
+
+function detectCoverMimeType(bytes: Buffer, declaredType: string): string | null {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  ) {
+    return "image/png";
+  }
+  const normalized = declaredType.toLowerCase().trim();
+  if (normalized === "image/jpg") return "image/jpeg";
+  if (ALLOWED_COVER_MIME_TYPES.has(normalized)) return normalized;
+  return null;
+}
+
+function extensionForCoverMime(mimeType: string): string {
+  return mimeType === "image/png" ? ".png" : ".jpg";
+}
+
+async function resolvePublicCoverUrl(objectPath: string): Promise<string> {
+  const storage = getAdminStorage();
+  const bucket = storage.bucket(getAdminStorageBucketName());
+  const object = bucket.file(objectPath);
+
+  try {
+    await object.makePublic();
+    return `https://storage.googleapis.com/${bucket.name}/${objectPath}`;
+  } catch {
+    const [signedUrl] = await object.getSignedUrl({
+      action: "read",
+      expires: "2099-12-31",
+    });
+    return signedUrl;
+  }
+}
 
 export type BlogLocale = "tr" | "en";
 export type BlogStatus = "draft" | "published";
@@ -245,6 +294,48 @@ export async function listBlogPosts(): Promise<BlogPost[]> {
   return snapshot.docs
     .map((doc) => mapDoc(doc.id, doc.data() as BlogDocData))
     .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+}
+
+/** Admin: blog kapak görselini Storage'a yükler, public URL döner. */
+export async function uploadBlogCoverImage(
+  formData: FormData,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  try {
+    await requireAdmin();
+  } catch {
+    return { ok: false, error: "Oturum bulunamadı. Lütfen tekrar giriş yapın." };
+  }
+
+  const file = formData.get("cover");
+  if (!(file instanceof File) || file.size <= 0) {
+    return { ok: false, error: "Geçerli bir görsel seçin." };
+  }
+  if (file.size > MAX_COVER_BYTES) {
+    return { ok: false, error: "Görsel en fazla 5 MB olabilir." };
+  }
+
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const mimeType = detectCoverMimeType(bytes, file.type || "");
+  if (!mimeType) {
+    return { ok: false, error: "Yalnızca PNG, JPEG veya JPG yükleyebilirsiniz." };
+  }
+
+  const storage = getAdminStorage();
+  const bucket = storage.bucket(getAdminStorageBucketName());
+  const ext =
+    extensionForCoverMime(mimeType) ||
+    path.extname(file.name).toLowerCase() ||
+    ".jpg";
+  const objectPath = `blog-covers/${Date.now()}-${randomUUID()}${ext}`;
+  const object = bucket.file(objectPath);
+
+  await object.save(bytes, {
+    metadata: { contentType: mimeType },
+    resumable: false,
+  });
+
+  const url = await resolvePublicCoverUrl(objectPath);
+  return { ok: true, url };
 }
 
 /** Admin: yazı oluşturur veya günceller. */

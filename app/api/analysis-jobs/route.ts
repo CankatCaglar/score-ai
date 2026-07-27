@@ -41,7 +41,10 @@ function isLinkedInSourceUrl(sourceUrl: string): boolean {
 
 function guessTitle(sourceUrl?: string, fileName?: string): string {
   if (fileName) {
-    return fileName.replace(path.extname(fileName), "").replace(/[_-]+/g, " ");
+    const fromFile = fileName.replace(path.extname(fileName), "").replace(/[_-]+/g, " ").trim();
+    if (fromFile && !isTechnicalFileTitle(fromFile)) {
+      return fromFile;
+    }
   }
   if (!sourceUrl) return "Yeni Analiz";
   try {
@@ -54,13 +57,31 @@ function guessTitle(sourceUrl?: string, fileName?: string): string {
     }
     const chunk = parsed.pathname.split("/").filter(Boolean).slice(-1)[0];
     if (chunk) {
-      const looksTechnical = /^[a-z0-9_-]{8,}$/i.test(chunk) || /^[0-9]{6,}$/.test(chunk);
-      if (!looksTechnical) return `Post Analizi ${chunk}`;
+      const decoded = decodeURIComponent(chunk).replace(/[_-]+/g, " ").trim();
+      if (decoded && !isTechnicalFileTitle(decoded)) {
+        return `Post Analizi ${decoded}`;
+      }
     }
   } catch {
     // noop
   }
   return "Yeni Analiz";
+}
+
+function isTechnicalFileTitle(title: string): boolean {
+  const normalized = title.trim();
+  if (!normalized) return true;
+  const compact = normalized.replace(/[\s_-]+/g, "");
+  if (/^[0-9]{6,}$/.test(compact)) return true;
+  if (/^[a-f0-9]{8,}$/i.test(compact) && /[0-9]/.test(compact)) return true;
+  if (/^(img|dsc|screenshot|screen|snap|photo|image|download|file)[-_\s]?\d+/i.test(normalized)) {
+    return true;
+  }
+  if (/snapinsta|screenshot|screen.?shot/i.test(normalized)) return true;
+  if (/^[a-z0-9_-]{10,}$/i.test(normalized) && !/[aeiouüöı]/i.test(normalized)) {
+    return true;
+  }
+  return false;
 }
 
 async function uploadInputFile(ownerEmail: string, file: File) {

@@ -45,9 +45,24 @@ async function triggerDownload(url: string, fileName: string) {
 }
 
 function titleToFileSlug(title: string): string {
+  const map: Record<string, string> = {
+    ç: "c",
+    ğ: "g",
+    ı: "i",
+    ö: "o",
+    ş: "s",
+    ü: "u",
+    Ç: "c",
+    Ğ: "g",
+    İ: "i",
+    Ö: "o",
+    Ş: "s",
+    Ü: "u",
+  };
   return (
     title
       .trim()
+      .replace(/[çğıöşüÇĞİÖŞÜ]/g, (char) => map[char] ?? char)
       .toLowerCase()
       .replace(/[^a-z0-9]+/gi, "-")
       .replace(/^-+|-+$/g, "")
@@ -77,6 +92,7 @@ type ResultPayload = {
     afterMediaUrl?: string;
   } | null;
 };
+
 
 const metricCategoryMap: Record<MetricLabel, string[]> = {
   "Dikkat Çekicilik": ["visual_intelligence"],

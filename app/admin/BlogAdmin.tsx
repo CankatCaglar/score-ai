@@ -7,15 +7,19 @@ import {
   ArrowLeft,
   Bold,
   ChevronDown,
+  ImagePlus,
   Italic,
   Link2,
   List,
   ListOrdered,
+  Loader2,
   Plus,
   Quote,
   Star,
   Trash2,
   Underline as UnderlineIcon,
+  UploadCloud,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -26,7 +30,11 @@ import {
   listBlogPosts,
   saveBlogPost,
   setBlogPostStatus,
+  uploadBlogCoverImage,
 } from "@/actions/blog";
+
+const COVER_ACCEPT = "image/png,image/jpeg,image/jpg,.png,.jpg,.jpeg";
+const COVER_MAX_BYTES = 5 * 1024 * 1024;
 
 const dateFormatter = new Intl.DateTimeFormat("tr-TR", {
   day: "2-digit",
@@ -170,6 +178,143 @@ function StatusBadge({ status }: { status: BlogStatus }) {
     <span className="rounded-full bg-brand-dark/10 px-2 py-1 text-xs font-semibold text-brand-dark/60">
       Taslak
     </span>
+  );
+}
+
+function CoverImageUploader({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFile = useCallback(
+    async (file: File | null | undefined) => {
+      if (!file) return;
+
+      const mime = file.type.toLowerCase();
+      const isAllowed =
+        mime === "image/png" ||
+        mime === "image/jpeg" ||
+        mime === "image/jpg" ||
+        /\.(png|jpe?g)$/i.test(file.name);
+      if (!isAllowed) {
+        toast.error("Yalnızca PNG, JPEG veya JPG yükleyebilirsiniz.");
+        return;
+      }
+      if (file.size > COVER_MAX_BYTES) {
+        toast.error("Görsel en fazla 5 MB olabilir.");
+        return;
+      }
+
+      setIsUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append("cover", file);
+        const result = await uploadBlogCoverImage(formData);
+        if (!result.ok) {
+          toast.error(result.error);
+          return;
+        }
+        onChange(result.url);
+        toast.success("Kapak görseli yüklendi.");
+      } catch {
+        toast.error("Görsel yüklenemedi. Tekrar deneyin.");
+      } finally {
+        setIsUploading(false);
+        if (inputRef.current) inputRef.current.value = "";
+      }
+    },
+    [onChange],
+  );
+
+  return (
+    <div className="block">
+      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-brand-dark/50">
+        Kapak Resmi
+      </span>
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          void handleFile(e.dataTransfer.files?.[0]);
+        }}
+        className={`relative overflow-hidden rounded-lg border-2 border-dashed transition ${
+          isDragging
+            ? "border-brand-neon bg-brand-neon/10"
+            : "border-brand-dark/15 bg-bg-light"
+        }`}
+      >
+        {value ? (
+          <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={value}
+              alt="Kapak önizleme"
+              className="max-h-40 w-full object-cover"
+            />
+            <div className="absolute inset-x-0 bottom-0 flex items-center justify-end gap-2 bg-linear-to-t from-brand-dark/70 to-transparent px-3 py-2.5">
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                disabled={isUploading}
+                className="inline-flex items-center gap-1.5 rounded-md bg-white/95 px-2.5 py-1.5 text-xs font-semibold text-brand-dark transition hover:bg-white disabled:opacity-50"
+              >
+                <ImagePlus className="size-3.5" />
+                Değiştir
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange("")}
+                disabled={isUploading}
+                className="inline-flex size-7 items-center justify-center rounded-md bg-white/95 text-brand-dark transition hover:bg-white disabled:opacity-50"
+                aria-label="Kapak görselini kaldır"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+            {isUploading ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-bg-light/70">
+                <Loader2 className="size-6 animate-spin text-brand-dark" />
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={isUploading}
+            className="flex w-full flex-col items-center px-4 py-6 text-center transition hover:bg-brand-dark/2 disabled:opacity-60"
+          >
+            {isUploading ? (
+              <Loader2 className="size-7 animate-spin text-brand-dark/60" />
+            ) : (
+              <UploadCloud className="size-7 text-brand-dark/45" strokeWidth={1.75} />
+            )}
+            <p className="mt-2 text-sm font-medium text-brand-dark">
+              {isUploading ? "Yükleniyor..." : "Sürükle bırak veya dosya seç"}
+            </p>
+            <p className="mt-1 text-xs text-brand-dark/45">PNG • JPEG • JPG · en fazla 5 MB</p>
+          </button>
+        )}
+        <input
+          ref={inputRef}
+          type="file"
+          accept={COVER_ACCEPT}
+          className="hidden"
+          onChange={(e) => void handleFile(e.target.files?.[0])}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -420,24 +565,10 @@ export function BlogAdmin() {
               <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-brand-dark/45" />
             </div>
           </label>
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-brand-dark/50">
-              Kapak Resmi (URL)
-            </span>
-            <input
-              type="text"
-              name="blog-cover"
-              autoComplete="off"
-              data-lpignore="true"
-              data-1p-ignore="true"
-              value={form.coverImageUrl}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, coverImageUrl: e.target.value }))
-              }
-              placeholder="https://... veya /screenshots/..."
-              className="h-10 w-full rounded-lg border border-brand-dark/15 bg-bg-light px-3 text-sm text-brand-dark outline-none transition placeholder:text-brand-dark/30 focus:border-brand-neon focus:ring-2 focus:ring-brand-neon/20"
-            />
-          </label>
+          <CoverImageUploader
+            value={form.coverImageUrl}
+            onChange={(url) => setForm((f) => ({ ...f, coverImageUrl: url }))}
+          />
         </div>
 
         <label className="block">
@@ -487,20 +618,6 @@ export function BlogAdmin() {
             onChange={(html) => setForm((f) => ({ ...f, content: html }))}
           />
         </div>
-
-        {form.coverImageUrl ? (
-          <div>
-            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-brand-dark/50">
-              Kapak Önizleme
-            </span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={form.coverImageUrl}
-              alt="Kapak önizleme"
-              className="max-h-48 rounded-lg border border-brand-dark/10 object-cover"
-            />
-          </div>
-        ) : null}
       </div>
     );
   }

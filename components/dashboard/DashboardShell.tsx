@@ -10,7 +10,6 @@ import {
   Brain,
   ChevronDown,
   ChevronLeft,
-  CreditCard,
   HelpCircle,
   LayoutDashboard,
   LogOut,
@@ -18,9 +17,7 @@ import {
   Plus,
   Settings,
   Sparkles,
-  Star,
   Trophy,
-  User,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -28,12 +25,19 @@ import { logoutUser } from "@/actions/auth";
 import { auth } from "@/lib/firebase";
 import { useClickOutside } from "@/hooks/useClickOutside";
 
+export type MembershipPlan = "normal" | "pro";
+
 export type DashboardUser = {
   email: string;
   name: string;
   initials: string;
   picture?: string;
+  plan?: MembershipPlan;
 };
+
+function planLabel(plan: MembershipPlan = "normal") {
+  return plan === "pro" ? "Pro" : "Normal";
+}
 
 type NavItem = {
   label: string;
@@ -97,39 +101,6 @@ function ProfilePopup({
   onClose: () => void;
   onLogout: () => void;
 }) {
-  const profileMenuItems = [
-    {
-      icon: User,
-      label: "Profil",
-      desc: "Kişisel bilgilerinizi görüntüleyin",
-      href: "/dashboard/ayarlar",
-    },
-    {
-      icon: Settings,
-      label: "Hesap Ayarları",
-      desc: "Hesap ve güvenlik ayarları",
-      href: "/dashboard/ayarlar",
-    },
-    {
-      icon: Bell,
-      label: "Bildirimler",
-      desc: "Bildirim tercihlerinizi yönetin",
-      href: "/dashboard/ayarlar",
-    },
-    {
-      icon: CreditCard,
-      label: "Fatura ve Plan",
-      desc: "Abonelik ve ödeme bilgileri",
-      href: "/dashboard/ayarlar",
-    },
-    {
-      icon: HelpCircle,
-      label: "Yardım Merkezi",
-      desc: "Destek ve sık sorulan sorular",
-      href: "/dashboard/ayarlar",
-    },
-  ];
-
   return (
     <div className="absolute bottom-full left-0 right-0 z-50 mb-2 mx-2">
       <div className="overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
@@ -152,39 +123,28 @@ function ProfilePopup({
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-brand-dark">{user.name}</p>
-              <p className="text-xs text-brand-dark/50">Hesap</p>
+              <p className="text-xs text-brand-dark/50">{planLabel(user.plan)}</p>
               <p className="mt-0.5 truncate text-xs text-brand-dark/40">
                 {user.email}
               </p>
             </div>
           </div>
-
-          <div className="mt-3 rounded-xl bg-brand-dark/4 px-3 py-2.5">
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand-neon/30 px-2 py-0.5 text-[11px] font-semibold text-brand-dark">
-              <Star className="size-3" strokeWidth={2} />
-              Beta
-            </span>
-            <p className="mt-2 text-xs text-brand-dark/60">
-              Score AI erken erişim hesabı
-            </p>
-          </div>
         </div>
 
         <div className="border-t border-brand-dark/8 px-2 py-1.5">
-          {profileMenuItems.map(({ icon: Icon, label, desc, href }) => (
-            <Link
-              key={label}
-              href={href}
-              onClick={onClose}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-brand-dark/5"
-            >
-              <Icon className="size-4 shrink-0 text-brand-dark/50" strokeWidth={1.75} />
-              <div className="min-w-0 text-left">
-                <p className="text-sm font-medium text-brand-dark">{label}</p>
-                <p className="text-[11px] text-brand-dark/45">{desc}</p>
-              </div>
-            </Link>
-          ))}
+          <Link
+            href="/dashboard/ayarlar"
+            onClick={onClose}
+            className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-brand-dark/5"
+          >
+            <HelpCircle className="size-4 shrink-0 text-brand-dark/50" strokeWidth={1.75} />
+            <div className="min-w-0 text-left">
+              <p className="text-sm font-medium text-brand-dark">Yardım Merkezi</p>
+              <p className="text-[11px] text-brand-dark/45">
+                Destek ve sık sorulan sorular
+              </p>
+            </div>
+          </Link>
         </div>
 
         <div className="border-t border-brand-dark/8 px-2 py-1.5">
@@ -319,7 +279,9 @@ function SidebarContent({
             <p className="truncate text-sm font-medium text-white/90">
               {user.name}
             </p>
-            <p className="truncate text-xs text-brand-neon">Beta</p>
+            <p className="truncate text-xs text-brand-neon">
+              {planLabel(user.plan)}
+            </p>
           </div>
           <ChevronDown
             className={`size-4 shrink-0 text-white/40 transition-transform ${profileOpen ? "rotate-180" : ""}`}
@@ -416,7 +378,7 @@ export function DashboardShell({
             )}
           </div>
 
-          <div className="ml-auto flex items-center gap-3 sm:gap-4">
+          <div className="ml-auto flex items-center">
             <button
               type="button"
               className="relative flex size-9 cursor-pointer items-center justify-center rounded-lg text-brand-dark/70 transition-colors hover:bg-brand-dark/5 hover:text-brand-dark"
@@ -424,19 +386,6 @@ export function DashboardShell({
             >
               <Bell className="size-5" strokeWidth={1.75} />
             </button>
-
-            {user.picture ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={user.picture}
-                alt=""
-                className="size-9 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex size-9 items-center justify-center rounded-full bg-brand-dark/10 text-xs font-semibold text-brand-dark">
-                {user.initials}
-              </div>
-            )}
           </div>
         </header>
 

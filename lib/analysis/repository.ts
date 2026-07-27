@@ -1,6 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { createHash } from "node:crypto";
-import { analyzeCategoryWithAnthropic } from "@/lib/ai/anthropic";
+import { analyzeCategoryWithAnthropic, generateContentTitleWithAnthropic, isTechnicalAnalysisTitle } from "@/lib/ai/anthropic";
 import {
   getAdminDb,
   getAdminStorage,
@@ -31,6 +31,7 @@ import type {
   JobStatus,
   Platform,
 } from "@/lib/analysis/types";
+import { splitDisplayName, userDocIdFromEmail } from "@/lib/user-profile";
 
 const COLLECTIONS = {
   analyses: "analyses",
@@ -667,8 +668,36 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
         };
       });
 
+      const currentTitle =
+        typeof analysisData.title === "string" ? analysisData.title.trim() : "";
+      const titleCustomized = analysisData.titleCustomized === true;
+      let nextTitle = currentTitle || "Yeni Analiz";
+      if (!titleCustomized && (isTechnicalAnalysisTitle(nextTitle) || nextTitle === "Yeni Analiz")) {
+        try {
+          const generated = await generateContentTitleWithAnthropic({
+            imageBase64,
+            imageMediaType,
+            imageUrl,
+            brandContext,
+            platformType:
+              typeof analysisData.platformType === "string"
+                ? analysisData.platformType
+                : "instagram",
+          });
+          if (generated.title.trim()) {
+            nextTitle = generated.title.trim();
+          }
+        } catch (titleError) {
+          console.error(
+            "[processPendingAnalysisJobs] title generation failed",
+            titleError instanceof Error ? titleError.message : titleError,
+          );
+        }
+      }
+
       await analysisRef.set(
         {
+          title: nextTitle,
           score: Math.round(currentScore),
           potentialScore: Math.round(potentialScore),
           change: Math.round(currentScore - previousScore),
@@ -954,12 +983,24 @@ export async function getDashboardOverview(
       `Son analizde ${topSuggestionFocus} odaklı aksiyonlar skor artışı için en yüksek potansiyeli gösteriyor.`;
   }
 
-  const displayName = ownerEmail.split("@")[0] ?? "Kullanıcı";
+  const db = getAdminDb();
+  const userSnap = await db
+    .collection(COLLECTIONS.users)
+    .doc(userDocIdFromEmail(ownerEmail))
+    .get();
+  const userData = userSnap.data() as Record<string, unknown> | undefined;
+  const profileFirstName =
+    (typeof userData?.firstName === "string" && userData.firstName.trim()) ||
+    splitDisplayName(
+      typeof userData?.displayName === "string" ? userData.displayName : null,
+    ).firstName;
+  const emailLocalPart = ownerEmail.split("@")[0] ?? "";
   const isPublicFallbackUser =
-    ownerEmail === "public@score.local" || displayName.toLowerCase() === "public";
+    ownerEmail === "public@score.local" ||
+    emailLocalPart.toLowerCase() === "public";
   const greetingName = isPublicFallbackUser
     ? "Kullanıcı"
-    : displayName.slice(0, 1).toUpperCase() + displayName.slice(1);
+    : profileFirstName || "Kullanıcı";
 
   return {
     greetingName,
@@ -1100,4 +1141,40 @@ export async function deleteAnalysesByIds(
   }
 
   return { deleted, skipped };
+}
+
+export async function updateAnalysisTitle(
+  ownerEmail: string,
+  slug: string,
+  title: string,
+): Promise<Analysis | null> {
+  const normalizedTitle = title.trim().replace(/\s+/g, " ");
+  if (!normalizedTitle) {
+    throw new Error("TITLE_REQUIRED");
+  }
+  if (normalizedTitle.length > 80) {
+    throw new Error("TITLE_TOO_LONG");
+  }
+
+  const db = getAdminDb();
+  const snapshot = await db
+    .collection(COLLECTIONS.analyses)
+    .where("ownerEmail", "==", ownerEmail)
+    .where("slug", "==", slug)
+    .limit(1)
+    .get();
+  if (snapshot.empty) return null;
+
+  const doc = snapshot.docs[0]!;
+  await doc.ref.set(
+    {
+      title: normalizedTitle,
+      titleCustomized: true,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  const refreshed = await doc.ref.get();
+  return mapAnalysisDoc(refreshed.id, refreshed.data() as AnalysisDoc);
 }

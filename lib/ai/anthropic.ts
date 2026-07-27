@@ -740,3 +740,93 @@ export async function extractVisualTextLayoutWithAnthropic(
     rawResponse: rawText,
   };
 }
+
+export function isTechnicalAnalysisTitle(title: string): boolean {
+  const normalized = title.trim();
+  if (!normalized) return true;
+  if (isLikelyTechnicalOverlayText(normalized)) return true;
+
+  const withoutExt = normalized.replace(/\.(jpe?g|png|webp|gif|heic|bmp)$/i, "");
+  const compact = withoutExt.replace(/[\s_-]+/g, "");
+  if (/^[0-9]{6,}$/.test(compact)) return true;
+  if (/^[a-f0-9]{8,}$/i.test(compact) && /[0-9]/.test(compact)) return true;
+  if (/^(img|dsc|screenshot|screen|snap|photo|image|download|file)[-_\s]?\d+/i.test(withoutExt)) {
+    return true;
+  }
+  if (/^[a-z0-9_-]{10,}$/i.test(withoutExt) && !/[aeiouüöı]/i.test(withoutExt)) {
+    return true;
+  }
+  return false;
+}
+
+type GenerateContentTitleInput = {
+  imageUrl?: string;
+  imageBase64?: string;
+  imageMediaType?: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+  brandContext?: string;
+  platformType?: string;
+};
+
+export async function generateContentTitleWithAnthropic(
+  input: GenerateContentTitleInput,
+): Promise<{ title: string; modelUsed: string }> {
+  const client = getAnthropicClient();
+  const modelUsed = getAnthropicModel();
+  const timeoutMs = Math.min(getTimeoutMs(), 20_000);
+  const image =
+    input.imageBase64 && input.imageMediaType
+      ? { data: input.imageBase64, mediaType: input.imageMediaType }
+      : input.imageUrl
+        ? await fetchImageAsBase64(input.imageUrl)
+        : null;
+  if (!image) {
+    throw new Error("Baslik uretimi icin gorsel kaynagi bulunamadi.");
+  }
+
+  const promptSections = [
+    "Bu gorsel icin kisa, marka ve icerikle ilgili bir baslik uret.",
+    "Kurallar:",
+    "- Yalnizca JSON don: {\"title\":\"...\"}",
+    "- Baslik Turkce olsun",
+    "- En fazla 6 kelime",
+    "- Dosya adi, UUID, sayisal kod, screenshot veya watermark metni kullanma",
+    "- Marka adi gorunuyorsa basliga dogal sekilde dahil et",
+    input.platformType ? `Platform: ${input.platformType}` : "",
+    input.brandContext ? `Brand DNA Context:\n${input.brandContext}` : "",
+  ].filter(Boolean);
+
+  const response = await withTimeout(
+    client.messages.create({
+      model: modelUsed,
+      max_tokens: 120,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: promptSections.join("\n"),
+            },
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: image.mediaType,
+                data: image.data,
+              },
+            },
+          ],
+        },
+      ],
+    }),
+    timeoutMs,
+  );
+
+  const rawText = extractTextContent(response);
+  const parsed = parseJsonObject(rawText) as { title?: unknown };
+  const title = String(parsed.title ?? "").trim().replace(/\s+/g, " ");
+  if (!title || isTechnicalAnalysisTitle(title)) {
+    throw new Error("AI gecerli bir baslik uretemedi.");
+  }
+  return { title: title.slice(0, 80), modelUsed };
+}
