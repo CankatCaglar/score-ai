@@ -75,6 +75,8 @@ export default function AnalizlerPage() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {

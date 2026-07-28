@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft, CalendarDays, Mail, MapPin, User } from "lucide-react";
 import { Logo } from "@/components/Logo";
@@ -99,14 +100,14 @@ function estimateReadTime(content: string, locale: Locale): string {
 }
 
 export function BlogArticle({ post }: { post: BlogArticleData }) {
+  const router = useRouter();
   const [locale, setLocale] = useState<Locale>(post.locale);
   const copy = COPY[locale];
-  const localized = post.translations[locale];
-  const sourceLocalized = post.translations[post.locale];
-  const title = localized.title || sourceLocalized.title;
-  const category = localized.category || sourceLocalized.category;
-  const content = localized.content || sourceLocalized.content;
-  const readTime = estimateReadTime(content, locale);
+  const localized = post.translations[post.locale];
+  const title = localized.title;
+  const category = localized.category;
+  const content = localized.content;
+  const readTime = estimateReadTime(content, post.locale);
 
   useEffect(() => {
     const detected = getDefaultLocale();
@@ -118,6 +119,16 @@ export function BlogArticle({ post }: { post: BlogArticleData }) {
     document.documentElement.lang = locale;
     window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
   }, [locale]);
+
+  const switchLocale = (next: Locale) => {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, next);
+    document.documentElement.lang = next;
+    if (next !== post.locale) {
+      router.push("/blog");
+      return;
+    }
+    setLocale(next);
+  };
 
   return (
     <div className="bg-bg-offwhite text-brand-dark [&_a]:cursor-pointer [&_button:not(:disabled)]:cursor-pointer">
@@ -142,7 +153,7 @@ export function BlogArticle({ post }: { post: BlogArticleData }) {
             <div className="hidden items-center gap-1 md:flex">
               <button
                 type="button"
-                onClick={() => setLocale("tr")}
+                onClick={() => switchLocale("tr")}
                 className={`rounded-md px-2 py-1 text-xs font-semibold transition ${
                   locale === "tr" ? "bg-brand-neon text-brand-dark" : "text-white/70 hover:text-brand-neon"
                 }`}
@@ -151,7 +162,7 @@ export function BlogArticle({ post }: { post: BlogArticleData }) {
               </button>
               <button
                 type="button"
-                onClick={() => setLocale("en")}
+                onClick={() => switchLocale("en")}
                 className={`rounded-md px-2 py-1 text-xs font-semibold transition ${
                   locale === "en" ? "bg-brand-neon text-brand-dark" : "text-white/70 hover:text-brand-neon"
                 }`}

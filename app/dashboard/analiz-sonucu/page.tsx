@@ -93,7 +93,6 @@ type ResultPayload = {
   } | null;
 };
 
-
 const metricCategoryMap: Record<MetricLabel, string[]> = {
   "Dikkat Çekicilik": ["visual_intelligence"],
   Netlik: ["content_intelligence"],
@@ -234,6 +233,7 @@ function MetricRow({
 function AnalizSonucuPageContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const focusSonuc = searchParams.get("focus") === "sonuc";
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<ResultPayload | null>(null);
@@ -302,6 +302,23 @@ function AnalizSonucuPageContent() {
   );
   const jobStatus = payload?.analysis?.jobStatus;
   const isCompleted = jobStatus === "completed";
+  const detailHref = payload?.analysis?.slug
+    ? `/dashboard/analizler/${payload.analysis.slug}`
+    : "/dashboard/analizler";
+
+  useEffect(() => {
+    if (!focusSonuc || loading || !isCompleted) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById("sonuc")?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      if (payload?.analysis?.potentialImageUrl) {
+        setShowPotentialModal(true);
+      }
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [focusSonuc, loading, isCompleted, payload?.analysis?.potentialImageUrl]);
 
   const openInCanva = () => {
     setCanvaError(null);
@@ -390,7 +407,7 @@ function AnalizSonucuPageContent() {
     return (
       <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
         <Link
-          href="/dashboard/analizler"
+          href={detailHref}
           className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark/50 hover:text-brand-dark"
         >
           <ChevronLeft className="size-4" strokeWidth={2} />
@@ -408,7 +425,7 @@ function AnalizSonucuPageContent() {
           </p>
           <div className="mt-4 flex items-center gap-2">
             <Link
-              href={`/dashboard/analizler/${payload.analysis.slug}`}
+              href={detailHref}
               className="rounded-lg bg-brand-dark px-3.5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
               Analiz Detayina Git
@@ -429,7 +446,7 @@ function AnalizSonucuPageContent() {
   return (
     <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
       <Link
-        href="/dashboard/analizler"
+        href={detailHref}
         className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark/50 hover:text-brand-dark"
       >
         <ChevronLeft className="size-4" strokeWidth={2} />
@@ -543,7 +560,10 @@ function AnalizSonucuPageContent() {
           <span className="text-sm font-semibold text-brand-dark">Potansiyel</span>
         </div>
 
-        <div className="@container min-w-0 rounded-3xl border-2 border-brand-neon/40 bg-bg-light p-4 shadow-sm sm:p-6">
+        <div
+          id="sonuc"
+          className="@container min-w-0 rounded-3xl border-2 border-brand-neon/40 bg-bg-light p-4 shadow-sm sm:p-6"
+        >
           <div className="flex items-start justify-between gap-2 sm:gap-3">
             <span className="inline-flex max-w-[65%] items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-brand-dark sm:text-xs">
               <Sparkles className="size-3.5 shrink-0" strokeWidth={2} />

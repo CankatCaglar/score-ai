@@ -206,84 +206,29 @@ function mapDoc(id: string, data: BlogDocData): BlogPost {
   };
 }
 
-async function translateText({
-  source,
-  target,
-  text,
-  format = "text",
-}: {
-  source: BlogLocale;
-  target: BlogLocale;
-  text: string;
-  format?: "text" | "html";
-}): Promise<string> {
-  const clean = text.trim();
-  if (!clean) return "";
-  if (source === target) return clean;
-
-  const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
-  if (!apiKey) {
-    return clean;
-  }
-
-  const response = await fetch(
-    `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        q: clean,
-        source,
-        target,
-        format,
-      }),
-      cache: "no-store",
-    },
-  );
-
-  if (!response.ok) {
-    return clean;
-  }
-
-  const data = (await response.json()) as {
-    data?: { translations?: Array<{ translatedText?: string }> };
-  };
-  return data.data?.translations?.[0]?.translatedText?.trim() || clean;
-}
-
-async function buildTranslations(input: {
+function buildTranslations(input: {
   locale: BlogLocale;
   title: string;
   category: string;
   excerpt: string;
   content: string;
-}): Promise<Record<BlogLocale, BlogLocalizedContent>> {
-  const source = input.locale;
-  const target: BlogLocale = source === "tr" ? "en" : "tr";
-
-  const [title, category, excerpt, content] = await Promise.all([
-    translateText({ source, target, text: input.title }),
-    translateText({ source, target, text: input.category }),
-    translateText({ source, target, text: input.excerpt }),
-    translateText({ source, target, text: input.content, format: "html" }),
-  ]);
-
+}): Record<BlogLocale, BlogLocalizedContent> {
   const sourceData: BlogLocalizedContent = {
     title: input.title,
     category: input.category,
     excerpt: input.excerpt,
     content: input.content,
   };
-  const targetData: BlogLocalizedContent = {
-    title,
-    category,
-    excerpt: excerpt.slice(0, 300),
-    content,
+  const empty: BlogLocalizedContent = {
+    title: "",
+    category: "",
+    excerpt: "",
+    content: "",
   };
 
-  return source === "tr"
-    ? { tr: sourceData, en: targetData }
-    : { en: sourceData, tr: targetData };
+  return input.locale === "tr"
+    ? { tr: sourceData, en: empty }
+    : { en: sourceData, tr: empty };
 }
 
 /** Admin: tüm blog yazılarını (taslak + yayında) döndürür, güncelleme tarihine göre. */
@@ -354,7 +299,7 @@ export async function saveBlogPost(
   const sourceCategory = input.category.trim();
   const sourceExcerpt = input.excerpt.trim().slice(0, 300);
   const sourceContent = input.content;
-  const translations = await buildTranslations({
+  const translations = buildTranslations({
     locale,
     title: sourceTitle,
     category: sourceCategory,

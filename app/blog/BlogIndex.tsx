@@ -127,7 +127,10 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
     window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
   }, [locale]);
 
-  const visiblePosts = useMemo(() => posts, [posts]);
+  const visiblePosts = useMemo(
+    () => posts.filter((post) => post.locale === locale),
+    [posts, locale],
+  );
 
   return (
     <div className="bg-bg-offwhite text-brand-dark [&_a]:cursor-pointer [&_button:not(:disabled)]:cursor-pointer">
@@ -261,14 +264,10 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
           ) : (
             <div className={`grid gap-5 md:grid-cols-2 ${PAGE_CONTAINER}`}>
               {visiblePosts.map((post) => {
-                const localized = post.translations[locale];
-                const title = localized.title || post.translations[post.locale].title;
-                const excerpt =
-                  localized.excerpt || post.translations[post.locale].excerpt;
-                const readTime = estimateReadTime(
-                  localized.content || post.translations[post.locale].content,
-                  locale,
-                );
+                const localized = post.translations[post.locale];
+                const title = localized.title;
+                const excerpt = localized.excerpt;
+                const readTime = estimateReadTime(localized.content, locale);
                 return (
                 <Link
                   key={post.slug}
