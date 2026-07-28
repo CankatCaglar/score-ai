@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Briefcase,
   Camera,
+  Check,
   CheckCircle2,
   CheckSquare,
   ChevronDown,
@@ -38,6 +39,99 @@ const SCORE_RANGE_OPTIONS: Array<{ value: ScoreRangeValue; label: string }> = [
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 type PaginationItem = number | "ellipsis";
+
+function FilterSelect<T extends string>({
+  value,
+  options,
+  onChange,
+  ariaLabel,
+  className = "",
+}: {
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (value: T) => void;
+  ariaLabel: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => option.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className={`relative ${className}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={ariaLabel}
+        className="inline-flex min-w-36 w-full items-center gap-2 rounded-lg border border-brand-dark/10 bg-bg-light py-2.5 pl-3 pr-3 text-sm font-medium text-brand-dark/80 outline-none transition-colors hover:bg-brand-dark/5 focus-visible:border-brand-dark/25"
+      >
+        <span className="flex-1 text-left">{selected?.label ?? ""}</span>
+        <ChevronDown
+          className={`size-4 shrink-0 text-brand-dark/40 transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+          strokeWidth={2}
+        />
+      </button>
+
+      {open ? (
+        <ul
+          role="listbox"
+          aria-label={`${ariaLabel} seçenekleri`}
+          className="absolute left-0 z-30 mt-1.5 min-w-full overflow-hidden rounded-xl border border-brand-dark/10 bg-bg-light py-1.5 font-sans shadow-lg shadow-brand-dark/8"
+        >
+          {options.map((option) => {
+            const isActive = option.value === value;
+            return (
+              <li key={option.value} role="option" aria-selected={isActive}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-2 px-3.5 py-2 text-left text-sm transition-colors ${
+                    isActive
+                      ? "bg-brand-neon/50 font-semibold text-brand-dark"
+                      : "font-medium text-brand-dark/75 hover:bg-brand-dark/4"
+                  }`}
+                >
+                  <Check
+                    className={`size-3.5 shrink-0 ${
+                      isActive ? "text-brand-dark" : "text-transparent"
+                    }`}
+                    strokeWidth={2.25}
+                  />
+                  {option.label}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
 
 function buildPaginationItems(currentPage: number, totalPages: number): PaginationItem[] {
   if (totalPages <= 7) {
@@ -202,52 +296,31 @@ export default function AnalizlerPage() {
               <span className="text-[11px] font-medium text-brand-dark/45">
                 Tarih Aralığı
               </span>
-              <div className="relative">
-                <select
-                  value={dateRange}
-                  onChange={(event) => {
-                    setDateRange(event.target.value as DateRangeValue);
-                    setPage(1);
-                  }}
-                  className="min-w-36 appearance-none rounded-lg border border-brand-dark/10 bg-bg-light px-3 py-2.5 pr-9 text-sm font-medium text-brand-dark/80 outline-none transition-colors hover:bg-brand-dark/5"
-                >
-                  {DATE_RANGE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-brand-dark/40"
-                  strokeWidth={2}
-                />
-              </div>
+              <FilterSelect
+                value={dateRange}
+                options={DATE_RANGE_OPTIONS}
+                ariaLabel="Tarih aralığı"
+                onChange={(next) => {
+                  setDateRange(next);
+                  setPage(1);
+                }}
+              />
             </label>
 
             <label className="flex flex-col gap-1">
               <span className="text-[11px] font-medium text-brand-dark/45">
                 Score Aralığı
               </span>
-              <div className="relative">
-                <select
-                  value={scoreRange}
-                  onChange={(event) => {
-                    setScoreRange(event.target.value as ScoreRangeValue);
-                    setPage(1);
-                  }}
-                  className="min-w-32 appearance-none rounded-lg border border-brand-dark/10 bg-bg-light px-3 py-2.5 pr-9 text-sm font-medium text-brand-dark/80 outline-none transition-colors hover:bg-brand-dark/5"
-                >
-                  {SCORE_RANGE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-brand-dark/40"
-                  strokeWidth={2}
-                />
-              </div>
+              <FilterSelect
+                value={scoreRange}
+                options={SCORE_RANGE_OPTIONS}
+                ariaLabel="Score aralığı"
+                className="min-w-32"
+                onChange={(next) => {
+                  setScoreRange(next);
+                  setPage(1);
+                }}
+              />
             </label>
 
             <button
@@ -314,8 +387,8 @@ export default function AnalizlerPage() {
         <div
           className={`hidden items-center gap-4 border-b border-brand-dark/8 px-4 py-3 text-xs font-semibold text-brand-dark/45 md:grid ${
             selectionMode
-              ? "grid-cols-[36px_1fr_160px_90px_150px_40px]"
-              : "grid-cols-[1fr_160px_90px_150px_40px]"
+              ? "grid-cols-[36px_1fr_210px_90px_150px_40px]"
+              : "grid-cols-[1fr_210px_90px_150px_40px]"
           }`}
         >
           {selectionMode && (
@@ -348,8 +421,8 @@ export default function AnalizlerPage() {
                 key={a.id}
                 className={`grid grid-cols-1 items-center gap-3 rounded-2xl px-4 py-3 transition-colors hover:bg-bg-offwhite md:gap-4 ${
                   selectionMode
-                    ? "md:grid-cols-[36px_1fr_160px_90px_150px_40px]"
-                    : "md:grid-cols-[1fr_160px_90px_150px_40px]"
+                    ? "md:grid-cols-[36px_1fr_210px_90px_150px_40px]"
+                    : "md:grid-cols-[1fr_210px_90px_150px_40px]"
                 }`}
               >
                 {selectionMode && (

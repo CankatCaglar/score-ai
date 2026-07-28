@@ -302,6 +302,7 @@ export function DashboardShell({
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const isAnalysisDetail = /^\/dashboard\/analizler\/.+/.test(pathname);
+  const isCreativeMemoryDetail = /^\/dashboard\/creative-memory\/.+/.test(pathname);
 
   const handleLogout = async () => {
     try {
@@ -368,6 +369,14 @@ export function DashboardShell({
               >
                 <ChevronLeft className="size-4" strokeWidth={2} />
                 Analizler
+              </Link>
+            ) : isCreativeMemoryDetail ? (
+              <Link
+                href="/dashboard/creative-memory"
+                className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark/50 transition-colors hover:text-brand-dark"
+              >
+                <ChevronLeft className="size-4" strokeWidth={2} />
+                Creative Memory
               </Link>
             ) : (
               <Link href="/dashboard" className="lg:hidden">

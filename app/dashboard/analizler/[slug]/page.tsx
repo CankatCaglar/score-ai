@@ -18,6 +18,7 @@ import {
   Loader2,
   MessageSquare,
   Pencil,
+  Sparkles,
   X,
 } from "lucide-react";
 import { type Analysis } from "../data";
@@ -205,7 +206,7 @@ export default function AnalizDetayPage() {
   const [titleError, setTitleError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [expandSuggestionsTab, setExpandSuggestionsTab] = useState(false);
-  const topAnchorRef = useRef<HTMLDivElement | null>(null);
+  const suggestionsSectionRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -310,20 +311,19 @@ export default function AnalizDetayPage() {
 
   const PlatformIcon =
     analysis.platformType === "instagram" ? Camera : Briefcase;
-  const scrollToTopAnchor = () => {
-    window.requestAnimationFrame(() => {
-      topAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  };
   const openSuggestionsTab = () => {
     setExpandSuggestionsTab(true);
     setTab("Score AI Önerileri");
-    scrollToTopAnchor();
+    window.requestAnimationFrame(() => {
+      suggestionsSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
   };
 
   return (
     <div className="px-4 pb-8 pt-1 sm:px-6 lg:px-8">
-      <div ref={topAnchorRef} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           {editingTitle ? (
@@ -430,7 +430,10 @@ export default function AnalizDetayPage() {
         </div>
       </div>
 
-      <div className="mt-5 flex gap-1 overflow-x-auto border-b border-brand-dark/10">
+      <div
+        ref={suggestionsSectionRef}
+        className="mt-5 flex scroll-mt-16 gap-1 overflow-x-auto border-b border-brand-dark/10 lg:scroll-mt-20"
+      >
         {tabs.map((t) => {
           const active = t === tab;
           return (
@@ -442,7 +445,6 @@ export default function AnalizDetayPage() {
                 if (t !== "Score AI Önerileri") {
                   setExpandSuggestionsTab(false);
                 }
-                scrollToTopAnchor();
               }}
               className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
                 active
@@ -511,20 +513,22 @@ function OverviewTab({
           </div>
         </Card>
 
-        <Card>
+        <Card className="flex flex-col">
           <p className="text-sm font-semibold text-brand-dark">İçerik Önizleme</p>
-          <div className="relative mt-3 aspect-square w-full overflow-hidden rounded-2xl bg-bg-offwhite">
-            {analysis.mediaUrl || analysis.sourceUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={`/api/dashboard/media/${analysis.id}`}
-                alt={analysis.title}
-                className="size-full object-contain p-2"
-              />
-            ) : null}
-            <span className="absolute right-2 top-2 rounded-md bg-brand-dark/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-              1/1
-            </span>
+          <div className="relative mt-3 flex min-h-0 flex-1 items-center justify-center">
+            <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-bg-offwhite">
+              {analysis.mediaUrl || analysis.sourceUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/api/dashboard/media/${analysis.id}`}
+                  alt={analysis.title}
+                  className="size-full object-contain p-2"
+                />
+              ) : null}
+              <span className="absolute right-2 top-2 rounded-md bg-brand-dark/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                1/1
+              </span>
+            </div>
           </div>
           <button
             type="button"
@@ -789,11 +793,13 @@ function ComparisonTab({ analysis }: { analysis: Analysis }) {
 }
 
 function InsightsTab({ analysis }: { analysis: Analysis }) {
+  const topSuggestions = analysis.suggestions.slice(0, 3);
+
   return (
-    <Card className="bg-brand-dark! text-white">
+    <Card>
       <div className="flex items-start justify-between gap-3">
-        <div className="flex size-10 items-center justify-center rounded-full bg-brand-neon/20">
-          <Bot className="size-5 text-brand-neon" strokeWidth={1.75} />
+        <div className="flex size-10 items-center justify-center rounded-full bg-brand-neon/80">
+          <Bot className="size-5 text-brand-dark" strokeWidth={1.75} />
         </div>
         <Link
           href="/dashboard/creative-memory"
@@ -803,10 +809,44 @@ function InsightsTab({ analysis }: { analysis: Analysis }) {
           <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
         </Link>
       </div>
-      <p className="mt-4 text-sm font-semibold text-brand-neon">Score AI İçgörüsü</p>
-      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/80">
-        {analysis.insight}
+
+      <p className="mt-4 text-sm font-semibold text-brand-dark">Score AI İçgörüsü</p>
+      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-brand-dark/75">
+        {analysis.insight?.trim() || "Bu analiz için henüz AI içgörüsü oluşmadı."}
       </p>
+
+      {analysis.strength?.trim() ? (
+        <div className="mt-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-dark/40">
+            Güçlü yön
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-brand-dark/75">
+            {analysis.strength}
+          </p>
+        </div>
+      ) : null}
+
+      {topSuggestions.length > 0 ? (
+        <div className="mt-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-dark/40">
+            Öneriler
+          </p>
+          <ul className="mt-2 space-y-2">
+            {topSuggestions.map((suggestion) => (
+              <li
+                key={suggestion.id}
+                className="flex items-start gap-2 text-sm leading-relaxed text-brand-dark/75"
+              >
+                <Sparkles
+                  className="mt-0.5 size-3.5 shrink-0 text-brand-dark/40"
+                  strokeWidth={2}
+                />
+                <span>{suggestion.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </Card>
   );
 }

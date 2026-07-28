@@ -381,13 +381,13 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-        <button
-          type="button"
+        <Link
+          href="/dashboard/creative-memory"
           className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
         >
           Tüm raporu görüntüle
           <ChevronRight className="size-4" strokeWidth={2} />
-        </button>
+        </Link>
       </div>
       {error && <p className="text-sm font-medium text-red-500">{error}</p>}
     </div>

@@ -21,8 +21,8 @@ import {
 import { PotentialResultModal } from "@/components/analysis/PotentialResultModal";
 import { SocialShareMenu } from "@/components/dashboard/SocialShareMenu";
 import { assessPotentialImageEligibility } from "@/lib/analysis/edge-cases";
-import { CRITERION_DEFINITIONS } from "@/lib/analysis/rubric";
-import type { Analysis, CriterionEvaluation } from "@/lib/analysis/types";
+import { summarizeAiCommentary } from "@/lib/analysis/insight-summary";
+import type { Analysis } from "@/lib/analysis/types";
 
 const CANVA_MAGIC_LAYERS_URL = "https://www.canva.com/?highlight=magicLayers";
 
@@ -100,10 +100,6 @@ const metricCategoryMap: Record<MetricLabel, string[]> = {
   "Etkileşim Potansiyeli": ["channel_intelligence", "business_intelligence"],
 };
 
-const criterionLabelMap = new Map(
-  CRITERION_DEFINITIONS.map((item) => [item.id, item.label]),
-);
-
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
@@ -155,42 +151,6 @@ function buildMetricsFromAnalysis(
   }));
 
   return { current, potential };
-}
-
-function summarizeAiCommentary(analysis: Analysis | null) {
-  if (!analysis?.criteriaEvaluations) {
-    return {
-      strengths: [] as string[],
-      weaknesses: [] as string[],
-      actions: [] as string[],
-    };
-  }
-
-  const entries = Object.entries(analysis.criteriaEvaluations).map(([id, value]) => ({
-    id,
-    label: criterionLabelMap.get(id) ?? id,
-    evaluation: value as CriterionEvaluation,
-  }));
-
-  const strengths = entries
-    .filter((entry) => entry.evaluation.seviye >= 2)
-    .sort((a, b) => b.evaluation.seviye - a.evaluation.seviye)
-    .slice(0, 3)
-    .map((entry) => `${entry.label}: ${entry.evaluation.mevcut_durum}`);
-
-  const weaknesses = entries
-    .filter((entry) => entry.evaluation.seviye <= 1)
-    .sort((a, b) => a.evaluation.seviye - b.evaluation.seviye)
-    .slice(0, 3)
-    .map((entry) => `${entry.label}: ${entry.evaluation.eksiklikler}`);
-
-  const actions = entries
-    .filter((entry) => entry.evaluation.seviye <= 1)
-    .slice(0, 3)
-    .map((entry) => entry.evaluation.aksiyon_onerisi)
-    .filter(Boolean);
-
-  return { strengths, weaknesses, actions };
 }
 
 function buildPreviewUrl(analysis: Analysis | undefined) {
