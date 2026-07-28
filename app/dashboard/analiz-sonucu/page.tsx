@@ -14,12 +14,12 @@ import {
   Heart,
   Info,
   Loader2,
-  Share2,
   Sparkles,
   Target,
   Type,
 } from "lucide-react";
 import { PotentialResultModal } from "@/components/analysis/PotentialResultModal";
+import { SocialShareMenu } from "@/components/dashboard/SocialShareMenu";
 import { assessPotentialImageEligibility } from "@/lib/analysis/edge-cases";
 import { CRITERION_DEFINITIONS } from "@/lib/analysis/rubric";
 import type { Analysis, CriterionEvaluation } from "@/lib/analysis/types";
@@ -479,13 +479,10 @@ function AnalizSonucuPageContent() {
             )}
             İndir
           </button>
-          <button
-            type="button"
-            className="flex items-center gap-1.5 rounded-lg border border-brand-dark/10 px-3 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 sm:px-3.5"
-          >
-            <Share2 className="size-4" strokeWidth={2} />
-            Paylaş
-          </button>
+          <SocialShareMenu
+            title={payload?.analysis?.title ?? "Score AI Analizi"}
+            buttonClassName="flex items-center gap-1.5 rounded-lg border border-brand-dark/10 px-3 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 sm:px-3.5"
+          />
           <button
             type="button"
             disabled={!alreadyGenerated || openingCanva}

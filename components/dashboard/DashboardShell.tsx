@@ -119,7 +119,6 @@ function ProfilePopup({
                   {user.initials}
                 </div>
               )}
-              <span className="absolute bottom-0.5 right-0.5 size-3 rounded-full border-2 border-white bg-green-500" />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-brand-dark">{user.name}</p>
@@ -273,7 +272,6 @@ function SidebarContent({
                 {user.initials}
               </div>
             )}
-            <span className="absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-brand-dark bg-green-400" />
           </div>
           <div className="min-w-0 flex-1 text-left">
             <p className="truncate text-sm font-medium text-white/90">

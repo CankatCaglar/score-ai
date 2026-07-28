@@ -72,6 +72,7 @@ export default function AnalizlerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -264,31 +265,73 @@ export default function AnalizlerPage() {
             </button>
             <button
               type="button"
-              disabled={selectedIds.length === 0 || deleting}
-              onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => {
+                if (selectionMode) {
+                  if (selectedIds.length > 0 && !deleting) {
+                    setShowDeleteConfirm(true);
+                  }
+                  return;
+                }
+                setSelectionMode(true);
+                setSelectedIds([]);
+              }}
+              disabled={selectionMode && (selectedIds.length === 0 || deleting)}
+              className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                selectionMode
+                  ? "border border-red-200 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  : "border border-brand-dark/10 text-brand-dark/70 hover:bg-brand-dark/5"
+              }`}
             >
-              <Trash2 className="size-4" strokeWidth={2} />
-              {deleting ? "Siliniyor..." : `Seçilenleri Sil (${selectedIds.length})`}
+              {selectionMode ? (
+                <Trash2 className="size-4" strokeWidth={2} />
+              ) : (
+                <CheckSquare className="size-4" strokeWidth={2} />
+              )}
+              {selectionMode
+                ? deleting
+                  ? "Siliniyor..."
+                  : `Seçilenleri Sil (${selectedIds.length})`
+                : "Analiz Seç"}
             </button>
+            {selectionMode && (
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => {
+                  setSelectionMode(false);
+                  setSelectedIds([]);
+                }}
+                className="rounded-lg border border-brand-dark/10 px-3 py-2.5 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Vazgeç
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       <div className="mt-6 rounded-3xl bg-bg-light p-2 shadow-sm sm:p-4">
-        <div className="hidden grid-cols-[36px_1fr_160px_90px_150px_40px] items-center gap-4 border-b border-brand-dark/8 px-4 py-3 text-xs font-semibold text-brand-dark/45 md:grid">
-          <button
-            type="button"
-            onClick={toggleSelectAllVisible}
-            className="inline-flex items-center justify-center text-brand-dark/60 hover:text-brand-dark"
-            aria-label="Tümünü seç"
-          >
-            {allVisibleSelected ? (
-              <CheckSquare className="size-4" strokeWidth={2} />
-            ) : (
-              <Square className="size-4" strokeWidth={2} />
-            )}
-          </button>
+        <div
+          className={`hidden items-center gap-4 border-b border-brand-dark/8 px-4 py-3 text-xs font-semibold text-brand-dark/45 md:grid ${
+            selectionMode
+              ? "grid-cols-[36px_1fr_160px_90px_150px_40px]"
+              : "grid-cols-[1fr_160px_90px_150px_40px]"
+          }`}
+        >
+          {selectionMode && (
+            <button
+              type="button"
+              onClick={toggleSelectAllVisible}
+              className="inline-flex items-center justify-center text-brand-dark/60 hover:text-brand-dark"
+              aria-label="Tümünü seç"
+            >
+              {allVisibleSelected ? (
+                <CheckSquare className="size-4" strokeWidth={2} />
+              ) : (
+                <Square className="size-4" strokeWidth={2} />
+              )}
+            </button>
+          )}
           <span>İçerik</span>
           <span>Tarih</span>
           <span>Score</span>
@@ -303,22 +346,28 @@ export default function AnalizlerPage() {
             return (
               <div
                 key={a.id}
-                className="grid grid-cols-1 items-center gap-3 rounded-2xl px-4 py-3 transition-colors hover:bg-bg-offwhite md:grid-cols-[36px_1fr_160px_90px_150px_40px] md:gap-4"
+                className={`grid grid-cols-1 items-center gap-3 rounded-2xl px-4 py-3 transition-colors hover:bg-bg-offwhite md:gap-4 ${
+                  selectionMode
+                    ? "md:grid-cols-[36px_1fr_160px_90px_150px_40px]"
+                    : "md:grid-cols-[1fr_160px_90px_150px_40px]"
+                }`}
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    toggleSelected(a.id);
-                  }}
-                  className="inline-flex items-center justify-center text-brand-dark/60 hover:text-brand-dark"
-                  aria-label="Analizi seç"
-                >
-                  {selectedIds.includes(a.id) ? (
-                    <CheckSquare className="size-4" strokeWidth={2} />
-                  ) : (
-                    <Square className="size-4" strokeWidth={2} />
-                  )}
-                </button>
+                {selectionMode && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleSelected(a.id);
+                    }}
+                    className="inline-flex items-center justify-center text-brand-dark/60 hover:text-brand-dark"
+                    aria-label="Analizi seç"
+                  >
+                    {selectedIds.includes(a.id) ? (
+                      <CheckSquare className="size-4" strokeWidth={2} />
+                    ) : (
+                      <Square className="size-4" strokeWidth={2} />
+                    )}
+                  </button>
+                )}
                 <Link href={`/dashboard/analizler/${a.slug}`} className="contents">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-bg-offwhite">

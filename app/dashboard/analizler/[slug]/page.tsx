@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
   BadgeCheck,
@@ -18,11 +18,11 @@ import {
   Loader2,
   MessageSquare,
   Pencil,
-  Share2,
   X,
 } from "lucide-react";
 import { type Analysis } from "../data";
 import { ScoreRing } from "../ScoreRing";
+import { SocialShareMenu } from "@/components/dashboard/SocialShareMenu";
 
 const tabs = [
   "Genel Bakış",
@@ -39,7 +39,8 @@ const categoryIcons: Record<string, typeof ImageIcon> = {
   "Channel Intelligence": Bot,
   "Business Intelligence": ArrowUpRight,
 };
-const SUGGESTIONS_PREVIEW_COUNT = 5;
+const OVERVIEW_SUGGESTIONS_PREVIEW_COUNT = 3;
+const TAB_SUGGESTIONS_PREVIEW_COUNT = 6;
 
 async function triggerDownload(url: string, fileName: string) {
   try {
@@ -108,15 +109,27 @@ function formatGain(value: number): string {
 function ExpandableSuggestionsList({
   suggestions,
   variant,
+  initialExpanded = false,
+  onGoToSuggestions,
 }: {
   suggestions: Analysis["suggestions"];
   variant: "overview" | "tab";
+  initialExpanded?: boolean;
+  onGoToSuggestions?: () => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const hasMore = suggestions.length > SUGGESTIONS_PREVIEW_COUNT;
+  const [expanded, setExpanded] = useState(initialExpanded);
+  const previewCount =
+    variant === "overview"
+      ? OVERVIEW_SUGGESTIONS_PREVIEW_COUNT
+      : TAB_SUGGESTIONS_PREVIEW_COUNT;
+  const hasMore = suggestions.length > previewCount;
   const visibleSuggestions =
-    expanded || !hasMore ? suggestions : suggestions.slice(0, SUGGESTIONS_PREVIEW_COUNT);
-  const remaining = Math.max(0, suggestions.length - SUGGESTIONS_PREVIEW_COUNT);
+    variant === "overview"
+      ? suggestions.slice(0, previewCount)
+      : expanded || !hasMore
+        ? suggestions
+        : suggestions.slice(0, previewCount);
+  const remaining = Math.max(0, suggestions.length - previewCount);
 
   return (
     <div className="mt-4 space-y-2">
@@ -124,54 +137,58 @@ function ExpandableSuggestionsList({
         variant === "overview" ? (
           <div
             key={`${s.id ?? s.text}-${index}`}
-            className="flex items-center gap-3 rounded-xl bg-bg-offwhite px-3 py-2.5"
+            className="flex items-center gap-2.5 rounded-xl bg-bg-offwhite px-3 py-2"
           >
-            <span className="min-w-0 flex-1 text-xs leading-snug text-brand-dark/75">
+            <span className="min-w-0 flex-1 text-[11px] leading-snug text-brand-dark/75">
               {s.text}
             </span>
-            <span className="shrink-0 rounded-full bg-brand-neon/40 px-2 py-0.5 text-[11px] font-semibold text-brand-dark">
+            <span className="shrink-0 rounded-full bg-brand-neon/40 px-2 py-0.5 text-[10px] font-semibold text-brand-dark">
               +{formatGain(s.gain)} puan potansiyeli
             </span>
-            <button
-              type="button"
-              className="shrink-0 rounded-lg border border-brand-dark/10 px-2.5 py-1 text-[11px] font-medium text-brand-dark/70 hover:bg-brand-dark/5"
-            >
-              Detay
-            </button>
           </div>
         ) : (
           <div
             key={`${s.id ?? s.text}-${index}`}
-            className="flex flex-wrap items-center gap-3 rounded-2xl border border-brand-dark/8 px-4 py-3"
+            className="flex flex-wrap items-center gap-3.5 rounded-xl border border-brand-dark/8 px-3.5 py-3"
           >
-            <span className="min-w-0 flex-1 text-sm text-brand-dark/80">
+            <span className="min-w-0 flex-1 text-xs leading-snug text-brand-dark/80">
               {s.text}
             </span>
-            <span className="rounded-full bg-brand-neon/40 px-2.5 py-1 text-xs font-semibold text-brand-dark">
+            <span className="rounded-full bg-brand-neon/40 px-2 py-0.5 text-[11px] font-semibold text-brand-dark">
               +{formatGain(s.gain)} puan potansiyeli
             </span>
           </div>
         ),
       )}
-      {hasMore && (
-        <button
-          type="button"
-          onClick={() => setExpanded((current) => !current)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-brand-dark/10 py-2.5 text-sm font-medium text-brand-dark/65 transition-colors hover:bg-brand-dark/5"
-        >
-          {expanded ? (
-            <>
-              <ChevronUp className="size-4" strokeWidth={2} />
-              Daha az göster
-            </>
-          ) : (
-            <>
-              <ChevronDown className="size-4" strokeWidth={2} />
-              +{remaining} öneriyi daha göster
-            </>
-          )}
-        </button>
-      )}
+      {hasMore &&
+        (variant === "overview" ? (
+          <button
+            type="button"
+            onClick={onGoToSuggestions}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-brand-dark/10 py-2.5 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5"
+          >
+            <ArrowUpRight className="size-4" strokeWidth={2} />
+            Daha fazlası için Score AI Önerileri
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setExpanded((current) => !current)}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-brand-dark/10 py-2.5 text-sm font-medium text-brand-dark/65 transition-colors hover:bg-brand-dark/5"
+          >
+            {expanded ? (
+              <>
+                <ChevronUp className="size-4" strokeWidth={2} />
+                Daha az göster
+              </>
+            ) : (
+              <>
+                <ChevronDown className="size-4" strokeWidth={2} />
+                +{remaining} öneriyi daha göster
+              </>
+            )}
+          </button>
+        ))}
     </div>
   );
 }
@@ -187,6 +204,8 @@ export default function AnalizDetayPage() {
   const [savingTitle, setSavingTitle] = useState(false);
   const [titleError, setTitleError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [expandSuggestionsTab, setExpandSuggestionsTab] = useState(false);
+  const topAnchorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -291,9 +310,20 @@ export default function AnalizDetayPage() {
 
   const PlatformIcon =
     analysis.platformType === "instagram" ? Camera : Briefcase;
+  const scrollToTopAnchor = () => {
+    window.requestAnimationFrame(() => {
+      topAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+  const openSuggestionsTab = () => {
+    setExpandSuggestionsTab(true);
+    setTab("Score AI Önerileri");
+    scrollToTopAnchor();
+  };
 
   return (
     <div className="px-4 pb-8 pt-1 sm:px-6 lg:px-8">
+      <div ref={topAnchorRef} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           {editingTitle ? (
@@ -389,13 +419,7 @@ export default function AnalizDetayPage() {
             )}
             İndir
           </button>
-          <button
-            type="button"
-            className="flex items-center gap-1.5 rounded-lg border border-brand-dark/10 px-3.5 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5"
-          >
-            <Share2 className="size-4" strokeWidth={2} />
-            Paylaş
-          </button>
+          <SocialShareMenu title={analysis.title} url={`/dashboard/analiz-sonucu?id=${analysis.id}`} />
           <Link
             href={`/dashboard/analiz-sonucu?id=${analysis.id}`}
             className="flex items-center gap-1.5 rounded-lg bg-brand-neon px-3.5 py-2 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
@@ -413,7 +437,13 @@ export default function AnalizDetayPage() {
             <button
               key={t}
               type="button"
-              onClick={() => setTab(t)}
+              onClick={() => {
+                setTab(t);
+                if (t !== "Score AI Önerileri") {
+                  setExpandSuggestionsTab(false);
+                }
+                scrollToTopAnchor();
+              }}
               className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
                 active
                   ? "border-brand-dark text-brand-dark"
@@ -427,8 +457,12 @@ export default function AnalizDetayPage() {
       </div>
 
       <div className="mt-6">
-        {tab === "Genel Bakış" && <OverviewTab analysis={analysis} />}
-        {tab === "Score AI Önerileri" && <SuggestionsTab analysis={analysis} />}
+        {tab === "Genel Bakış" && (
+          <OverviewTab analysis={analysis} onGoToSuggestions={openSuggestionsTab} />
+        )}
+        {tab === "Score AI Önerileri" && (
+          <SuggestionsTab analysis={analysis} initialExpanded={expandSuggestionsTab} />
+        )}
         {tab === "Karşılaştırma" && <ComparisonTab analysis={analysis} />}
         {tab === "İçgörüler" && <InsightsTab analysis={analysis} />}
       </div>
@@ -436,7 +470,13 @@ export default function AnalizDetayPage() {
   );
 } 
 
-function OverviewTab({ analysis }: { analysis: Analysis }) {
+function OverviewTab({
+  analysis,
+  onGoToSuggestions,
+}: {
+  analysis: Analysis;
+  onGoToSuggestions: () => void;
+}) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
@@ -566,7 +606,11 @@ function OverviewTab({ analysis }: { analysis: Analysis }) {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <h2 className="text-base font-semibold text-brand-dark">Score AI Önerileri</h2>
-          <ExpandableSuggestionsList suggestions={analysis.suggestions} variant="overview" />
+          <ExpandableSuggestionsList
+            suggestions={analysis.suggestions}
+            variant="overview"
+            onGoToSuggestions={onGoToSuggestions}
+          />
         </Card>
 
         <Card>
@@ -660,7 +704,13 @@ function Comparison({ analysis }: { analysis: Analysis }) {
   );
 }
 
-function SuggestionsTab({ analysis }: { analysis: Analysis }) {
+function SuggestionsTab({
+  analysis,
+  initialExpanded,
+}: {
+  analysis: Analysis;
+  initialExpanded?: boolean;
+}) {
   const totalSuggestionGain = analysis.suggestions.reduce((sum, item) => sum + item.gain, 0);
   const netPotentialGain = Math.max(0, analysis.potentialScore - analysis.score);
   return (
@@ -686,7 +736,11 @@ function SuggestionsTab({ analysis }: { analysis: Analysis }) {
           Sonucu Gör
         </Link>
       </div>
-      <ExpandableSuggestionsList suggestions={analysis.suggestions} variant="tab" />
+      <ExpandableSuggestionsList
+        suggestions={analysis.suggestions}
+        variant="tab"
+        initialExpanded={initialExpanded}
+      />
     </Card>
   );
 }
