@@ -113,7 +113,6 @@ export default function BenchmarkPageClient() {
   const [brandPromise, setBrandPromise] = useState("");
   const [competitorInput, setCompetitorInput] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
-  const [manualIg, setManualIg] = useState("");
   const [integrations, setIntegrations] = useState<IntegrationsPublic | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const trustInputRef = useRef<HTMLInputElement>(null);
@@ -448,59 +447,27 @@ export default function BenchmarkPageClient() {
         return;
       }
 
-      if (integrations?.instagram.configured) {
-        const res = await fetch("/api/dashboard/integrations/instagram", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            action: "connect",
-            returnTo: "/dashboard/benchmark",
-          }),
-        });
-        const data = (await res.json()) as {
-          authorizeUrl?: string;
-          error?: string;
-        };
-        if (!res.ok || !data.authorizeUrl) {
-          throw new Error(data.error || "oauth");
-        }
-        window.location.assign(data.authorizeUrl);
-        return;
-      }
-
-      if (!manualIg.trim()) {
-        toast.error("Instagram kullanıcı adı girin");
-        return;
-      }
-      const res = await fetch("/api/dashboard/integrations/instagram/manual", {
+      const res = await fetch("/api/dashboard/integrations/instagram", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ username: manualIg }),
+        body: JSON.stringify({
+          action: "connect",
+          returnTo: "/dashboard/benchmark",
+        }),
       });
       const data = (await res.json()) as {
-        scraped?: number;
-        scrapeError?: string | null;
+        authorizeUrl?: string;
         error?: string;
+        message?: string;
       };
-      if (!res.ok) throw new Error(data.error || "manual");
-      await reloadProfile();
-      const scraped = data.scraped ?? 0;
-      if (scraped > 0 && scraped < MIN_HISTORICAL_MEDIA) {
-        toast.message(`Instagram bağlandı · ${scraped} içerik alındı`, {
-          description: `Analiz için en az ${MIN_HISTORICAL_MEDIA} içerik önerilir. Eksik kalanları manuel yükleyebilirsin.`,
-        });
-      } else if (scraped > 0) {
-        toast.success(`Instagram bağlandı · ${scraped} içerik alındı`);
-      } else {
-        toast.message(
-          data.scrapeError
-            ? "Instagram bağlandı (içerik çekilemedi)"
-            : "Instagram hesabı bağlandı",
-          {
-            description: "6–12 görsel/video manuel yükleyebilirsin.",
-          },
+      if (!res.ok || !data.authorizeUrl) {
+        toast.error(
+          data.message ||
+            "Instagram Login yapılandırılmamış. Şimdilik manuel içerik yükleyebilirsin.",
         );
+        return;
       }
+      window.location.assign(data.authorizeUrl);
     } catch {
       toast.error("Instagram bağlanamadı");
     } finally {
@@ -880,13 +847,11 @@ export default function BenchmarkPageClient() {
                   ? `Bağlı${igUsername ? ` @${igUsername}` : ""} · Kopar`
                   : "Instagram Hesabını Bağla"}
               </button>
-              {!igConnected && !integrations?.instagram.configured ? (
-                <input
-                  value={manualIg}
-                  onChange={(e) => setManualIg(e.target.value)}
-                  placeholder="@markahesabi"
-                  className="w-full shrink-0 rounded-xl border border-brand-dark/10 bg-[#FAFBFA] px-3 py-2 text-sm outline-none focus:border-[#42B24D]/50"
-                />
+              {!igConnected ? (
+                <p className="text-[11px] leading-snug text-brand-dark/40">
+                  Instagram’a giriş yapıp hesabını doğrularsın; başkasının
+                  kullanıcı adını yazarak bağlanamazsın.
+                </p>
               ) : null}
               <div className="flex shrink-0 gap-2">
                 <input
@@ -928,8 +893,8 @@ export default function BenchmarkPageClient() {
               </button>
               <p className="mt-auto pt-1 text-[11px] leading-relaxed text-brand-dark/40">
                 Tara: kendi sitenin ana sayfasındaki görselleri geçmiş içerik olarak kaydeder
-                (Brand Consistency / Memory). Instagram bağlamak istemezsen 6–12 içerik de
-                manuel yükleyebilirsin.
+                (Brand Consistency / Memory). Instagram bağlamak istemezsen 6–12 içeriği
+                aşağıdan manuel yükleyebilirsin.
                 {profile.brandAccount.historicalMedia.length > 0
                   ? ` · ${profile.brandAccount.historicalMedia.length} içerik kayıtlı`
                   : ""}

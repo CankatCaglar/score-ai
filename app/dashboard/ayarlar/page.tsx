@@ -994,7 +994,6 @@ function EntegrasyonlarTab() {
   const [instagramUsername, setInstagramUsername] = useState<string | null>(null);
   const [instagramConfigured, setInstagramConfigured] = useState(false);
   const [instagramBusy, setInstagramBusy] = useState(false);
-  const [manualUsername, setManualUsername] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -1050,60 +1049,27 @@ function EntegrasyonlarTab() {
         return;
       }
 
-      if (instagramConfigured) {
-        const res = await fetch("/api/dashboard/integrations/instagram", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            action: "connect",
-            returnTo: "/dashboard/ayarlar?tab=entegrasyonlar",
-          }),
-        });
-        const data = (await res.json()) as { authorizeUrl?: string; error?: string };
-        if (!res.ok || !data.authorizeUrl) {
-          throw new Error(data.error || "oauth failed");
-        }
-        window.location.assign(data.authorizeUrl);
-        return;
-      }
-
-      const handle = manualUsername.trim();
-      if (!handle) {
-        toast.error("Instagram kullanıcı adı girin");
-        return;
-      }
-      const res = await fetch("/api/dashboard/integrations/instagram/manual", {
+      const res = await fetch("/api/dashboard/integrations/instagram", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ username: handle }),
+        body: JSON.stringify({
+          action: "connect",
+          returnTo: "/dashboard/ayarlar?tab=entegrasyonlar",
+        }),
       });
       const data = (await res.json()) as {
-        integrations?: { instagram?: { connected?: boolean; username?: string | null } };
-        scraped?: number;
-        scrapeError?: string | null;
+        authorizeUrl?: string;
         error?: string;
+        message?: string;
       };
-      if (!res.ok) throw new Error(data.error || "manual failed");
-      setInstagramConnected(Boolean(data.integrations?.instagram?.connected));
-      setInstagramUsername(data.integrations?.instagram?.username ?? handle);
-      const scraped = data.scraped ?? 0;
-      if (scraped > 0 && scraped < 6) {
-        toast.message(`Instagram bağlandı · ${scraped} içerik alındı`, {
-          description:
-            "Analiz için en az 6 içerik önerilir. Eksik kalanları manuel yükleyebilirsin.",
-        });
-      } else if (scraped > 0) {
-        toast.success(`Instagram bağlandı · ${scraped} içerik alındı`);
-      } else {
-        toast.message(
-          data.scrapeError
-            ? "Instagram bağlandı (içerik çekilemedi)"
-            : "Instagram hesabı bağlandı",
-          {
-            description: "6–12 görsel/video manuel yükleyebilirsin.",
-          },
+      if (!res.ok || !data.authorizeUrl) {
+        toast.error(
+          data.message ||
+            "Instagram Login yapılandırılmamış. Env / Meta App ayarlarını kontrol et.",
         );
+        return;
       }
+      window.location.assign(data.authorizeUrl);
     } catch {
       toast.error("Instagram bağlantısı güncellenemedi");
     } finally {
@@ -1138,8 +1104,8 @@ function EntegrasyonlarTab() {
                   ? `@${instagramUsername}`
                   : "Bağlı"
                 : instagramConfigured
-                  ? "Meta OAuth ile bağlayın"
-                  : "Kullanıcı adı ile manuel bağlama"
+                  ? "Instagram Login ile doğrula"
+                  : "Instagram Login yapılandırılmamış"
               : item.meta;
 
             return (
@@ -1171,15 +1137,6 @@ function EntegrasyonlarTab() {
                     </p>
                   </div>
                 </div>
-
-                {isInstagram && !connected && !instagramConfigured ? (
-                  <input
-                    value={manualUsername}
-                    onChange={(e) => setManualUsername(e.target.value)}
-                    placeholder="@markahesabi"
-                    className="mt-3 w-full rounded-xl border border-brand-dark/12 bg-white px-3 py-2 text-xs text-brand-dark outline-none focus:border-brand-neon"
-                  />
-                ) : null}
 
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <p className="text-xs text-brand-dark/40">{meta}</p>
