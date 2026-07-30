@@ -1,4 +1,7 @@
-import { MAIN_CATEGORY_DEFINITIONS } from "@/lib/analysis/rubric";
+import {
+  getMainCategoryDefinitions,
+  type RubricMode,
+} from "@/lib/analysis/rubric";
 
 export type NcqsCategoryId =
   | "visual_intelligence"
@@ -67,13 +70,19 @@ const CONTENT_CRITERIA_KEYS = [
   "shareability",
 ];
 
-const BRAND_CRITERIA_KEYS = [
+const BRAND_CRITERIA_KEYS_BASE = [
   "brand_tone",
   "visual_identity",
   "brand_consistency",
   "value_proposition",
   "differentiation",
   "trust_building",
+];
+
+const BRAND_CRITERIA_KEYS_STRATEGIC = [
+  ...BRAND_CRITERIA_KEYS_BASE,
+  "brand_memory_match",
+  "historical_performance_match",
 ];
 
 const CHANNEL_CRITERIA_KEYS = ["platform_fit", "mobile_experience"];
@@ -86,114 +95,136 @@ const BUSINESS_CRITERIA_KEYS = [
   "competitive_positioning",
 ];
 
-const VISUAL_SYSTEM_PROMPT = [
-  basePrompt(
-    "görsel iletişim, tasarım, reklam kreatifi ve UI/UX",
-    "Visual Intelligence",
-    VISUAL_CRITERIA_KEYS,
-  ),
-  "",
-  "Öncelik: görsel hiyerarşi, kompozisyon dengesi, boş alan, renk/kontrast, tipografi, teknik kalite, dikkat çekicilik ve özgünlük.",
-].join("\n");
+function buildBrandSystemPrompt(criteriaKeys: string[], strategic: boolean) {
+  const lines = [
+    basePrompt(
+      "marka stratejisi, marka dili ve görsel kimlik",
+      "Brand Intelligence",
+      criteriaKeys,
+    ),
+    "",
+    "Eğer Brand DNA veya Strategic Brand Intelligence bağlamı verilirse ona göre kıyasla; verilmezse sadece görseldeki marka sinyallerine dayan.",
+  ];
+  if (strategic) {
+    lines.push(
+      "Strategic Brand Intelligence kullanımı:",
+      "- brand_tone / value_proposition: Brand Promise metnini referans al.",
+      "- differentiation: Competitors özetlerini ve rakip içerik temalarını kullan.",
+      "- brand_consistency / brand_memory_match: Historical Content ve bağlı marka hesabı sinyallerini kullan.",
+      "- historical_performance_match: Geçmiş içerik kaynakları varsa tutarlılık/performans uyumunu değerlendir; yoksa görsel-only sınırlı değerlendir ve bunu eksikliklerde belirt.",
+      "- trust_building: Trust Proofs (sertifika, test, yorum) metinlerini dönüşüm güveni için kullan.",
+    );
+  }
+  return lines.join("\n");
+}
 
-const CONTENT_SYSTEM_PROMPT = [
-  basePrompt(
-    "içerik stratejisi, reklam metni, performans pazarlama ve mesaj mimarisi",
-    "Content Intelligence",
-    CONTENT_CRITERIA_KEYS,
-  ),
-  "",
-  "Öncelik: başlık gücü, mesaj netliği, okunabilirlik, hikaye akışı, merak tetikleme, CTA gücü, akılda kalıcılık ve paylaşılabilirlik.",
-].join("\n");
+function buildBusinessSystemPrompt(strategic: boolean) {
+  const lines = [
+    basePrompt(
+      "growth marketing, CRO, performans reklam ve iş hedefi optimizasyonu",
+      "Business Intelligence",
+      BUSINESS_CRITERIA_KEYS,
+    ),
+    "",
+    "Öncelik: dönüşüm potansiyeli, iş amacı netliği, değer teklifinin açıklığı, karar vermeye hazırlık ve rekabetçi konumlanma.",
+  ];
+  if (strategic) {
+    lines.push(
+      "Strategic Brand Intelligence içinde Trust Proofs varsa conversion_potential değerlendirmesinde güven kanıtı etkisini dikkate al.",
+    );
+  }
+  return lines.join("\n");
+}
 
-const BRAND_SYSTEM_PROMPT = [
-  basePrompt(
-    "marka stratejisi, marka dili ve görsel kimlik",
-    "Brand Intelligence",
-    BRAND_CRITERIA_KEYS,
-  ),
-  "",
-  "Eğer Brand DNA verilirse ona göre kıyasla; verilmezse sadece görseldeki marka sinyallerine dayan.",
-].join("\n");
+export function getCategoryPrompts(mode: RubricMode = "strategic_brand"): CategoryPromptConfig[] {
+  const strategic = mode === "strategic_brand";
+  const brandKeys = strategic ? BRAND_CRITERIA_KEYS_STRATEGIC : BRAND_CRITERIA_KEYS_BASE;
 
-const CHANNEL_SYSTEM_PROMPT = [
-  basePrompt(
-    "platform uyumluluğu, mobil UX ve teknik kreatif optimizasyonu",
-    "Channel Intelligence",
-    CHANNEL_CRITERIA_KEYS,
-  ),
-  "",
-  "Öncelik: platform oran/çözünürlük uyumu ve mobil ekranda okunabilirlik/bilgi korunumu.",
-].join("\n");
+  return [
+    {
+      categoryId: "visual_intelligence",
+      categoryLabel: "Visual Intelligence",
+      criteriaKeys: VISUAL_CRITERIA_KEYS,
+      systemPrompt: [
+        basePrompt(
+          "görsel iletişim, tasarım, reklam kreatifi ve UI/UX",
+          "Visual Intelligence",
+          VISUAL_CRITERIA_KEYS,
+        ),
+        "",
+        "Öncelik: görsel hiyerarşi, kompozisyon dengesi, boş alan, renk/kontrast, tipografi, teknik kalite, dikkat çekicilik ve özgünlük.",
+      ].join("\n"),
+    },
+    {
+      categoryId: "content_intelligence",
+      categoryLabel: "Content Intelligence",
+      criteriaKeys: CONTENT_CRITERIA_KEYS,
+      systemPrompt: [
+        basePrompt(
+          "içerik stratejisi, reklam metni, performans pazarlama ve mesaj mimarisi",
+          "Content Intelligence",
+          CONTENT_CRITERIA_KEYS,
+        ),
+        "",
+        "Öncelik: başlık gücü, mesaj netliği, okunabilirlik, hikaye akışı, merak tetikleme, CTA gücü, akılda kalıcılık ve paylaşılabilirlik.",
+      ].join("\n"),
+    },
+    {
+      categoryId: "brand_intelligence",
+      categoryLabel: "Brand Intelligence",
+      criteriaKeys: brandKeys,
+      systemPrompt: buildBrandSystemPrompt(brandKeys, strategic),
+    },
+    {
+      categoryId: "channel_intelligence",
+      categoryLabel: "Channel Intelligence",
+      criteriaKeys: CHANNEL_CRITERIA_KEYS,
+      systemPrompt: [
+        basePrompt(
+          "platform uyumluluğu, mobil UX ve teknik kreatif optimizasyonu",
+          "Channel Intelligence",
+          CHANNEL_CRITERIA_KEYS,
+        ),
+        "",
+        "Öncelik: platform oran/çözünürlük uyumu ve mobil ekranda okunabilirlik/bilgi korunumu.",
+      ].join("\n"),
+    },
+    {
+      categoryId: "business_intelligence",
+      categoryLabel: "Business Intelligence",
+      criteriaKeys: BUSINESS_CRITERIA_KEYS,
+      systemPrompt: buildBusinessSystemPrompt(strategic),
+    },
+  ];
+}
 
-const BUSINESS_SYSTEM_PROMPT = [
-  basePrompt(
-    "growth marketing, CRO, performans reklam ve iş hedefi optimizasyonu",
-    "Business Intelligence",
-    BUSINESS_CRITERIA_KEYS,
-  ),
-  "",
-  "Öncelik: dönüşüm potansiyeli, iş amacı netliği, değer teklifinin açıklığı, karar vermeye hazırlık ve rekabetçi konumlanma.",
-].join("\n");
+/** @deprecated Prefer getCategoryPrompts(mode). */
+export const CATEGORY_PROMPTS: CategoryPromptConfig[] = getCategoryPrompts("strategic_brand");
 
-export const CATEGORY_PROMPTS: CategoryPromptConfig[] = [
-  {
-    categoryId: "visual_intelligence",
-    categoryLabel: "Visual Intelligence",
-    criteriaKeys: VISUAL_CRITERIA_KEYS,
-    systemPrompt: VISUAL_SYSTEM_PROMPT,
-  },
-  {
-    categoryId: "content_intelligence",
-    categoryLabel: "Content Intelligence",
-    criteriaKeys: CONTENT_CRITERIA_KEYS,
-    systemPrompt: CONTENT_SYSTEM_PROMPT,
-  },
-  {
-    categoryId: "brand_intelligence",
-    categoryLabel: "Brand Intelligence",
-    criteriaKeys: BRAND_CRITERIA_KEYS,
-    systemPrompt: BRAND_SYSTEM_PROMPT,
-  },
-  {
-    categoryId: "channel_intelligence",
-    categoryLabel: "Channel Intelligence",
-    criteriaKeys: CHANNEL_CRITERIA_KEYS,
-    systemPrompt: CHANNEL_SYSTEM_PROMPT,
-  },
-  {
-    categoryId: "business_intelligence",
-    categoryLabel: "Business Intelligence",
-    criteriaKeys: BUSINESS_CRITERIA_KEYS,
-    systemPrompt: BUSINESS_SYSTEM_PROMPT,
-  },
-];
-
-const CATEGORY_MAP = new Map(
-  CATEGORY_PROMPTS.map((config) => [config.categoryId, config]),
-);
-
-export function getCategoryPromptConfig(categoryId: NcqsCategoryId): CategoryPromptConfig {
-  const config = CATEGORY_MAP.get(categoryId);
+export function getCategoryPromptConfig(
+  categoryId: NcqsCategoryId,
+  mode: RubricMode = "strategic_brand",
+): CategoryPromptConfig {
+  const config = getCategoryPrompts(mode).find((item) => item.categoryId === categoryId);
   if (!config) {
     throw new Error(`Prompt tanimi bulunamadi: ${categoryId}`);
   }
   return config;
 }
 
-export function getAllPromptCriteriaKeys(): string[] {
-  return CATEGORY_PROMPTS.flatMap((config) => config.criteriaKeys);
+export function getAllPromptCriteriaKeys(mode: RubricMode = "strategic_brand"): string[] {
+  return getCategoryPrompts(mode).flatMap((config) => config.criteriaKeys);
 }
 
-export function assertPromptConfigMatchesRubric() {
-  const rubricCriteriaCount = MAIN_CATEGORY_DEFINITIONS.reduce(
+export function assertPromptConfigMatchesRubric(mode: RubricMode = "strategic_brand") {
+  const rubricCriteriaCount = getMainCategoryDefinitions(mode).reduce(
     (sum, category) => sum + category.criteria.length,
     0,
   );
-  const promptCriteriaCount = getAllPromptCriteriaKeys().length;
+  const promptCriteriaCount = getAllPromptCriteriaKeys(mode).length;
   if (rubricCriteriaCount !== promptCriteriaCount) {
     throw new Error(
-      `Prompt kriter sayisi (${promptCriteriaCount}) ile rubric kriter sayisi (${rubricCriteriaCount}) uyusmuyor.`,
+      `Prompt kriter sayisi (${promptCriteriaCount}) ile rubric kriter sayisi (${rubricCriteriaCount}) uyusmuyor (mode=${mode}).`,
     );
   }
 }

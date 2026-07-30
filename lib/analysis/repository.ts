@@ -1,28 +1,39 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { createHash } from "node:crypto";
-import { analyzeCategoryWithAnthropic, generateContentTitleWithAnthropic, isTechnicalAnalysisTitle } from "@/lib/ai/anthropic";
+import {
+  analyzeCategoryWithAnthropic,
+  generateContentTitleWithAnthropic,
+  getCategoryAnalysisConcurrency,
+  isTechnicalAnalysisTitle,
+  mapWithConcurrency,
+  optimizeImageForVision,
+} from "@/lib/ai/anthropic";
 import {
   getAdminDb,
   getAdminStorage,
   getAdminStorageBucketName,
 } from "@/lib/firebase-admin";
 import {
-  AI_PROMPT_VERSION,
-  CRITERION_DEFINITIONS,
-  NCQS_CRITERION_IDS,
   buildCategoryScoresFromEvaluations,
   buildMicroScoresFromEvaluations,
   calculateCriterionPotentialGainRows,
   calculateCurrentScore,
   calculatePotentialScore,
+  getCriterionDefinitions,
+  getCriterionIds,
+  getPromptVersion,
+  getRubricCriteriaCount,
+  getRubricVersion,
   mapMainCategories,
   mapMicroCriteria,
+  resolveRubricMode,
   validateRubricCoverage,
   RUBRIC_CRITERIA_COUNT,
   RUBRIC_VERSION,
+  type RubricMode,
 } from "@/lib/analysis/rubric";
 import { assessPotentialImageEligibility } from "@/lib/analysis/edge-cases";
-import { CATEGORY_PROMPTS } from "@/lib/analysis/prompts";
+import { getCategoryPrompts } from "@/lib/analysis/prompts";
 import type {
   Analysis,
   CriterionEvaluation,
@@ -125,17 +136,22 @@ function sha256(input: string | Buffer) {
 }
 
 function getModelIdForCache() {
-  return process.env.ANTHROPIC_MODEL?.trim() || "claude-sonnet-4-20250514";
+  return process.env.ANTHROPIC_MODEL?.trim() || "claude-sonnet-5";
 }
 
 function buildSuggestionsFromEvaluations(
   evaluations: Record<string, CriterionEvaluation>,
+  mode: RubricMode = "strategic_brand",
 ): Analysis["suggestions"] {
-  const potentialRows = calculateCriterionPotentialGainRows(evaluations)
+  const criterionDefs = getCriterionDefinitions(mode);
+  const potentialRows = calculateCriterionPotentialGainRows(evaluations, mode)
     .filter((row) => row.gain > 0)
     .sort((a, b) => b.gain - a.gain);
 
-  const totalPotentialGain = Math.max(0, calculatePotentialScore(evaluations) - calculateCurrentScore(evaluations));
+  const totalPotentialGain = Math.max(
+    0,
+    calculatePotentialScore(evaluations, mode) - calculateCurrentScore(evaluations, mode),
+  );
   const targetCents = Math.round(totalPotentialGain * 100);
   const roundedCents = potentialRows.map((row) => Math.round(row.gain * 100));
   const roundedTotal = roundedCents.reduce((sum, item) => sum + item, 0);
@@ -145,7 +161,7 @@ function buildSuggestionsFromEvaluations(
 
   return potentialRows.map((row, index) => {
     const evaluation = evaluations[row.criterionId];
-    const criterionLabel = CRITERION_DEFINITIONS.find((item) => item.id === row.criterionId)?.label;
+    const criterionLabel = criterionDefs.find((item) => item.id === row.criterionId)?.label;
     const actionText = evaluation?.aksiyon_onerisi?.trim() || "Kriter icin aksiyon onerisi uretilmedi.";
     const normalizedGain = (roundedCents[index] ?? 0) / 100;
     return {
@@ -161,12 +177,15 @@ function buildSuggestionsFromEvaluations(
 function buildSummaryTexts(
   categories: Analysis["categories"],
   evaluations: Record<string, CriterionEvaluation>,
+  mode: RubricMode = "strategic_brand",
 ) {
   const bestCategory = [...categories].sort((a, b) => b.value - a.value)[0];
-  const weakestCriterion = CRITERION_DEFINITIONS.map((criterion) => ({
-    ...criterion,
-    level: evaluations[criterion.id]?.seviye ?? 0,
-  })).sort((a, b) => a.level - b.level)[0];
+  const weakestCriterion = getCriterionDefinitions(mode)
+    .map((criterion) => ({
+      ...criterion,
+      level: evaluations[criterion.id]?.seviye ?? 0,
+    }))
+    .sort((a, b) => a.level - b.level)[0];
 
   const evaluation = weakestCriterion
     ? evaluations[weakestCriterion.id]
@@ -407,6 +426,23 @@ export async function createAnalysisJob(
 
   await ensureUserDoc(input.ownerEmail);
 
+  let brandContext: string | null = null;
+  try {
+    const {
+      getBrandIntelligence,
+      serializeBrandIntelligenceContext,
+    } = await import("@/lib/brand-intelligence/repository");
+    const brandProfile = await getBrandIntelligence(input.ownerEmail);
+    brandContext = serializeBrandIntelligenceContext(brandProfile) ?? null;
+  } catch {
+    brandContext = null;
+  }
+
+  const rubricMode = resolveRubricMode(Boolean(brandContext?.trim()));
+  const rubricVersion = getRubricVersion(rubricMode);
+  const promptVersion = getPromptVersion(rubricMode);
+  const criteriaCount = getRubricCriteriaCount(rubricMode);
+
   const contentRef = db.collection(COLLECTIONS.contentItems).doc();
   await contentRef.set({
     id: contentRef.id,
@@ -422,8 +458,8 @@ export async function createAnalysisJob(
     updatedAt: now,
   });
 
-  const zeroCategories = mapMainCategories([]);
-  const zeroMicroCriteria = mapMicroCriteria([]);
+  const zeroCategories = mapMainCategories([], rubricMode);
+  const zeroMicroCriteria = mapMicroCriteria([], rubricMode);
   const analysisRef = db.collection(COLLECTIONS.analyses).doc();
   await analysisRef.set({
     id: analysisRef.id,
@@ -444,15 +480,16 @@ export async function createAnalysisJob(
     categories: zeroCategories,
     microCriteria: zeroMicroCriteria,
     criteriaEvaluations: {},
-    criteriaCount: RUBRIC_CRITERIA_COUNT,
-    rubricVersion: RUBRIC_VERSION,
-    aiRubricVersion: RUBRIC_VERSION,
-    promptVersion: AI_PROMPT_VERSION,
+    criteriaCount,
+    rubricVersion,
+    aiRubricVersion: rubricVersion,
+    promptVersion,
     modelUsed: null,
     sourceUrl: input.sourceUrl ?? null,
     mediaUrl: input.mediaUrl ?? null,
     storagePath: input.storagePath ?? null,
     mimeType: input.mimeType ?? null,
+    brandContext,
     potentialImageStatus: "idle",
     potentialImageUrl: null,
     potentialImageMimeType: null,
@@ -558,9 +595,18 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
             "Desteklenmeyen veya bozuk gorsel formati. PNG, JPEG/JPG, WEBP veya GIF kullanin.",
           );
         }
-        imageBase64 = bytes.toString("base64");
-        imageMediaType = resolvedMediaType;
         imageFingerprint = sha256(bytes);
+        try {
+          const optimized = await optimizeImageForVision({
+            bytes,
+            mimeType: resolvedMediaType,
+          });
+          imageBase64 = optimized.base64;
+          imageMediaType = optimized.mediaType;
+        } catch {
+          imageBase64 = bytes.toString("base64");
+          imageMediaType = resolvedMediaType;
+        }
       }
 
       const imageUrl =
@@ -577,15 +623,44 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
         throw new Error("Analiz icin gorsel URL bulunamadi.");
       }
 
-      const brandContext =
+      let brandContext =
         typeof analysisData.brandContext === "string" && analysisData.brandContext.trim()
           ? String(analysisData.brandContext)
           : undefined;
+      if (!brandContext) {
+        try {
+          const {
+            getBrandIntelligence,
+            serializeBrandIntelligenceContext,
+          } = await import("@/lib/brand-intelligence/repository");
+          const brandProfile = await getBrandIntelligence(jobData.ownerEmail);
+          brandContext = serializeBrandIntelligenceContext(brandProfile);
+          if (brandContext) {
+            await analysisRef.set(
+              {
+                brandContext,
+                updatedAt: FieldValue.serverTimestamp(),
+              },
+              { merge: true },
+            );
+          }
+        } catch {
+          // brand intelligence is optional
+        }
+      }
+
+      const rubricMode = resolveRubricMode(Boolean(brandContext?.trim()));
+      const rubricVersion = getRubricVersion(rubricMode);
+      const promptVersion = getPromptVersion(rubricMode);
+      const criteriaCount = getRubricCriteriaCount(rubricMode);
+      const categoryPrompts = getCategoryPrompts(rubricMode);
+      const criterionIds = getCriterionIds(rubricMode);
+
       const cacheKey = buildAnalysisCacheKey({
         imageFingerprint: imageFingerprint ?? "unknown-image",
         modelId: getModelIdForCache(),
-        rubricVersion: RUBRIC_VERSION,
-        promptVersion: AI_PROMPT_VERSION,
+        rubricVersion,
+        promptVersion,
         platformType:
           typeof analysisData.platformType === "string"
             ? analysisData.platformType
@@ -610,8 +685,10 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
         modelUsed =
           typeof cacheData.modelUsed === "string" ? String(cacheData.modelUsed) : null;
       } else {
-        const categoryResults = await Promise.all(
-          CATEGORY_PROMPTS.map((config) =>
+        const categoryResults = await mapWithConcurrency(
+          categoryPrompts,
+          getCategoryAnalysisConcurrency(),
+          (config) =>
             analyzeCategoryWithAnthropic({
               categoryId: config.categoryId,
               categoryLabel: config.categoryLabel,
@@ -620,9 +697,8 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
               imageBase64,
               imageMediaType,
               imageUrl,
-              brandContext,
+              brandContext: rubricMode === "strategic_brand" ? brandContext : undefined,
             }),
-          ),
         );
         modelUsed = categoryResults[0]?.modelUsed ?? null;
         criteriaEvaluations = Object.assign(
@@ -630,26 +706,29 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
           ...categoryResults.map((result) => result.evaluations),
         );
       }
-      const rubricCoverage = validateRubricCoverage(Object.keys(criteriaEvaluations));
+      const rubricCoverage = validateRubricCoverage(
+        Object.keys(criteriaEvaluations),
+        rubricMode,
+      );
       if (rubricCoverage.missing.length || rubricCoverage.extra.length) {
         throw new Error(
           `Rubric key mismatch. missing=${rubricCoverage.missing.join(",")} extra=${rubricCoverage.extra.join(",")}`,
         );
       }
 
-      for (const criterionId of NCQS_CRITERION_IDS) {
+      for (const criterionId of criterionIds) {
         const evaluation = criteriaEvaluations[criterionId];
         if (!evaluation) {
           throw new Error(`Eksik kriter degerlendirmesi: ${criterionId}`);
         }
       }
 
-      const currentScore = calculateCurrentScore(criteriaEvaluations);
-      const potentialScore = calculatePotentialScore(criteriaEvaluations);
-      const categories = buildCategoryScoresFromEvaluations(criteriaEvaluations);
-      const microCriteria = buildMicroScoresFromEvaluations(criteriaEvaluations);
-      const suggestions = buildSuggestionsFromEvaluations(criteriaEvaluations);
-      const summaries = buildSummaryTexts(categories, criteriaEvaluations);
+      const currentScore = calculateCurrentScore(criteriaEvaluations, rubricMode);
+      const potentialScore = calculatePotentialScore(criteriaEvaluations, rubricMode);
+      const categories = buildCategoryScoresFromEvaluations(criteriaEvaluations, rubricMode);
+      const microCriteria = buildMicroScoresFromEvaluations(criteriaEvaluations, rubricMode);
+      const suggestions = buildSuggestionsFromEvaluations(criteriaEvaluations, rubricMode);
+      const summaries = buildSummaryTexts(categories, criteriaEvaluations, rubricMode);
       const revisionRef = db.collection(COLLECTIONS.revisions).doc();
       const previousScore =
         typeof analysisData.score === "number" ? clamp(analysisData.score, 0, 100) : 0;
@@ -706,10 +785,10 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
           microCriteria,
           criteriaEvaluations,
           suggestions,
-          criteriaCount: RUBRIC_CRITERIA_COUNT,
-          rubricVersion: RUBRIC_VERSION,
-          aiRubricVersion: RUBRIC_VERSION,
-          promptVersion: AI_PROMPT_VERSION,
+          criteriaCount,
+          rubricVersion,
+          aiRubricVersion: rubricVersion,
+          promptVersion,
           modelUsed,
           evaluation: summaries.evaluation,
           strength: summaries.strength,
@@ -742,8 +821,8 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
             ownerEmail: jobData.ownerEmail,
             criteriaEvaluations,
             modelUsed,
-            rubricVersion: RUBRIC_VERSION,
-            promptVersion: AI_PROMPT_VERSION,
+            rubricVersion,
+            promptVersion,
             imageFingerprint,
             brandContextHash: brandContext ? sha256(brandContext) : null,
             platformType:

@@ -303,6 +303,7 @@ export function DashboardShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const isAnalysisDetail = /^\/dashboard\/analizler\/.+/.test(pathname);
   const isCreativeMemoryDetail = /^\/dashboard\/creative-memory\/.+/.test(pathname);
+  const isAnalizSonucu = pathname.startsWith("/dashboard/analiz-sonucu");
 
   const handleLogout = async () => {
     try {
@@ -377,6 +378,14 @@ export function DashboardShell({
               >
                 <ChevronLeft className="size-4" strokeWidth={2} />
                 Creative Memory
+              </Link>
+            ) : isAnalizSonucu ? (
+              <Link
+                href="/dashboard/analizler"
+                className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark/50 transition-colors hover:text-brand-dark"
+              >
+                <ChevronLeft className="size-4" strokeWidth={2} />
+                Analiz Sonucu
               </Link>
             ) : (
               <Link href="/dashboard" className="lg:hidden">

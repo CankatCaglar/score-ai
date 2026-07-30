@@ -4,8 +4,12 @@ import type { CriterionEvaluation } from "@/lib/analysis/types";
 import type { NcqsCategoryId } from "@/lib/analysis/prompts";
 import { normalizeCriterionLevel } from "@/lib/analysis/rubric";
 
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
-const DEFAULT_TIMEOUT_MS = 45_000;
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5";
+const DEFAULT_TIMEOUT_MS = 90_000;
+const MAX_CATEGORY_RETRIES = 2;
+const CATEGORY_CONCURRENCY = 2;
+const MAX_VISION_IMAGE_EDGE = 1568;
+const MAX_VISION_IMAGE_BYTES = 1_800_000;
 const DEFAULT_FETCH_HEADERS = {
   "user-agent":
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
@@ -74,12 +78,136 @@ function getAnthropicModel() {
   return process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_ANTHROPIC_MODEL;
 }
 
+/** Sonnet 5 defaults to adaptive thinking (expensive). Scoring only needs JSON. */
+function buildMessageCreateParams(params: {
+  model: string;
+  max_tokens: number;
+  system?: Array<{ type: "text"; text: string; cache_control?: { type: "ephemeral" } }>;
+  messages: MessageParam[];
+}) {
+  return {
+    ...params,
+    thinking: { type: "disabled" as const },
+  };
+}
+
 function getTimeoutMs() {
   const fromEnv = Number(process.env.ANTHROPIC_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS);
   if (!Number.isFinite(fromEnv) || fromEnv < 5_000) {
     return DEFAULT_TIMEOUT_MS;
   }
   return Math.floor(fromEnv);
+}
+
+function isRetryableAnthropicError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const lower = message.toLowerCase();
+  if (lower.includes("timeout")) return true;
+  if (lower.includes("overloaded")) return true;
+  if (lower.includes("rate_limit") || lower.includes("rate limit")) return true;
+  if (lower.includes("529")) return true;
+  if (lower.includes("429")) return true;
+  if (lower.includes("503") || lower.includes("502") || lower.includes("504")) return true;
+  if (lower.includes("temporarily")) return true;
+  return false;
+}
+
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  options?: { retries?: number; label?: string },
+): Promise<T> {
+  const retries = options?.retries ?? MAX_CATEGORY_RETRIES;
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt >= retries || !isRetryableAnthropicError(error)) {
+        throw error;
+      }
+      const delayMs = 1_200 * (attempt + 1);
+      console.warn(
+        `[anthropic] retry ${attempt + 1}/${retries}${
+          options?.label ? ` (${options.label})` : ""
+        } after ${delayMs}ms`,
+        error instanceof Error ? error.message : error,
+      );
+      await sleep(delayMs);
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Anthropic retry failed.");
+}
+
+export async function optimizeImageForVision(params: {
+  bytes: Buffer;
+  mimeType?: string | null;
+}): Promise<{
+  bytes: Buffer;
+  mediaType: SupportedImageType;
+  base64: string;
+}> {
+  const sharp = (await import("sharp")).default;
+  let pipeline = sharp(params.bytes, { failOn: "none" }).rotate();
+  const meta = await pipeline.metadata();
+  const width = meta.width ?? 0;
+  const height = meta.height ?? 0;
+  const longest = Math.max(width, height);
+
+  if (longest > MAX_VISION_IMAGE_EDGE) {
+    pipeline = pipeline.resize({
+      width: width >= height ? MAX_VISION_IMAGE_EDGE : undefined,
+      height: height > width ? MAX_VISION_IMAGE_EDGE : undefined,
+      fit: "inside",
+      withoutEnlargement: true,
+    });
+  }
+
+  let out = await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer();
+  if (out.length > MAX_VISION_IMAGE_BYTES) {
+    out = await sharp(out, { failOn: "none" })
+      .jpeg({ quality: 70, mozjpeg: true })
+      .toBuffer();
+  }
+
+  return {
+    bytes: out,
+    mediaType: "image/jpeg",
+    base64: out.toString("base64"),
+  };
+}
+
+export async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const limit = Math.max(1, Math.min(concurrency, items.length || 1));
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const current = nextIndex;
+      nextIndex += 1;
+      results[current] = await mapper(items[current]!, current);
+    }
+  }
+
+  await Promise.all(Array.from({ length: limit }, () => worker()));
+  return results;
+}
+
+export function getCategoryAnalysisConcurrency() {
+  const fromEnv = Number(process.env.ANTHROPIC_CATEGORY_CONCURRENCY ?? CATEGORY_CONCURRENCY);
+  if (!Number.isFinite(fromEnv) || fromEnv < 1) return CATEGORY_CONCURRENCY;
+  return Math.min(5, Math.floor(fromEnv));
 }
 
 async function fetchImageAsBase64(
@@ -546,7 +674,7 @@ export async function analyzeCategoryWithAnthropic(
   const userPromptSections = [
     `Kategori: ${input.categoryLabel}`,
     "Asagidaki gorseli yalnizca bu kategori kriterleriyle degerlendir.",
-    input.brandContext ? `Brand DNA Context:\n${input.brandContext}` : "",
+    input.brandContext ? `Brand Context:\n${input.brandContext}` : "",
     "Yanitinda yalnizca JSON don.",
   ].filter(Boolean);
 
@@ -572,20 +700,26 @@ export async function analyzeCategoryWithAnthropic(
   ];
 
   try {
-    const response = await withTimeout(
-      client.messages.create({
-        model: modelUsed,
-        max_tokens: 4096,
-        system: [
-          {
-            type: "text",
-            text: input.systemPrompt,
-            cache_control: { type: "ephemeral" },
-          },
-        ],
-        messages,
-      }),
-      timeoutMs,
+    const response = await withRetry(
+      () =>
+        withTimeout(
+          client.messages.create(
+            buildMessageCreateParams({
+              model: modelUsed,
+              max_tokens: 4096,
+              system: [
+                {
+                  type: "text",
+                  text: input.systemPrompt,
+                  cache_control: { type: "ephemeral" },
+                },
+              ],
+              messages,
+            }),
+          ),
+          timeoutMs,
+        ),
+      { label: input.categoryId },
     );
 
     const rawText = extractTextContent(response);
@@ -660,11 +794,13 @@ export async function extractVisualTextLayoutWithAnthropic(
   ];
 
   const response = await withTimeout(
-    client.messages.create({
-      model: modelUsed,
-      max_tokens: 4096,
-      messages,
-    }),
+    client.messages.create(
+      buildMessageCreateParams({
+        model: modelUsed,
+        max_tokens: 4096,
+        messages,
+      }),
+    ),
     timeoutMs,
   );
 
@@ -792,33 +928,35 @@ export async function generateContentTitleWithAnthropic(
     "- Dosya adi, UUID, sayisal kod, screenshot veya watermark metni kullanma",
     "- Marka adi gorunuyorsa basliga dogal sekilde dahil et",
     input.platformType ? `Platform: ${input.platformType}` : "",
-    input.brandContext ? `Brand DNA Context:\n${input.brandContext}` : "",
+    input.brandContext ? `Brand Context:\n${input.brandContext}` : "",
   ].filter(Boolean);
 
   const response = await withTimeout(
-    client.messages.create({
-      model: modelUsed,
-      max_tokens: 120,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: promptSections.join("\n"),
-            },
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: image.mediaType,
-                data: image.data,
+    client.messages.create(
+      buildMessageCreateParams({
+        model: modelUsed,
+        max_tokens: 120,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: promptSections.join("\n"),
               },
-            },
-          ],
-        },
-      ],
-    }),
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: image.mediaType,
+                  data: image.data,
+                },
+              },
+            ],
+          },
+        ],
+      }),
+    ),
     timeoutMs,
   );
 

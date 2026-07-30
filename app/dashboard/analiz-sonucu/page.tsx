@@ -8,7 +8,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   Bot,
-  ChevronLeft,
   Download,
   Eye,
   Heart,
@@ -366,14 +365,7 @@ function AnalizSonucuPageContent() {
     const isFailed = jobStatus === "failed";
     return (
       <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
-        <Link
-          href={detailHref}
-          className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark/50 hover:text-brand-dark"
-        >
-          <ChevronLeft className="size-4" strokeWidth={2} />
-          Analiz Sonucu
-        </Link>
-        <div className="mt-4 rounded-2xl border border-brand-dark/10 bg-bg-light p-5">
+        <div className="rounded-2xl border border-brand-dark/10 bg-bg-light p-5">
           <p className="text-lg font-semibold text-brand-dark">
             {isFailed ? "Analiz tamamlanamadi" : "Analiz hala isleniyor"}
           </p>
@@ -405,15 +397,7 @@ function AnalizSonucuPageContent() {
 
   return (
     <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
-      <Link
-        href={detailHref}
-        className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark/50 hover:text-brand-dark"
-      >
-        <ChevronLeft className="size-4" strokeWidth={2} />
-        Analiz Sonucu
-      </Link>
-
-      <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight text-brand-dark sm:text-3xl">
             Analiz tamamlandı! <span className="align-middle">🎉</span>

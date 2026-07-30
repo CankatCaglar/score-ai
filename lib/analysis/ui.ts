@@ -1,4 +1,7 @@
-import { MAIN_CATEGORY_DEFINITIONS } from "@/lib/analysis/rubric";
+import {
+  getMainCategoryDefinitions,
+  rubricModeFromVersion,
+} from "@/lib/analysis/rubric";
 import type { Analysis } from "@/lib/analysis/types";
 
 export type CriterionGroup = {
@@ -14,7 +17,8 @@ export function scoreColor(score: number): string {
 }
 
 export function buildCriteria(analysis: Analysis): CriterionGroup[] {
-  return MAIN_CATEGORY_DEFINITIONS.map((category) => {
+  const mode = rubricModeFromVersion(analysis.rubricVersion);
+  return getMainCategoryDefinitions(mode).map((category) => {
     const average =
       analysis.categories.find((cat) => cat.id === category.id)?.value ?? 0;
 

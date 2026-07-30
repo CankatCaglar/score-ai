@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Loader2, Sparkles, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 
 type PotentialResultModalProps = {
   open: boolean;
@@ -85,9 +85,6 @@ export function PotentialResultModal({
                   alt="Potansiyel görsel önizleme"
                   className="max-h-full max-w-full rounded-2xl object-contain shadow-[0_24px_60px_rgba(0,0,0,0.35)]"
                 />
-                <span className="absolute bottom-3 left-3 rounded-md bg-brand-neon px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-dark sm:bottom-4 sm:left-4">
-                  Potansiyel
-                </span>
               </div>
             ) : (
               <div className="flex h-48 w-full items-center justify-center rounded-2xl border border-dashed border-white/20 text-sm text-white/50 lg:h-full">
@@ -97,15 +94,10 @@ export function PotentialResultModal({
           </div>
 
           <div className="flex min-h-0 flex-col bg-bg-light">
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-7 sm:py-7 lg:px-8 lg:py-8">
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-brand-dark/5 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-dark/70">
-                <Sparkles className="size-3.5 text-brand-dark" strokeWidth={2} />
-                Potansiyel sonuç hazır
-              </div>
-
+            <div className="flex-1 px-5 py-5 sm:px-7 sm:py-7 lg:px-8 lg:py-8">
               <h2
                 id="potential-result-title"
-                className="mt-3 max-w-md text-2xl font-semibold tracking-tight text-brand-dark sm:text-[1.75rem] sm:leading-snug"
+                className="max-w-md pr-8 text-2xl font-semibold tracking-tight text-brand-dark sm:text-[1.75rem] sm:leading-snug"
               >
                 Optimize edilmiş görseliniz oluşturuldu
               </h2>

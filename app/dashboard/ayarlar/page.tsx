@@ -977,7 +977,7 @@ const integrations: Integration[] = [
     name: "Instagram",
     desc: "Gönderi ve Reels içerikleri için skor takibi yapın.",
     connected: false,
-    meta: "Profesyonel hesap gerekir",
+    meta: "Business/Creator · Facebook gerekmez",
   },
   {
     id: "linkedin",
@@ -990,13 +990,126 @@ const integrations: Integration[] = [
 
 function EntegrasyonlarTab() {
   const [items, setItems] = useState(integrations);
+  const [instagramConnected, setInstagramConnected] = useState(false);
+  const [instagramUsername, setInstagramUsername] = useState<string | null>(null);
+  const [instagramConfigured, setInstagramConfigured] = useState(false);
+  const [instagramBusy, setInstagramBusy] = useState(false);
+  const [manualUsername, setManualUsername] = useState("");
 
-  const toggleConnection = (id: string) =>
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/dashboard/integrations/instagram");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          integrations?: {
+            instagram?: {
+              connected?: boolean;
+              username?: string | null;
+              configured?: boolean;
+            };
+          };
+          configured?: boolean;
+        };
+        if (cancelled) return;
+        setInstagramConnected(Boolean(data.integrations?.instagram?.connected));
+        setInstagramUsername(data.integrations?.instagram?.username ?? null);
+        setInstagramConfigured(
+          Boolean(data.configured ?? data.integrations?.instagram?.configured),
+        );
+      } catch {
+        // keep defaults
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggleConnection = (id: string) => {
+    if (id === "instagram") return;
     setItems((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, connected: !item.connected } : item
       )
     );
+  };
+
+  const handleInstagramConnect = async () => {
+    setInstagramBusy(true);
+    try {
+      if (instagramConnected) {
+        const res = await fetch("/api/dashboard/integrations/instagram", {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error("disconnect failed");
+        setInstagramConnected(false);
+        setInstagramUsername(null);
+        toast.success("Instagram bağlantısı kaldırıldı");
+        return;
+      }
+
+      if (instagramConfigured) {
+        const res = await fetch("/api/dashboard/integrations/instagram", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            action: "connect",
+            returnTo: "/dashboard/ayarlar?tab=entegrasyonlar",
+          }),
+        });
+        const data = (await res.json()) as { authorizeUrl?: string; error?: string };
+        if (!res.ok || !data.authorizeUrl) {
+          throw new Error(data.error || "oauth failed");
+        }
+        window.location.assign(data.authorizeUrl);
+        return;
+      }
+
+      const handle = manualUsername.trim();
+      if (!handle) {
+        toast.error("Instagram kullanıcı adı girin");
+        return;
+      }
+      const res = await fetch("/api/dashboard/integrations/instagram/manual", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username: handle }),
+      });
+      const data = (await res.json()) as {
+        integrations?: { instagram?: { connected?: boolean; username?: string | null } };
+        scraped?: number;
+        scrapeError?: string | null;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error || "manual failed");
+      setInstagramConnected(Boolean(data.integrations?.instagram?.connected));
+      setInstagramUsername(data.integrations?.instagram?.username ?? handle);
+      const scraped = data.scraped ?? 0;
+      if (scraped > 0 && scraped < 6) {
+        toast.message(`Instagram bağlandı · ${scraped} içerik alındı`, {
+          description:
+            "Analiz için en az 6 içerik önerilir. Eksik kalanları manuel yükleyebilirsin.",
+        });
+      } else if (scraped > 0) {
+        toast.success(`Instagram bağlandı · ${scraped} içerik alındı`);
+      } else {
+        toast.message(
+          data.scrapeError
+            ? "Instagram bağlandı (içerik çekilemedi)"
+            : "Instagram hesabı bağlandı",
+          {
+            description: "6–12 görsel/video manuel yükleyebilirsin.",
+          },
+        );
+      }
+    } catch {
+      toast.error("Instagram bağlantısı güncellenemedi");
+    } finally {
+      setInstagramBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -1016,52 +1129,86 @@ function EntegrasyonlarTab() {
         </p>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="flex flex-col rounded-2xl border border-brand-dark/8 bg-white p-4"
-            >
-              <div className="flex items-start gap-3">
-                <div className="pointer-events-none shrink-0 select-none">
-                  <IntegrationIcon id={item.id} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-brand-dark">
-                      {item.name}
-                    </p>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                        item.connected
-                          ? "bg-green-100 text-green-700"
-                          : "bg-brand-dark/8 text-brand-dark/50"
-                      }`}
-                    >
-                      {item.connected ? "Bağlı" : "Bağlı Değil"}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-xs leading-relaxed text-brand-dark/50">
-                    {item.desc}
-                  </p>
-                </div>
-              </div>
+          {items.map((item) => {
+            const isInstagram = item.id === "instagram";
+            const connected = isInstagram ? instagramConnected : item.connected;
+            const meta = isInstagram
+              ? connected
+                ? instagramUsername
+                  ? `@${instagramUsername}`
+                  : "Bağlı"
+                : instagramConfigured
+                  ? "Meta OAuth ile bağlayın"
+                  : "Kullanıcı adı ile manuel bağlama"
+              : item.meta;
 
-              <div className="mt-4 flex items-center justify-between">
-                <p className="text-xs text-brand-dark/40">{item.meta}</p>
-                <button
-                  type="button"
-                  onClick={() => toggleConnection(item.id)}
-                  className={`cursor-pointer rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
-                    item.connected
-                      ? "border border-brand-dark/15 bg-white text-brand-dark hover:bg-brand-dark/5"
-                      : "bg-brand-neon text-brand-dark hover:opacity-90"
-                  }`}
-                >
-                  {item.connected ? "Yönet" : "Bağla"}
-                </button>
+            return (
+              <div
+                key={item.id}
+                className="flex flex-col rounded-2xl border border-brand-dark/8 bg-white p-4"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="pointer-events-none shrink-0 select-none">
+                    <IntegrationIcon id={item.id} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-brand-dark">
+                        {item.name}
+                      </p>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          connected
+                            ? "bg-green-100 text-green-700"
+                            : "bg-brand-dark/8 text-brand-dark/50"
+                        }`}
+                      >
+                        {connected ? "Bağlı" : "Bağlı Değil"}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs leading-relaxed text-brand-dark/50">
+                      {item.desc}
+                    </p>
+                  </div>
+                </div>
+
+                {isInstagram && !connected && !instagramConfigured ? (
+                  <input
+                    value={manualUsername}
+                    onChange={(e) => setManualUsername(e.target.value)}
+                    placeholder="@markahesabi"
+                    className="mt-3 w-full rounded-xl border border-brand-dark/12 bg-white px-3 py-2 text-xs text-brand-dark outline-none focus:border-brand-neon"
+                  />
+                ) : null}
+
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <p className="text-xs text-brand-dark/40">{meta}</p>
+                  <button
+                    type="button"
+                    disabled={isInstagram && instagramBusy}
+                    onClick={() =>
+                      isInstagram ? void handleInstagramConnect() : toggleConnection(item.id)
+                    }
+                    className={`cursor-pointer rounded-xl px-4 py-2 text-xs font-semibold transition-colors disabled:opacity-60 ${
+                      connected
+                        ? "border border-brand-dark/15 bg-white text-brand-dark hover:bg-brand-dark/5"
+                        : "bg-brand-neon text-brand-dark hover:opacity-90"
+                    }`}
+                  >
+                    {isInstagram
+                      ? connected
+                        ? "Kopar"
+                        : instagramBusy
+                          ? "..."
+                          : "Bağla"
+                      : connected
+                        ? "Yönet"
+                        : "Bağla"}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
@@ -1132,7 +1279,64 @@ function FaturaVePlanTab() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AyarlarPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("profil");
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    if (typeof window === "undefined") return "profil";
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    if (
+      tab === "profil" ||
+      tab === "guvenlik" ||
+      tab === "bildirimler" ||
+      tab === "entegrasyonlar" ||
+      tab === "fatura"
+    ) {
+      return tab;
+    }
+    if (params.get("instagram") === "connected") return "entegrasyonlar";
+    return "profil";
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const flag = params.get("instagram");
+    if (!flag) return;
+
+    const posts = Number(params.get("posts") || "0");
+    const postsWarning = params.get("posts_warning");
+    const igUser = params.get("ig_user");
+
+    if (flag === "connected") {
+      if (postsWarning === "low" || (posts > 0 && posts < 6)) {
+        toast.message(
+          igUser
+            ? `@${igUser} bağlandı · ${posts} içerik alındı`
+            : `Instagram bağlandı · ${posts} içerik alındı`,
+          {
+            description:
+              "Analiz için en az 6 içerik önerilir. Eksik kalanları manuel yükleyebilirsin.",
+          },
+        );
+      } else if (postsWarning === "none" || posts === 0) {
+        toast.message("Instagram hesabı bağlandı", {
+          description:
+            "Henüz içerik çekilemedi. 6–12 görsel/video manuel yükleyebilirsin.",
+        });
+      } else {
+        toast.success(
+          igUser
+            ? `@${igUser} bağlandı · ${posts} içerik alındı`
+            : `Instagram bağlandı · ${posts} içerik alındı`,
+        );
+      }
+    } else if (flag === "denied") {
+      toast.error("Instagram bağlantısı iptal edildi");
+    } else if (flag === "error") {
+      toast.error("Instagram bağlantısı başarısız");
+    }
+
+    window.history.replaceState({}, "", "/dashboard/ayarlar?tab=entegrasyonlar");
+  }, []);
 
   return (
     <div className="px-4 pb-40 pt-2 sm:px-6 lg:px-8 lg:pb-48 lg:pt-4">

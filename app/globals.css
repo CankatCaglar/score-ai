@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@config "../tailwind.config.ts";
 
 @theme inline {
   --font-sans: "Neue Montreal", var(--font-inter), Inter, Syne, sans-serif;
