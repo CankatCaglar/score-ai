@@ -122,7 +122,7 @@ function ScoreRangeSelect({
   }, [open]);
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative w-fit max-w-full self-start">
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
@@ -144,7 +144,7 @@ function ScoreRangeSelect({
         <ul
           role="listbox"
           aria-label="Skor aralığı seçenekleri"
-          className="absolute right-0 z-20 mt-1.5 min-w-full overflow-hidden rounded-xl border border-brand-dark/10 bg-bg-light py-1.5 shadow-lg shadow-brand-dark/8"
+          className="absolute left-0 z-20 mt-1.5 w-max min-w-full overflow-hidden rounded-xl border border-brand-dark/10 bg-bg-light py-1.5 font-sans shadow-lg shadow-brand-dark/8"
         >
           {SCORE_RANGE_OPTIONS.map((option) => {
             const isActive = option.value === value;
@@ -156,7 +156,7 @@ function ScoreRangeSelect({
                     onChange(option.value);
                     setOpen(false);
                   }}
-                  className={`flex w-full items-center gap-2 px-3.5 py-2 text-left text-sm transition-colors ${
+                  className={`flex w-full items-center gap-2 whitespace-nowrap px-3.5 py-2 text-left text-sm transition-colors ${
                     isActive
                       ? "bg-brand-neon/50 font-semibold text-brand-dark"
                       : "font-medium text-brand-dark/75 hover:bg-brand-dark/4"
@@ -347,7 +347,7 @@ export default function CreativeMemoryPage() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-lg font-semibold text-brand-dark">Post İçgörüleri</h2>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           <label className="relative block min-w-0 sm:w-56">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-brand-dark/35"

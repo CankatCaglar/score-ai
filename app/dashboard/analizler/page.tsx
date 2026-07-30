@@ -431,7 +431,7 @@ export default function AnalizlerPage() {
             return (
               <div
                 key={a.id}
-                className="flex items-start gap-3 rounded-2xl px-4 py-3 transition-colors hover:bg-bg-offwhite md:items-center md:gap-4"
+                className="flex items-center gap-3 rounded-2xl px-4 py-3 transition-colors hover:bg-bg-offwhite md:gap-4"
               >
                 {selectionMode && (
                   <button
@@ -439,7 +439,7 @@ export default function AnalizlerPage() {
                     onClick={() => {
                       toggleSelected(a.id);
                     }}
-                    className="mt-3.5 inline-flex shrink-0 items-center justify-center text-brand-dark/60 hover:text-brand-dark md:mt-0"
+                    className="inline-flex shrink-0 items-center justify-center text-brand-dark/60 hover:text-brand-dark"
                     aria-label="Analizi seç"
                   >
                     {selectedIds.includes(a.id) ? (
@@ -451,55 +451,68 @@ export default function AnalizlerPage() {
                 )}
                 <Link
                   href={`/dashboard/analizler/${a.slug}`}
-                  className="grid min-w-0 flex-1 grid-cols-1 items-center gap-3 md:grid-cols-[1fr_210px_90px_150px_40px] md:gap-4"
+                  className="flex min-w-0 flex-1 items-center gap-2"
                 >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-bg-offwhite">
-                      {a.mediaUrl || a.sourceUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={`/api/dashboard/media/${a.id}`}
-                          alt={a.title}
-                          className="size-full object-contain p-1"
+                  <div className="grid min-w-0 flex-1 grid-cols-1 items-center gap-3 md:grid-cols-[1fr_210px_90px_150px_40px] md:gap-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-bg-offwhite">
+                        {a.mediaUrl || a.sourceUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={`/api/dashboard/media/${a.id}`}
+                            alt={a.title}
+                            className="size-full object-contain p-1"
+                          />
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-brand-dark">
+                          {a.title}
+                        </p>
+                        <p className="mt-1 flex items-center gap-1.5 text-xs text-brand-dark/45">
+                          <PlatformIcon className="size-3.5" strokeWidth={1.75} />
+                          {a.platform}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-sm text-brand-dark/60 md:block">
+                      <span className="text-brand-dark/40 md:hidden">Tarih: </span>
+                      {a.date}
+                    </div>
+
+                    <div className="flex items-center gap-3 md:gap-2">
+                      <span className="text-xs text-brand-dark/40 md:hidden">
+                        Score:
+                      </span>
+                      <ScoreRing score={a.score} size={42} />
+                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-dark/5 px-2.5 py-1 text-xs font-medium text-brand-dark/70 md:hidden">
+                        <CheckCircle2
+                          className="size-3.5 text-brand-dark"
+                          strokeWidth={2}
                         />
-                      ) : null}
+                        {a.status}
+                      </span>
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-brand-dark">
-                        {a.title}
-                      </p>
-                      <p className="mt-0.5 flex items-center gap-1.5 text-xs text-brand-dark/45">
-                        <PlatformIcon className="size-3.5" strokeWidth={1.75} />
-                        {a.platform}
-                      </p>
+
+                    <div className="hidden md:block">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-dark/5 px-2.5 py-1 text-xs font-medium text-brand-dark/70">
+                        <CheckCircle2
+                          className="size-3.5 text-brand-dark"
+                          strokeWidth={2}
+                        />
+                        {a.status}
+                      </span>
+                    </div>
+
+                    <div className="hidden justify-end text-brand-dark/30 md:flex">
+                      <ChevronRight className="size-5" strokeWidth={2} />
                     </div>
                   </div>
-
-                  <div className="text-sm text-brand-dark/60 md:block">
-                    <span className="text-brand-dark/40 md:hidden">Tarih: </span>
-                    {a.date}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-brand-dark/40 md:hidden">
-                      Score:
-                    </span>
-                    <ScoreRing score={a.score} size={42} />
-                  </div>
-
-                  <div>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-brand-dark/5 px-2.5 py-1 text-xs font-medium text-brand-dark/70">
-                      <CheckCircle2
-                        className="size-3.5 text-brand-dark"
-                        strokeWidth={2}
-                      />
-                      {a.status}
-                    </span>
-                  </div>
-
-                  <div className="hidden justify-end text-brand-dark/30 md:flex">
-                    <ChevronRight className="size-5" strokeWidth={2} />
-                  </div>
+                  <ChevronRight
+                    className="size-5 shrink-0 text-brand-dark/30 md:hidden"
+                    strokeWidth={2}
+                  />
                 </Link>
               </div>
             );

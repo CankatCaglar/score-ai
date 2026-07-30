@@ -55,7 +55,7 @@ function SectionCard({
 }) {
   return (
     <section
-      className={`flex h-full min-h-0 flex-col rounded-2xl border border-brand-dark/8 bg-white p-4 sm:p-5 ${className}`}
+      className={`flex h-full min-h-0 min-w-0 flex-col rounded-2xl border border-brand-dark/8 bg-white p-4 sm:p-5 ${className}`}
     >
       <div className="mb-3.5 shrink-0">
         <h2 className="text-sm font-semibold text-brand-dark">{title}</h2>
@@ -572,6 +572,24 @@ export default function BenchmarkPageClient() {
     }
   };
 
+  const [infoOpen, setInfoOpen] = useState(false);
+  const infoRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!infoOpen) return;
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      if (!infoRef.current?.contains(event.target as Node)) {
+        setInfoOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+    };
+  }, [infoOpen]);
+
   if (loading) {
     return (
       <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
@@ -581,37 +599,54 @@ export default function BenchmarkPageClient() {
   }
 
   return (
-    <div className="space-y-5 px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
+    <div className="min-w-0 overflow-x-hidden space-y-5 px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-start gap-2">
+            <h1 className="min-w-0 break-words text-2xl font-semibold tracking-tight text-brand-dark sm:text-3xl">
               Stratejik Marka Bilgileri
             </h1>
-            <span className="group relative inline-flex items-center">
+            <span
+              ref={infoRef}
+              className="relative mt-1.5 inline-flex shrink-0 items-center"
+            >
               <button
                 type="button"
-                className="inline-flex items-center justify-center text-brand-dark/40 transition-colors hover:text-brand-dark/70"
-                aria-describedby="benchmark-info-tooltip"
+                onClick={() => setInfoOpen((open) => !open)}
+                onMouseEnter={() => {
+                  if (window.matchMedia("(hover: hover)").matches) {
+                    setInfoOpen(true);
+                  }
+                }}
+                onMouseLeave={() => {
+                  if (window.matchMedia("(hover: hover)").matches) {
+                    setInfoOpen(false);
+                  }
+                }}
+                aria-expanded={infoOpen}
+                aria-controls="benchmark-info-tooltip"
                 aria-label="Stratejik Marka Bilgileri hakkında"
+                className="inline-flex items-center justify-center text-brand-dark/40 transition-colors hover:text-brand-dark/70"
               >
                 <Info className="size-4" strokeWidth={2} />
               </button>
-              <span
-                id="benchmark-info-tooltip"
-                role="tooltip"
-                className="pointer-events-none absolute left-1/2 top-full z-30 mt-2 w-64 -translate-x-1/2 rounded-xl border border-brand-dark/10 bg-brand-dark px-3 py-2 text-left text-[11px] leading-relaxed text-white opacity-0 shadow-lg transition-opacity duration-75 group-hover:opacity-100 group-focus-within:opacity-100"
-              >
-                Bu sayfa Brand DNA değildir. Marka vaadi, rakipler, geçmiş içerikler
-                ve güven kanıtlarını toplayarak Brand Intelligence analizini güçlendirir.
-              </span>
+              {infoOpen ? (
+                <span
+                  id="benchmark-info-tooltip"
+                  role="tooltip"
+                  className="absolute right-0 top-full z-40 mt-2 w-64 max-w-[min(16rem,calc(100vw-2.5rem))] rounded-xl border border-brand-dark/10 bg-brand-dark px-3 py-2 text-left text-[11px] leading-relaxed text-white shadow-lg sm:left-1/2 sm:right-auto sm:-translate-x-1/2"
+                >
+                  Bu sayfa Brand DNA değildir. Marka vaadi, rakipler, geçmiş içerikler
+                  ve güven kanıtlarını toplayarak Brand Intelligence analizini güçlendirir.
+                </span>
+              ) : null}
             </span>
           </div>
           <p className="mt-1 max-w-xl text-sm text-brand-dark/55">
             Brand Intelligence analizini güçlendirmek için eksik kaynakları tamamlayın.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <button
             type="button"
             disabled={saving}
@@ -631,7 +666,7 @@ export default function BenchmarkPageClient() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="grid min-w-0 grid-cols-1 items-stretch gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="flex min-h-0 flex-col gap-4 xl:h-full">
           <section className="shrink-0 rounded-2xl border border-brand-dark/8 bg-white p-4">
             <p className="text-sm font-semibold text-brand-dark">Tamamlanma Durumu</p>
@@ -704,7 +739,7 @@ export default function BenchmarkPageClient() {
           </section>
         </aside>
 
-        <div className="grid h-full grid-cols-1 items-stretch gap-4 md:grid-cols-2">
+        <div className="grid min-w-0 h-full grid-cols-1 items-stretch gap-4 md:grid-cols-2">
           <SectionCard
             title="Marka Vaadi"
             subtitle="Markanı farklılaştıran ana değeri tek cümleyle yaz."
@@ -718,9 +753,11 @@ export default function BenchmarkPageClient() {
               placeholder="Doğal içerikleri bilimsel testlerle birleştirerek güvenilir cilt bakımı sunar."
               className="w-full resize-none rounded-xl border border-brand-dark/10 bg-[#FAFBFA] px-3 py-2.5 text-sm leading-relaxed text-brand-dark outline-none focus:border-[#42B24D]/50"
             />
-            <div className="mt-2 flex items-center justify-between text-[11px] text-brand-dark/40">
-              <span>Value Proposition · Differentiation · Brand Tone</span>
-              <span>
+            <div className="mt-2 flex min-w-0 items-start justify-between gap-3 text-[11px] text-brand-dark/40">
+              <span className="min-w-0 break-words">
+                Value Proposition · Differentiation · Brand Tone
+              </span>
+              <span className="shrink-0 tabular-nums">
                 {brandPromise.length} / {BRAND_PROMISE_MAX_LENGTH}
               </span>
             </div>

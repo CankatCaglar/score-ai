@@ -59,9 +59,27 @@ function ChangeBadge({ change }: { change: number }) {
   );
 }
 
+function getTimeGreeting(date = new Date()): string {
+  const hour = date.getHours();
+  if (hour >= 5 && hour < 12) return "Günaydın";
+  if (hour >= 12 && hour < 18) return "İyi Günler";
+  if (hour >= 18 && hour < 22) return "İyi Akşamlar";
+  return "İyi Geceler";
+}
+
 function ExpandableInsightText({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
   const shouldTruncate = text.trim().length > 170;
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1023px)");
+    const sync = () => {
+      if (media.matches) setExpanded(true);
+    };
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   return (
     <div
@@ -98,6 +116,7 @@ export default function DashboardPage() {
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const greeting = getTimeGreeting();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -132,10 +151,10 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5 px-4 pb-8 pt-2 sm:px-6 sm:space-y-6 lg:px-8 lg:pt-4">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
-            Günaydın {overview?.greetingName ?? "Kullanıcı"}{" "}
+            {greeting} {overview?.greetingName ?? "Kullanıcı"}{" "}
             <span className="align-middle">👋</span>
           </h1>
           <p className="mt-1 text-sm text-brand-dark/55">
@@ -145,7 +164,7 @@ export default function DashboardPage() {
         </div>
         <Link
           href="/dashboard/yeni-analiz"
-          className="flex items-center gap-2 rounded-lg bg-brand-neon px-4 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
+          className="inline-flex shrink-0 items-center gap-2 self-start rounded-lg bg-brand-neon px-4 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
         >
           <Plus className="size-4" strokeWidth={2.25} />
           Yeni Analiz
@@ -403,7 +422,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-brand-dark p-6 text-white">
+      <div className="flex flex-col gap-4 rounded-3xl bg-brand-dark p-6 text-white sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-4">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-neon/90">
             <Bot className="size-5 text-brand-dark/90" strokeWidth={1.75} />
@@ -420,7 +439,7 @@ export default function DashboardPage() {
         </div>
         <Link
           href="/dashboard/creative-memory"
-          className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+          className="inline-flex shrink-0 items-center gap-1 self-end rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15 sm:self-auto"
         >
           Tüm raporu görüntüle
           <ChevronRight className="size-4" strokeWidth={2} />
