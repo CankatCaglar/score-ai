@@ -318,8 +318,8 @@ export function DashboardShell({
   };
 
   return (
-    <div className="dashboard-ui flex h-screen overflow-hidden [&_a]:cursor-pointer [&_button:not(:disabled)]:cursor-pointer [&_input[type='checkbox']]:cursor-pointer [&_input[type='radio']]:cursor-pointer [&_label]:cursor-pointer **:[[role='button']]:cursor-pointer **:[[role='switch']]:cursor-pointer **:[[role='tab']]:cursor-pointer [&_summary]:cursor-pointer">
-      <aside className="hidden w-64 shrink-0 flex-col bg-brand-dark text-white lg:flex">
+    <div className="dashboard-ui flex h-dvh max-h-dvh overflow-hidden [&_a]:cursor-pointer [&_button:not(:disabled)]:cursor-pointer [&_input[type='checkbox']]:cursor-pointer [&_input[type='radio']]:cursor-pointer [&_label]:cursor-pointer **:[[role='button']]:cursor-pointer **:[[role='switch']]:cursor-pointer **:[[role='tab']]:cursor-pointer [&_summary]:cursor-pointer">
+      <aside className="hidden h-full w-64 shrink-0 flex-col bg-brand-dark text-white lg:flex">
         <SidebarContent
           pathname={pathname}
           user={user}
@@ -352,7 +352,7 @@ export function DashboardShell({
         </div>
       )}
 
-      <div className="flex h-screen min-w-0 flex-1 flex-col overflow-y-auto bg-bg-offwhite">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-y-contain bg-bg-offwhite">
         <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 bg-bg-offwhite px-4 sm:px-6 lg:h-16 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <button
@@ -405,7 +405,9 @@ export function DashboardShell({
           </div>
         </header>
 
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className="min-w-0 flex-1 pb-[max(2rem,env(safe-area-inset-bottom))]">
+          {children}
+        </main>
       </div>
     </div>
   );

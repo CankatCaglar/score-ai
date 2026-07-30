@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { CheckCircle2, Info, Plus, UploadCloud } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, CheckCircle2, ChevronDown, Info, Plus, UploadCloud } from "lucide-react";
 
 const personalityOptions = [
   "Lüks",
@@ -49,21 +49,41 @@ const toneOptions = [
   "Otoriter",
 ];
 
-const visualStyles = [
-  { id: "minimal", label: "Minimal", className: "from-[#D8EEDB] to-[#F7FBF8]" },
-  { id: "editorial", label: "Editorial", className: "from-[#F4EFE8] to-[#E6D8C9]" },
-  { id: "organic", label: "Organic", className: "from-[#E4F4E8] to-[#CFE6D6]" },
-  { id: "luxury", label: "Luxury", className: "from-[#1D1D1F] to-[#3A393B]" },
-  { id: "scandinavian", label: "Scandinavian", className: "from-[#EEF0EC] to-[#D7DDD6]" },
-  { id: "corporate", label: "Corporate", className: "from-[#DDE9F4] to-[#CADCED]" },
-  { id: "bold", label: "Bold", className: "from-[#0F1A13] to-[#2A3B2D]" },
-  { id: "tech", label: "Tech", className: "from-[#BCCED8] to-[#8EA8B7]" },
-  { id: "playful", label: "Playful", className: "from-[#F5D9D6] to-[#EFC1BE]" },
+const headingFontOptions = [
+  "Playfair Display",
+  "DM Serif Display",
+  "Cormorant Garamond",
+] as const;
+
+const bodyFontOptions = ["Inter", "Manrope", "Plus Jakarta Sans"] as const;
+
+const sectorMainOptions = [
+  "Cilt Bakımı / Kozmetik",
+  "Moda / Tekstil",
+  "Gıda / İçecek",
+] as const;
+
+const sectorSubOptions = ["Skincare", "Saç Bakımı", "Dermokozmetik"] as const;
+
+const targetAudience = [
+  "B2B",
+  "B2C",
+  "Profesyoneller",
+  "Ebeveynler",
+  "Doktorlar",
+  "Mühendisler",
+  "Öğrenciler",
+  "Yöneticiler",
 ];
 
-const targetAudience = ["B2B", "B2C", "Profesyoneller", "Ebeveynler", "Doktorlar", "Mühendisler", "Öğrenciler", "Yöneticiler"];
-
-const initialKeywords = ["Doğal", "Bilimsel", "Güvenilir", "Temiz İçerik", "Görünürlük", "Etkin"];
+const initialKeywords = [
+  "Doğal",
+  "Bilimsel",
+  "Güvenilir",
+  "Temiz İçerik",
+  "Görünürlük",
+  "Etkin",
+];
 
 const completionRows = [
   { label: "Logo", status: "Tamamlandı" },
@@ -71,7 +91,6 @@ const completionRows = [
   { label: "Tipografi", status: "Tamamlandı" },
   { label: "Marka Kişiliği", status: "Tamamlandı" },
   { label: "Tone of Voice", status: "Tamamlandı" },
-  { label: "Görsel Stil", status: "Tamamlandı" },
   { label: "Hedef Kitle", status: "Tamamlandı" },
   { label: "Sektör", status: "Tamamlandı" },
   { label: "Anahtar Kelimeler", status: "Tamamlandı" },
@@ -97,7 +116,9 @@ function SectionCard({
       <div className="mb-3.5 flex shrink-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-brand-dark">{title}</h2>
-          {subtitle && <p className="mt-0.5 text-xs leading-snug text-brand-dark/45">{subtitle}</p>}
+          {subtitle && (
+            <p className="mt-0.5 text-xs leading-snug text-brand-dark/45">{subtitle}</p>
+          )}
         </div>
         {right}
       </div>
@@ -130,6 +151,97 @@ function SelectableChip({
   );
 }
 
+function BrandSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: readonly string[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <p className="mb-1 text-[11px] font-medium text-brand-dark/55">{label}</p>
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={label}
+        className="inline-flex w-full items-center gap-2 rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-sm font-medium text-brand-dark outline-none transition-colors hover:bg-brand-dark/5 focus-visible:border-brand-dark/25"
+      >
+        <span className="min-w-0 flex-1 truncate text-left">{value}</span>
+        <ChevronDown
+          className={`size-4 shrink-0 text-brand-dark/40 transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+          strokeWidth={2}
+        />
+      </button>
+
+      {open ? (
+        <ul
+          role="listbox"
+          aria-label={`${label} seçenekleri`}
+          className="absolute left-0 right-0 z-30 mt-1.5 overflow-hidden rounded-xl border border-brand-dark/10 bg-white py-1.5 font-sans shadow-lg shadow-brand-dark/8"
+        >
+          {options.map((option) => {
+            const isActive = option === value;
+            return (
+              <li key={option} role="option" aria-selected={isActive}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(option);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-2 px-3.5 py-2 text-left text-sm transition-colors ${
+                    isActive
+                      ? "bg-brand-neon/50 font-semibold text-brand-dark"
+                      : "font-medium text-brand-dark/75 hover:bg-brand-dark/4"
+                  }`}
+                >
+                  <Check
+                    className={`size-3.5 shrink-0 ${
+                      isActive ? "text-brand-dark" : "text-transparent"
+                    }`}
+                    strokeWidth={2.25}
+                  />
+                  {option}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 export default function BrandBrainPage() {
   const [selectedPersonality, setSelectedPersonality] = useState<string[]>([
     "Yaratıcı",
@@ -145,11 +257,6 @@ export default function BrandBrainPage() {
     "Dürüst",
     "İlham Verici",
   ]);
-  const [selectedStyles, setSelectedStyles] = useState<string[]>([
-    "minimal",
-    "organic",
-    "scandinavian",
-  ]);
   const [selectedAudience, setSelectedAudience] = useState<string[]>([
     "B2C",
     "Profesyoneller",
@@ -157,6 +264,10 @@ export default function BrandBrainPage() {
   const [keywords, setKeywords] = useState(initialKeywords);
   const [keywordInput, setKeywordInput] = useState("");
   const [audienceNote, setAudienceNote] = useState("");
+  const [headingFont, setHeadingFont] = useState<string>(headingFontOptions[0]);
+  const [bodyFont, setBodyFont] = useState<string>(bodyFontOptions[0]);
+  const [sectorMain, setSectorMain] = useState<string>(sectorMainOptions[0]);
+  const [sectorSub, setSectorSub] = useState<string>(sectorSubOptions[0]);
 
   const score = 92;
   const circle = useMemo(() => {
@@ -170,7 +281,7 @@ export default function BrandBrainPage() {
     value: string,
     setter: React.Dispatch<React.SetStateAction<string[]>>,
     selected: string[],
-    max: number
+    max: number,
   ) => {
     if (selected.includes(value)) {
       setter(selected.filter((item) => item !== value));
@@ -191,9 +302,12 @@ export default function BrandBrainPage() {
     <div className="space-y-5 px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
       <div>
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">Brand DNA</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
+            Brand DNA
+          </h1>
           <p className="mt-1 text-sm text-brand-dark/55">
-            Markanızı Score AI&apos;a öğretin. Ne kadar net tanımlarsanız analizler o kadar isabetli olur.
+            Markanızı Score AI&apos;a öğretin. Ne kadar net tanımlarsanız analizler o
+            kadar isabetli olur.
           </p>
         </div>
       </div>
@@ -205,7 +319,9 @@ export default function BrandBrainPage() {
             <div className="flex h-full flex-col rounded-xl border border-brand-dark/10 bg-bg-offwhite p-3.5">
               <div className="flex min-h-[7.5rem] flex-1 items-center justify-center rounded-lg border border-dashed border-brand-dark/15 bg-white px-4 py-5">
                 <div className="text-center">
-                  <p className="text-2xl font-serif tracking-[0.22em] text-brand-dark/90 sm:text-3xl">VERDA</p>
+                  <p className="text-2xl font-serif tracking-[0.22em] text-brand-dark/90 sm:text-3xl">
+                    VERDA
+                  </p>
                   <p className="mt-1 text-[10px] uppercase tracking-[0.26em] text-brand-dark/40">
                     Natural Skincare
                   </p>
@@ -218,7 +334,9 @@ export default function BrandBrainPage() {
                 <UploadCloud className="size-3.5" strokeWidth={2} />
                 Logo Yükle
               </button>
-              <p className="mt-2 text-center text-[11px] text-brand-dark/40">SVG, PNG, JPG (max. 5MB)</p>
+              <p className="mt-2 text-center text-[11px] text-brand-dark/40">
+                SVG, PNG, JPG (max. 5MB)
+              </p>
             </div>
           </SectionCard>
 
@@ -226,22 +344,26 @@ export default function BrandBrainPage() {
             title="Renk Paleti"
             subtitle="Markanızın ana renklerini seçin."
             right={
-              <span className="shrink-0 text-[11px] font-medium text-brand-dark/40">Maks. 6 renk</span>
+              <span className="shrink-0 text-[11px] font-medium text-brand-dark/40">
+                Maks. 6 renk
+              </span>
             }
           >
             <div className="flex h-full flex-col">
               <div className="grid grid-cols-3 gap-x-16 gap-y-4">
-                {["#7E5A3A", "#30C27A", "#DDF2E5", "#1F3F32", "#0E0E0F", "#F2F2F3"].map((color) => (
-                  <div key={color} className="flex flex-col items-center">
-                    <div
-                      className="aspect-square w-full min-h-14 rounded-xl border border-brand-dark/12 sm:min-h-6"
-                      style={{ backgroundColor: color }}
-                    />
-                    <p className="mt-1.5 w-full text-center text-[10px] font-medium tabular-nums leading-tight text-brand-dark/55">
-                      {color}
-                    </p>
-                  </div>
-                ))}
+                {["#7E5A3A", "#30C27A", "#DDF2E5", "#1F3F32", "#0E0E0F", "#F2F2F3"].map(
+                  (color) => (
+                    <div key={color} className="flex flex-col items-center">
+                      <div
+                        className="aspect-square w-full min-h-14 rounded-xl border border-brand-dark/12 sm:min-h-6"
+                        style={{ backgroundColor: color }}
+                      />
+                      <p className="mt-1.5 w-full text-center text-[10px] font-medium tabular-nums leading-tight text-brand-dark/55">
+                        {color}
+                      </p>
+                    </div>
+                  ),
+                )}
               </div>
               <button
                 type="button"
@@ -255,22 +377,18 @@ export default function BrandBrainPage() {
 
           <SectionCard title="Tipografi" subtitle="Markanın yazı stilini seçin.">
             <div className="flex h-full flex-col gap-3">
-              <div>
-                <p className="mb-1 text-[11px] font-medium text-brand-dark/55">Başlık Fontu</p>
-                <select className="w-full rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-sm text-brand-dark outline-none transition-colors focus:border-brand-dark/35">
-                  <option>Playfair Display</option>
-                  <option>DM Serif Display</option>
-                  <option>Cormorant Garamond</option>
-                </select>
-              </div>
-              <div>
-                <p className="mb-1 text-[11px] font-medium text-brand-dark/55">Gövde Fontu</p>
-                <select className="w-full rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-sm text-brand-dark outline-none transition-colors focus:border-brand-dark/35">
-                  <option>Inter</option>
-                  <option>Manrope</option>
-                  <option>Plus Jakarta Sans</option>
-                </select>
-              </div>
+              <BrandSelect
+                label="Başlık Fontu"
+                value={headingFont}
+                options={headingFontOptions}
+                onChange={setHeadingFont}
+              />
+              <BrandSelect
+                label="Gövde Fontu"
+                value={bodyFont}
+                options={bodyFontOptions}
+                onChange={setBodyFont}
+              />
               <div className="mt-auto rounded-lg border border-brand-dark/10 bg-bg-offwhite p-3">
                 <p className="text-2xl leading-none text-brand-dark">Aa</p>
                 <p className="mt-1.5 text-xs leading-relaxed text-brand-dark/60">
@@ -298,7 +416,9 @@ export default function BrandBrainPage() {
                   key={item}
                   label={item}
                   active={selectedPersonality.includes(item)}
-                  onClick={() => toggleMulti(item, setSelectedPersonality, selectedPersonality, 5)}
+                  onClick={() =>
+                    toggleMulti(item, setSelectedPersonality, selectedPersonality, 5)
+                  }
                 />
               ))}
             </div>
@@ -326,37 +446,6 @@ export default function BrandBrainPage() {
           </SectionCard>
         </div>
 
-        {/* Görsel stil */}
-        <SectionCard title="Görsel Stil" subtitle="Markanızı en iyi yansıtan görselleri seçin.">
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
-            {visualStyles.map((style) => {
-              const active = selectedStyles.includes(style.id);
-              return (
-                <button
-                  key={style.id}
-                  type="button"
-                  onClick={() => toggleMulti(style.id, setSelectedStyles, selectedStyles, 3)}
-                  className={`flex h-full flex-col overflow-hidden rounded-lg border text-left transition-colors ${
-                    active
-                      ? "border-[#42B24D]/45 ring-1 ring-[#42B24D]/35"
-                      : "border-brand-dark/12 hover:border-brand-dark/25"
-                  }`}
-                >
-                  <div className={`aspect-[4/3] w-full bg-linear-to-br ${style.className}`} />
-                  <div className="flex min-h-[2.25rem] items-center justify-between gap-1 px-2 py-1.5">
-                    <span className="truncate text-[11px] font-medium text-brand-dark/70">{style.label}</span>
-                    {active && (
-                      <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-[#42B24D] text-white">
-                        <CheckCircle2 className="size-2.5" strokeWidth={2.8} />
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </SectionCard>
-
         {/* Hedef kitle & sektör */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-stretch">
           <div className="lg:col-span-7">
@@ -372,7 +461,9 @@ export default function BrandBrainPage() {
                       <input
                         type="checkbox"
                         checked={active}
-                        onChange={() => toggleMulti(audience, setSelectedAudience, selectedAudience, 8)}
+                        onChange={() =>
+                          toggleMulti(audience, setSelectedAudience, selectedAudience, 8)
+                        }
                         className="size-4 shrink-0 rounded border-brand-dark/25 text-brand-dark focus:ring-brand-dark/20"
                       />
                       <span className="truncate">{audience}</span>
@@ -389,7 +480,9 @@ export default function BrandBrainPage() {
                   rows={2}
                   className="w-full resize-none rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-brand-dark/35 outline-none transition-colors focus:border-brand-dark/30"
                 />
-                <p className="mt-1 text-right text-[11px] text-brand-dark/40">{audienceNote.length}/80</p>
+                <p className="mt-1 text-right text-[11px] text-brand-dark/40">
+                  {audienceNote.length}/80
+                </p>
               </div>
             </SectionCard>
           </div>
@@ -397,22 +490,18 @@ export default function BrandBrainPage() {
           <div className="lg:col-span-5">
             <SectionCard title="Sektör" subtitle="Faaliyet gösterdiğiniz sektörü seçin.">
               <div className="flex h-full flex-col justify-center gap-3">
-                <div>
-                  <p className="mb-1 text-[11px] font-medium text-brand-dark/55">Ana kategori</p>
-                  <select className="w-full rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-sm text-brand-dark outline-none transition-colors focus:border-brand-dark/35">
-                    <option>Cilt Bakımı / Kozmetik</option>
-                    <option>Moda / Tekstil</option>
-                    <option>Gıda / İçecek</option>
-                  </select>
-                </div>
-                <div>
-                  <p className="mb-1 text-[11px] font-medium text-brand-dark/55">Alt kategori (opsiyonel)</p>
-                  <select className="w-full rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-sm text-brand-dark outline-none transition-colors focus:border-brand-dark/35">
-                    <option>Skincare</option>
-                    <option>Saç Bakımı</option>
-                    <option>Dermokozmetik</option>
-                  </select>
-                </div>
+                <BrandSelect
+                  label="Ana kategori"
+                  value={sectorMain}
+                  options={sectorMainOptions}
+                  onChange={setSectorMain}
+                />
+                <BrandSelect
+                  label="Alt kategori (opsiyonel)"
+                  value={sectorSub}
+                  options={sectorSubOptions}
+                  onChange={setSectorSub}
+                />
               </div>
             </SectionCard>
           </div>
@@ -422,7 +511,11 @@ export default function BrandBrainPage() {
         <SectionCard
           title="Marka Anahtar Kelimeleri"
           subtitle="Markanızla ilişkilendirdiğiniz kelimeleri ekleyin."
-          right={<span className="shrink-0 text-[11px] font-medium text-brand-dark/40">En fazla 10</span>}
+          right={
+            <span className="shrink-0 text-[11px] font-medium text-brand-dark/40">
+              En fazla 10
+            </span>
+          }
         >
           <div className="flex flex-wrap gap-2">
             {keywords.map((keyword) => (
@@ -433,7 +526,9 @@ export default function BrandBrainPage() {
                 {keyword}
                 <button
                   type="button"
-                  onClick={() => setKeywords((prev) => prev.filter((item) => item !== keyword))}
+                  onClick={() =>
+                    setKeywords((prev) => prev.filter((item) => item !== keyword))
+                  }
                   className="text-[#1D6A27]/70 hover:text-[#1D6A27]"
                   aria-label={`${keyword} anahtar kelimesini kaldır`}
                 >
@@ -464,7 +559,9 @@ export default function BrandBrainPage() {
               Ekle
             </button>
           </div>
-          <p className="mt-1 text-[11px] text-brand-dark/40">{keywords.length}/10 eklendi</p>
+          <p className="mt-1 text-[11px] text-brand-dark/40">
+            {keywords.length}/10 eklendi
+          </p>
         </SectionCard>
 
         {/* Özet kartları */}
@@ -497,7 +594,9 @@ export default function BrandBrainPage() {
                     />
                   </svg>
                   <div className="absolute text-center">
-                    <p className="text-3xl font-bold tracking-tight text-brand-dark">{score}</p>
+                    <p className="text-3xl font-bold tracking-tight text-brand-dark">
+                      {score}
+                    </p>
                     <p className="text-xs text-brand-dark/45">/100</p>
                   </div>
                 </div>
@@ -505,9 +604,12 @@ export default function BrandBrainPage() {
                   <span className="inline-flex rounded-full bg-[#42B24D]/12 px-2.5 py-1 text-xs font-semibold text-[#1D6A27]">
                     Mükemmel
                   </span>
-                  <p className="mt-2 text-sm font-semibold text-brand-dark">Brand DNA&apos;nız güçlü ve tutarlı.</p>
+                  <p className="mt-2 text-sm font-semibold text-brand-dark">
+                    Brand DNA&apos;nız güçlü ve tutarlı.
+                  </p>
                   <p className="mt-1 text-xs leading-relaxed text-brand-dark/55">
-                    Bu sayede analizler daha isabetli ve içerik önerileri daha değerli olacak.
+                    Bu sayede analizler daha isabetli ve içerik önerileri daha değerli
+                    olacak.
                   </p>
                 </div>
               </div>
@@ -519,14 +621,18 @@ export default function BrandBrainPage() {
 
           <div className="lg:col-span-5">
             <section className="flex h-full flex-col rounded-2xl border border-brand-dark/8 bg-white p-4 sm:p-5">
-              <h2 className="text-sm font-semibold text-brand-dark">Tamamlanma Durumu</h2>
+              <h2 className="text-sm font-semibold text-brand-dark">
+                Tamamlanma Durumu
+              </h2>
               <div className="mt-3 grid flex-1 grid-cols-1 content-start gap-1.5 sm:grid-cols-2">
                 {completionRows.map((item) => (
                   <div
                     key={item.label}
                     className="flex items-center justify-between gap-2 rounded-lg bg-bg-offwhite px-2.5 py-2"
                   >
-                    <span className="truncate text-sm text-brand-dark/70">{item.label}</span>
+                    <span className="truncate text-sm text-brand-dark/70">
+                      {item.label}
+                    </span>
                     <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-[#1D6A27]">
                       <CheckCircle2 className="size-3.5" strokeWidth={2.4} />
                       {item.status}
@@ -544,8 +650,8 @@ export default function BrandBrainPage() {
               </div>
               <h2 className="text-sm font-semibold text-brand-dark">Neden Önemli?</h2>
               <p className="mt-2 flex-1 text-sm leading-relaxed text-brand-dark/70">
-                Score AI, analizleri bu referans bilgilerine göre yapar. Ne kadar eksiksiz tanımlarsanız,
-                sonuçlar o kadar isabetli ve değerli olur.
+                Score AI, analizleri bu referans bilgilerine göre yapar. Ne kadar
+                eksiksiz tanımlarsanız, sonuçlar o kadar isabetli ve değerli olur.
               </p>
               <button
                 type="button"
@@ -560,9 +666,12 @@ export default function BrandBrainPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-dark/8 bg-white p-4">
         <div>
-          <p className="text-base font-semibold text-brand-dark">Brand DNA&apos;nız hazır!</p>
+          <p className="text-base font-semibold text-brand-dark">
+            Brand DNA&apos;nız hazır!
+          </p>
           <p className="text-sm text-brand-dark/55">
-            Analizi başlatın, markanızın benzersiz kimliği doğrultusunda değerlendirilsin.
+            Analizi başlatın, markanızın benzersiz kimliği doğrultusunda
+            değerlendirilsin.
           </p>
         </div>
         <button

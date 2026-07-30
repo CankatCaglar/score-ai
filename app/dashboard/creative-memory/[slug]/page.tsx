@@ -192,7 +192,7 @@ export default function CreativeMemoryInsightPage() {
 
   return (
     <div className="space-y-5 px-4 pb-10 pt-2 sm:px-6 lg:px-8 lg:pt-4">
-      <Card className="relative pt-14 sm:pt-6">
+      <Card className="relative pt-16 sm:pt-6">
         <Link
           href={`/dashboard/analizler/${analysis.slug}`}
           className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-xl bg-brand-neon/80 px-3.5 py-2 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90 sm:right-5 sm:top-5"
@@ -201,8 +201,8 @@ export default function CreativeMemoryInsightPage() {
           <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
         </Link>
 
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch lg:gap-0">
-          <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:gap-5 lg:pr-6">
+        <div className="mt-2 flex flex-col gap-5 sm:mt-0 lg:flex-row lg:items-stretch lg:gap-0">
+          <div className="flex min-w-0 flex-1 flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:gap-5 sm:text-left lg:pr-6">
             <div className="w-full max-w-44 shrink-0 sm:w-36">
               {thumbSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -218,11 +218,11 @@ export default function CreativeMemoryInsightPage() {
               )}
             </div>
 
-            <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 flex-1 flex-col items-center sm:items-start">
               <h1 className="text-2xl font-semibold tracking-tight text-brand-dark">
                 {analysis.title}
               </h1>
-              <p className="mt-1.5 flex items-center gap-1.5 text-sm text-brand-dark/50">
+              <p className="mt-1.5 flex items-center justify-center gap-1.5 text-sm text-brand-dark/50 sm:justify-start">
                 <Camera className="size-3.5" strokeWidth={1.75} />
                 {analysis.contentType || "Gönderi"} · {analysis.date}
               </p>

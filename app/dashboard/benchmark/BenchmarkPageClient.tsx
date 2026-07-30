@@ -956,19 +956,21 @@ export default function BenchmarkPageClient() {
         </div>
       </div>
 
-      <div className="mt-2 flex items-center justify-between gap-3 rounded-2xl border border-[#42B24D]/15 bg-[#EAF6EC] px-4 py-3 sm:px-5">
-        <p className="hidden text-xs text-brand-dark/60 sm:block md:text-sm">
-          Brand Intelligence için daha güçlü analiz hazır. Kaynakları tamamladıkça
-          analiz güven seviyesi artar.
-        </p>
-        <Link
-          href="/dashboard/yeni-analiz"
-          onClick={() => void save(false)}
-          className="ml-auto inline-flex items-center gap-2 rounded-xl bg-[#1D4D28] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#163B1F]"
-        >
-          Analize Dön
-          <ArrowRight className="size-4" />
-        </Link>
+      <div className="mt-2 rounded-2xl border border-[#42B24D]/15 bg-[#EAF6EC] px-4 py-3 sm:px-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs leading-relaxed text-brand-dark/60 md:text-sm">
+            Brand Intelligence için daha güçlü analiz hazır. Kaynakları tamamladıkça
+            analiz güven seviyesi artar.
+          </p>
+          <Link
+            href="/dashboard/yeni-analiz"
+            onClick={() => void save(false)}
+            className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-[#1D4D28] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#163B1F] sm:ml-auto sm:w-auto"
+          >
+            Analize Dön
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
       </div>
     </div>
   );

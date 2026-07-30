@@ -14,7 +14,7 @@ import {
   TrendingUp,
   UploadCloud,
 } from "lucide-react";
-import { Area, AreaChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { DashboardOverview } from "@/lib/analysis/types";
 
 const BRAND_DARK = "#00272c";
@@ -125,7 +125,7 @@ export default function DashboardPage() {
     return () => controller.abort();
   }, []);
 
-  const trendData = overview?.trendData ?? [{ date: "Bugün", score: 0 }];
+  const trendData = overview?.trendData ?? [];
   const recentAnalyses = overview?.recentAnalyses ?? [];
   const topCategories = overview?.topCategories ?? [];
   const mostImproved = overview?.mostImproved ?? [];
@@ -152,9 +152,9 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card>
-          <div className="flex items-center justify-between">
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
+        <Card className="flex h-full min-h-0 flex-col">
+          <div className="flex shrink-0 items-center justify-between">
             <h2 className="text-sm font-medium text-brand-dark/60">
               Ortalama Score
             </h2>
@@ -162,63 +162,86 @@ export default function DashboardPage() {
               <TrendingUp className="size-[18px] text-brand-dark" strokeWidth={2} />
             </div>
           </div>
-          <div className="mt-6 flex items-baseline">
+          <div className="mt-6 flex shrink-0 items-baseline">
             <span className="text-5xl font-bold tracking-tight text-brand-dark">
               {overview?.avgScore ?? 0}
             </span>
             <span className="text-2xl font-medium text-brand-dark/35">/100</span>
           </div>
-          <div className="mt-3">
+          <div className="mt-auto pt-3">
             <ChangeBadge change={overview?.avgScoreChange ?? 0} />
             <span className="ml-1 text-xs text-brand-dark/40">bu ay</span>
           </div>
         </Card>
 
-        <Card>
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium text-brand-dark/60">Son 30 Gün</h2>
-            <span className="rounded-md bg-brand-dark/5 px-2.5 py-1 text-xs font-medium text-brand-dark/60">
-              Son 30 Gün
-            </span>
+        <Card className="flex h-full min-h-0 flex-col">
+          <h2 className="shrink-0 text-sm font-medium text-brand-dark/60">
+            Son 7 Gün
+          </h2>
+          <div className="relative min-h-[110px] w-full flex-1">
+            <div className="absolute inset-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={trendData}
+                  margin={{ top: 18, right: 6, left: 6, bottom: 8 }}
+                >
+                  <defs>
+                    <linearGradient id="ovTrend" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={BRAND_DARK} stopOpacity={0.28} />
+                      <stop offset="55%" stopColor={BRAND_DARK} stopOpacity={0.08} />
+                      <stop offset="100%" stopColor={BRAND_DARK} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="date" hide />
+                  <YAxis hide width={0} domain={[0, 100]} />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: "12px",
+                      border: "none",
+                      boxShadow: "0 4px 24px rgba(0,39,44,0.1)",
+                      fontSize: "13px",
+                    }}
+                    cursor={{
+                      stroke: "rgba(0,39,44,0.12)",
+                      strokeWidth: 1,
+                      strokeDasharray: "4 4",
+                    }}
+                    labelFormatter={(label) => String(label)}
+                    formatter={(value) => [`${value}`, "Ort. Score"]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="score"
+                    stroke={BRAND_DARK}
+                    strokeWidth={2.75}
+                    fill="url(#ovTrend)"
+                    dot={{
+                      r: 4,
+                      fill: "#fff",
+                      stroke: BRAND_DARK,
+                      strokeWidth: 2.25,
+                    }}
+                    activeDot={{
+                      r: 6,
+                      fill: BRAND_DARK,
+                      stroke: "#fff",
+                      strokeWidth: 2,
+                    }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="mt-4 h-[90px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="ovTrend" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={BRAND_DARK} stopOpacity={0.33} />
-                    <stop offset="100%" stopColor={BRAND_DARK} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "none",
-                    boxShadow: "0 4px 24px rgba(0,39,44,0.08)",
-                    fontSize: "13px",
-                  }}
-                  formatter={(value) => [`${value}`, "Score"]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="score"
-                  stroke={BRAND_DARK}
-                  strokeWidth={2.5}
-                  fill="url(#ovTrend)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-2">
+          <div className="shrink-0 pt-2">
             <ChangeBadge change={overview?.monthChange ?? 0} />
             <span className="ml-1 text-xs text-brand-dark/40">
-              Geçen 30 güne göre
+              Geçen 7 güne göre
             </span>
           </div>
         </Card>
 
-        <Card className="flex flex-col">
-          <div className="flex items-center gap-3">
+        <Card className="flex h-full min-h-0 flex-col">
+          <div className="flex shrink-0 items-center gap-3">
             <div className="flex size-9 items-center justify-center rounded-full bg-brand-neon/90">
               <Bot className="size-[18px] text-brand-dark" strokeWidth={1.75} />
             </div>
@@ -293,21 +316,21 @@ export default function DashboardPage() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card>
-          <h2 className="text-base font-semibold text-brand-dark">
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
+        <Card className="flex h-full min-h-0 flex-col">
+          <h2 className="shrink-0 text-base font-semibold text-brand-dark">
             En Güçlü Kategoriler
           </h2>
-          <div className="mt-5 space-y-4">
+          <div className="mt-5 flex flex-1 flex-col justify-between gap-3">
             {topCategories.map((cat) => (
-              <div key={cat.label}>
-                <div className="flex items-center justify-between text-sm">
+              <div key={cat.label} className="flex flex-1 flex-col justify-center">
+                <div className="flex items-center justify-between text-[15px]">
                   <span className="text-brand-dark/70">{cat.label}</span>
                   <span className="font-semibold tabular-nums text-brand-dark">
                     {cat.value}
                   </span>
                 </div>
-                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-brand-dark/8">
+                <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-brand-dark/8">
                   <div
                     className="h-full rounded-full bg-brand-dark"
                     style={{ width: `${cat.value}%` }}
@@ -323,18 +346,30 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        <Card>
-          <h2 className="text-base font-semibold text-brand-dark">
+        <Card className="flex h-full min-h-0 flex-col">
+          <h2 className="shrink-0 text-base font-semibold text-brand-dark">
             En Çok Gelişim Gösteren Alanlar
           </h2>
-          <div className="mt-5 divide-y divide-brand-dark/5">
+          <div className="mt-5 flex flex-1 flex-col divide-y divide-brand-dark/5">
             {mostImproved.map((item) => (
               <div
                 key={item.label}
-                className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0"
+                className="flex flex-1 items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
               >
-                <span className="text-sm text-brand-dark/70">{item.label}</span>
-                <ChangeBadge change={item.change} />
+                <span className="text-[15px] text-brand-dark/70">{item.label}</span>
+                <span
+                  className={`inline-flex items-center gap-0.5 text-sm font-semibold ${
+                    item.change >= 0 ? "text-brand-dark" : "text-red-500"
+                  }`}
+                >
+                  {item.change >= 0 ? (
+                    <ArrowUpRight className="size-4" strokeWidth={2.25} />
+                  ) : (
+                    <ArrowDownRight className="size-4" strokeWidth={2.25} />
+                  )}
+                  {item.change >= 0 ? "+" : ""}
+                  {item.change} puan
+                </span>
               </div>
             ))}
             {!loading && mostImproved.length === 0 && (
@@ -345,19 +380,21 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        <Card>
-          <h2 className="text-base font-semibold text-brand-dark">Hızlı Aksiyonlar</h2>
-          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3">
+        <Card className="flex h-full min-h-0 min-w-0 flex-col">
+          <h2 className="shrink-0 text-base font-semibold text-brand-dark">
+            Hızlı Aksiyonlar
+          </h2>
+          <div className="mt-5 grid min-h-0 min-w-0 flex-1 grid-cols-2 gap-2 sm:gap-2.5">
             {quickActions.map(({ label, href, icon: Icon }) => (
               <Link
                 key={label}
                 href={href}
-                className="flex min-h-[72px] items-center gap-2 rounded-2xl border border-brand-dark/8 p-2.5 transition-colors hover:border-brand-dark/20 hover:bg-bg-offwhite sm:min-h-[78px] sm:gap-2.5 sm:p-3"
+                className="flex h-full min-h-[76px] min-w-0 items-center gap-2 overflow-hidden rounded-2xl border border-brand-dark/8 p-2.5 transition-colors hover:border-brand-dark/20 hover:bg-bg-offwhite sm:min-h-[84px] sm:gap-2.5 sm:p-3"
               >
-                <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand-neon/90 sm:size-8">
-                  <Icon className="size-4 text-brand-dark sm:size-[17px]" strokeWidth={1.75} />
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-neon/90 sm:size-9">
+                  <Icon className="size-4 text-brand-dark sm:size-[18px]" strokeWidth={1.75} />
                 </div>
-                <span className="min-w-0 text-[11px] font-medium leading-tight text-brand-dark sm:text-xs lg:text-sm">
+                <span className="min-w-0 flex-1 break-words text-[11px] font-medium leading-snug text-brand-dark sm:text-xs lg:text-[13px]">
                   {label}
                 </span>
               </Link>

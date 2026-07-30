@@ -944,6 +944,49 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+function startOfLocalDay(ms: number): number {
+  const date = new Date(ms);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+function buildLast7DaysTrend(
+  analyses: Analysis[],
+): Array<{ date: string; score: number }> {
+  const dayMs = 24 * 60 * 60 * 1000;
+  const todayStart = startOfLocalDay(Date.now());
+  const windowStart = todayStart - 6 * dayMs;
+  const scoresByDay = new Map<number, number[]>();
+
+  for (const analysis of analyses) {
+    const timestamp = analysis.updatedAtMs || analysis.createdAtMs;
+    if (!timestamp) continue;
+    const dayStart = startOfLocalDay(timestamp);
+    if (dayStart < windowStart || dayStart > todayStart) continue;
+    const scores = scoresByDay.get(dayStart) ?? [];
+    scores.push(analysis.score);
+    scoresByDay.set(dayStart, scores);
+  }
+
+  const labelFormatter = new Intl.DateTimeFormat("tr-TR", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  });
+
+  const points: Array<{ date: string; score: number }> = [];
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const dayStart = todayStart - offset * dayMs;
+    const scores = scoresByDay.get(dayStart) ?? [];
+    points.push({
+      date: labelFormatter.format(new Date(dayStart)),
+      score: scores.length > 0 ? average(scores) : 0,
+    });
+  }
+
+  return points;
+}
+
 function computeCategoryImprovements(analyses: Analysis[]) {
   if (!analyses.length) return [] as Array<{ label: string; change: number }>;
 
@@ -981,8 +1024,9 @@ export async function getDashboardOverview(
   const avgScoreChange = average(analyses.map((analysis) => analysis.change));
   const now = Date.now();
   const dayMs = 24 * 60 * 60 * 1000;
-  const currentPeriodStart = now - 30 * dayMs;
-  const previousPeriodStart = now - 60 * dayMs;
+  const todayStart = startOfLocalDay(now);
+  const currentPeriodStart = todayStart - 6 * dayMs;
+  const previousPeriodStart = todayStart - 13 * dayMs;
   const currentPeriod = analyses.filter((analysis) => {
     const timestamp = analysis.updatedAtMs || analysis.createdAtMs;
     return timestamp >= currentPeriodStart;
@@ -1005,17 +1049,7 @@ export async function getDashboardOverview(
     );
   }
 
-  const last8 = analyses.slice(0, 8).reverse();
-  const trendData =
-    last8.length > 0
-      ? last8.map((analysis) => ({
-          date: new Intl.DateTimeFormat("tr-TR", {
-            day: "numeric",
-            month: "short",
-          }).format(analysis.updatedAtMs || analysis.createdAtMs || Date.now()),
-          score: analysis.score,
-        }))
-      : [{ date: "Bugün", score: 0 }];
+  const trendData = buildLast7DaysTrend(analyses);
 
   const categoryMap = new Map<string, number[]>();
   for (const analysis of analyses) {
@@ -1057,7 +1091,7 @@ export async function getDashboardOverview(
       ? `${weakestCategory.label} (${weakestCategory.value}/100)`
       : "gelişim alanları";
     aiInsight =
-      `Son 30 günlük performans trendi ${trendDirection} (${monthChange >= 0 ? "+" : ""}${monthChange} puan). ` +
+      `Son 7 günlük performans trendi ${trendDirection} (${monthChange >= 0 ? "+" : ""}${monthChange} puan). ` +
       `En güçlü alan ${topCategoryText}; gelişim için öncelik ${weakestCategoryText}. ` +
       `Son analizde ${topSuggestionFocus} odaklı aksiyonlar skor artışı için en yüksek potansiyeli gösteriyor.`;
   }

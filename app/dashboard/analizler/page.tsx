@@ -38,6 +38,12 @@ const SCORE_RANGE_OPTIONS: Array<{ value: ScoreRangeValue; label: string }> = [
 ];
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+type PageSizeValue = `${(typeof PAGE_SIZE_OPTIONS)[number]}`;
+const PAGE_SIZE_SELECT_OPTIONS: Array<{ value: PageSizeValue; label: string }> = [
+  { value: "10", label: "10 / sayfa" },
+  { value: "20", label: "20 / sayfa" },
+  { value: "50", label: "50 / sayfa" },
+];
 type PaginationItem = number | "ellipsis";
 
 function FilterSelect<T extends string>({
@@ -46,12 +52,14 @@ function FilterSelect<T extends string>({
   onChange,
   ariaLabel,
   className = "",
+  menuPlacement = "bottom",
 }: {
   value: T;
   options: Array<{ value: T; label: string }>;
   onChange: (value: T) => void;
   ariaLabel: string;
   className?: string;
+  menuPlacement?: "top" | "bottom";
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -98,7 +106,11 @@ function FilterSelect<T extends string>({
         <ul
           role="listbox"
           aria-label={`${ariaLabel} seçenekleri`}
-          className="absolute left-0 z-30 mt-1.5 min-w-full overflow-hidden rounded-xl border border-brand-dark/10 bg-bg-light py-1.5 font-sans shadow-lg shadow-brand-dark/8"
+          className={`absolute left-0 z-30 min-w-full overflow-hidden rounded-xl border border-brand-dark/10 bg-bg-light py-1.5 font-sans shadow-lg shadow-brand-dark/8 ${
+            menuPlacement === "top"
+              ? "bottom-full mb-1.5"
+              : "top-full mt-1.5"
+          }`}
         >
           {options.map((option) => {
             const isActive = option.value === value;
@@ -264,7 +276,7 @@ export default function AnalizlerPage() {
   };
 
   return (
-    <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
+    <div className="px-4 pb-28 pt-2 sm:px-6 lg:px-8 lg:pb-24 lg:pt-4">
       <div className="mb-6">
         <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
           Analizler
@@ -419,11 +431,7 @@ export default function AnalizlerPage() {
             return (
               <div
                 key={a.id}
-                className={`grid grid-cols-1 items-center gap-3 rounded-2xl px-4 py-3 transition-colors hover:bg-bg-offwhite md:gap-4 ${
-                  selectionMode
-                    ? "md:grid-cols-[36px_1fr_210px_90px_150px_40px]"
-                    : "md:grid-cols-[1fr_210px_90px_150px_40px]"
-                }`}
+                className="flex items-start gap-3 rounded-2xl px-4 py-3 transition-colors hover:bg-bg-offwhite md:items-center md:gap-4"
               >
                 {selectionMode && (
                   <button
@@ -431,7 +439,7 @@ export default function AnalizlerPage() {
                     onClick={() => {
                       toggleSelected(a.id);
                     }}
-                    className="inline-flex items-center justify-center text-brand-dark/60 hover:text-brand-dark"
+                    className="mt-3.5 inline-flex shrink-0 items-center justify-center text-brand-dark/60 hover:text-brand-dark md:mt-0"
                     aria-label="Analizi seç"
                   >
                     {selectedIds.includes(a.id) ? (
@@ -441,51 +449,57 @@ export default function AnalizlerPage() {
                     )}
                   </button>
                 )}
-                <Link href={`/dashboard/analizler/${a.slug}`} className="contents">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-bg-offwhite">
-                    {a.mediaUrl || a.sourceUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={`/api/dashboard/media/${a.id}`}
-                        alt={a.title}
-                        className="size-full object-contain p-1"
+                <Link
+                  href={`/dashboard/analizler/${a.slug}`}
+                  className="grid min-w-0 flex-1 grid-cols-1 items-center gap-3 md:grid-cols-[1fr_210px_90px_150px_40px] md:gap-4"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-bg-offwhite">
+                      {a.mediaUrl || a.sourceUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={`/api/dashboard/media/${a.id}`}
+                          alt={a.title}
+                          className="size-full object-contain p-1"
+                        />
+                      ) : null}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-brand-dark">
+                        {a.title}
+                      </p>
+                      <p className="mt-0.5 flex items-center gap-1.5 text-xs text-brand-dark/45">
+                        <PlatformIcon className="size-3.5" strokeWidth={1.75} />
+                        {a.platform}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-sm text-brand-dark/60 md:block">
+                    <span className="text-brand-dark/40 md:hidden">Tarih: </span>
+                    {a.date}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-brand-dark/40 md:hidden">
+                      Score:
+                    </span>
+                    <ScoreRing score={a.score} size={42} />
+                  </div>
+
+                  <div>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-brand-dark/5 px-2.5 py-1 text-xs font-medium text-brand-dark/70">
+                      <CheckCircle2
+                        className="size-3.5 text-brand-dark"
+                        strokeWidth={2}
                       />
-                    ) : null}
+                      {a.status}
+                    </span>
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-brand-dark">
-                      {a.title}
-                    </p>
-                    <p className="mt-0.5 flex items-center gap-1.5 text-xs text-brand-dark/45">
-                      <PlatformIcon className="size-3.5" strokeWidth={1.75} />
-                      {a.platform}
-                    </p>
+
+                  <div className="hidden justify-end text-brand-dark/30 md:flex">
+                    <ChevronRight className="size-5" strokeWidth={2} />
                   </div>
-                </div>
-
-                <div className="text-sm text-brand-dark/60 md:block">
-                  <span className="md:hidden text-brand-dark/40">Tarih: </span>
-                  {a.date}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-brand-dark/40 md:hidden">
-                    Score:
-                  </span>
-                  <ScoreRing score={a.score} size={42} />
-                </div>
-
-                <div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-brand-dark/5 px-2.5 py-1 text-xs font-medium text-brand-dark/70">
-                    <CheckCircle2 className="size-3.5 text-brand-dark" strokeWidth={2} />
-                    {a.status}
-                  </span>
-                </div>
-
-                <div className="hidden justify-end text-brand-dark/30 md:flex">
-                  <ChevronRight className="size-5" strokeWidth={2} />
-                </div>
                 </Link>
               </div>
             );
@@ -497,7 +511,7 @@ export default function AnalizlerPage() {
           )}
         </div>
 
-        <div className="mt-2 flex flex-col items-center justify-between gap-4 border-t border-brand-dark/8 px-4 pt-4 sm:flex-row">
+        <div className="mt-2 flex flex-col items-center justify-between gap-3 border-t border-brand-dark/8 px-4 pt-4 sm:flex-row sm:gap-4">
           <span className="text-sm text-brand-dark/50">
             {loading
               ? "Yükleniyor..."
@@ -506,68 +520,62 @@ export default function AnalizlerPage() {
                 : `${visibleFrom}-${visibleTo} / ${total} analiz`}
           </span>
 
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={loading || page <= 1}
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
-              className="flex size-8 items-center justify-center rounded-lg border border-brand-dark/10 text-brand-dark/50 hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Önceki"
-            >
-              <ChevronLeft className="size-4" strokeWidth={2} />
-            </button>
-            {paginationItems.map((item, index) =>
-              item === "ellipsis" ? (
-                <span
-                  key={`ellipsis-${index}`}
-                  className="flex size-8 items-center justify-center text-xs font-semibold text-brand-dark/40"
-                >
-                  ...
-                </span>
-              ) : (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setPage(item)}
-                  className={`flex size-8 items-center justify-center rounded-lg text-xs font-semibold ${
-                    page === item
-                      ? "bg-brand-dark text-white"
-                      : "border border-brand-dark/10 text-brand-dark/60 hover:bg-brand-dark/5"
-                  }`}
-                >
-                  {item}
-                </button>
-              ),
-            )}
-            <button
-              type="button"
-              disabled={loading || page >= totalPages}
-              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-              className="flex size-8 items-center justify-center rounded-lg border border-brand-dark/10 text-brand-dark/50 hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Sonraki"
-            >
-              <ChevronRight className="size-4" strokeWidth={2} />
-            </button>
-          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={loading || page <= 1}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                className="flex size-8 items-center justify-center rounded-lg border border-brand-dark/10 text-brand-dark/50 hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Önceki"
+              >
+                <ChevronLeft className="size-4" strokeWidth={2} />
+              </button>
+              {paginationItems.map((item, index) =>
+                item === "ellipsis" ? (
+                  <span
+                    key={`ellipsis-${index}`}
+                    className="flex size-8 items-center justify-center text-xs font-semibold text-brand-dark/40"
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setPage(item)}
+                    className={`flex size-8 items-center justify-center rounded-lg text-xs font-semibold ${
+                      page === item
+                        ? "bg-brand-dark text-white"
+                        : "border border-brand-dark/10 text-brand-dark/60 hover:bg-brand-dark/5"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                ),
+              )}
+              <button
+                type="button"
+                disabled={loading || page >= totalPages}
+                onClick={() =>
+                  setPage((current) => Math.min(totalPages, current + 1))
+                }
+                className="flex size-8 items-center justify-center rounded-lg border border-brand-dark/10 text-brand-dark/50 hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Sonraki"
+              >
+                <ChevronRight className="size-4" strokeWidth={2} />
+              </button>
+            </div>
 
-          <div className="relative">
-            <select
-              value={pageSize}
-              onChange={(event) => {
-                setPageSize(Number(event.target.value) as (typeof PAGE_SIZE_OPTIONS)[number]);
+            <FilterSelect
+              value={String(pageSize) as PageSizeValue}
+              options={PAGE_SIZE_SELECT_OPTIONS}
+              onChange={(value) => {
+                setPageSize(Number(value) as (typeof PAGE_SIZE_OPTIONS)[number]);
                 setPage(1);
               }}
-              className="appearance-none rounded-lg border border-brand-dark/10 bg-bg-light px-3 py-1.5 pr-8 text-sm font-medium text-brand-dark/70 outline-none transition-colors hover:bg-brand-dark/5"
-            >
-              {PAGE_SIZE_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option} / sayfa
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-brand-dark/40"
-              strokeWidth={2}
+              ariaLabel="Sayfa başına analiz"
+              className="min-w-[7.5rem]"
             />
           </div>
         </div>

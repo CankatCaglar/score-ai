@@ -3,8 +3,8 @@
 > Bu dosya, projenin **operasyonel durumunu** kısa ve net takip etmek için tutulur.  
 > Ürün vizyonu için: [README.md](./README.md)
 
-**Son güncelleme:** 18 Temmuz 2026  
-**Mevcut faz:** Faz 2.1 — Dashboard Gerçek Veri + AI Analiz Pipeline + Operasyonel Stabilizasyon
+**Son güncelleme:** 30 Temmuz 2026  
+**Mevcut faz:** Faz 2.2 — Brand Intelligence / Benchmark + Instagram Login (Meta Live & App Review)
 
 ---
 
@@ -17,9 +17,12 @@
 | Admin panel (`/admin`) | ✅ Canlı | Waitlist operasyonları + blog yönetimi |
 | Blog (`/blog`) | ✅ Canlı | Public blog liste/detay + admin editoryal akış |
 | Erken erişim davet akışı | ✅ Canlı | Token tabanlı invite link, tek kullanımlık doğrulama |
-| Dashboard erişim kontrolü | ✅ Canlı | `waitlist`/`early_access` modları + admin bypass |
-| Dashboard veri katmanı | ✅ Canlı | Liste, detay, overview ve sonuç ekranları Firestore + API ile gerçek veriden besleniyor |
-| AI analiz motoru (prod) | ✅ Canlı | Anthropic kategori analizi + rubric tabanlı deterministic skor hesaplama |
+| Dashboard erişim kontrolü | ✅ Canlı | `APP_ACCESS_MODE` (`waitlist` / `early_access` / `public`) |
+| Dashboard veri katmanı | ✅ Canlı | Liste, detay, overview ve sonuç ekranları Firestore + API |
+| AI analiz motoru (prod) | ✅ Canlı | Anthropic kategori analizi + rubric skor |
+| Brand Intelligence / Benchmark | ✅ Kod + UI | Marka vaadi, rakipler, güven kanıtları, geçmiş içerik |
+| Instagram marka hesabı bağlama | 🟡 Kısmi canlı | Instagram Login OAuth hazır; Meta Advanced Access onay bekliyor |
+| Privacy / legal sayfaları | ✅ Canlı (deploy ile) | `/privacy`, `/gizlilik-politikasi` |
 
 ---
 
@@ -30,6 +33,7 @@
 - Hero ve footer waitlist formları
 - `access` query paramına göre kullanıcıya erişim durumu toast mesajları
 - Footer aksiyonları (`mailto`, Google Maps) + blog linkleri
+- Meta domain doğrulama meta tag (`facebook-domain-verification` → `app/layout.tsx`)
 
 ### 2.2 Waitlist backend
 - `actions/waitlist.ts` ile Firestore `waitlist` koleksiyonuna kayıt
@@ -38,65 +42,61 @@
 
 ### 2.3 Admin operasyon paneli
 - Güvenli giriş (`/admin/login`) + imzalı oturum cookie
-- Waitlist ekranı:
-  - listeleme
-  - en yeni / en eski sıralama
-  - e-posta veya ID arama
-  - dil filtresi (`TR` / `EN`)
-  - tekil kayıt silme
-  - CSV / Word / PDF export
-- Blog ekranı:
-  - yazı oluşturma / düzenleme
-  - taslak / yayında durumu
-  - öne çıkarma
-  - silme
-  - basit rich-text editör
+- Waitlist: listeleme, sıralama, arama, dil filtresi, silme, CSV/Word/PDF export
+- Blog: oluşturma / düzenleme / taslak-yayın / öne çıkarma / silme
 
 ### 2.4 Blog altyapısı
 - Public: `/blog` (liste) ve `/blog/[slug]` (detay)
-- Firestore `blog_posts` koleksiyonundan sadece yayınlanan yazıların gösterimi
-- Slug tabanlı metadata (title/description/OpenGraph)
-- Yazı içeriği için okuma süresi hesaplama
-- Opsiyonel Google Translate API ile otomatik çeviri alanı üretimi
+- Firestore `blog_posts` — yalnız yayınlanan yazılar
+- Slug metadata + okuma süresi + opsiyonel Translate API
 
 ### 2.5 Erken erişim davet akışı
-- `scripts/generate-early-access-links.mjs` ile waitlist kayıtlarından davet link üretimi
-- `early_access_invites` koleksiyonunda hash tabanlı token saklama
-- `/invite/[token]` route'u ile:
-  - token doğrulama
-  - tek kullanım kontrolü
-  - süre dolumu kontrolü
-  - başarılıysa early access cookie set edilip `/dashboard` yönlendirmesi
+- `scripts/generate-early-access-links.mjs` ile davet link üretimi
+- `/invite/[token]` doğrulama + tek kullanım + süre kontrolü
 
 ### 2.6 Dashboard modları
-- `proxy.ts` ile dashboard erişimi mode bazlı korunuyor:
-  - `APP_ACCESS_MODE=waitlist`: dashboard'a public erişim yok, landing'e yönlendirme
-  - `APP_ACCESS_MODE=early_access`: yalnız davet cookie'si olan kullanıcı erişir
-- Admin oturumu olan kullanıcılar dashboard'a doğrudan erişebilir
-- `/admin-dashboard` path'i rewrite ile `/dashboard` altına bağlanır
+- `proxy.ts` ile mode bazlı koruma:
+  - `waitlist` / `early_access` / `public`
+- Admin oturumu dashboard’a bypass eder
 
-### 2.7 Dashboard veri ve analiz katmanı (yeni)
-- Gerçek API endpoint'leri:
-  - `/api/dashboard/overview`
-  - `/api/dashboard/analyses` (+ filtre/paginasyon/silme)
-  - `/api/dashboard/analyses/[slug]`
-  - `/api/dashboard/result`
-  - `/api/dashboard/media/[analysisId]`
-- `Yeni Analiz` akışı:
-  - `/api/analysis-jobs` ile dosya/URL alımı
-  - Firebase Storage yükleme + Firestore job oluşturma
-  - `processPendingAnalysisJobs()` ile kuyruğun işlenmesi
-- AI pipeline:
-  - 5 ana kategori için ayrı prompt çalıştırma
-  - Anthropic modelinden 31 kriterde `seviye + açıklama + aksiyon` üretimi
-  - Skorların AI'dan değil rubric algoritmasından hesaplanması (`currentScore`, `potentialScore`, kategori/mikro skorlar)
-- Caching:
-  - Görsel fingerprint + model + rubric/prompt version + platform + brand context hash ile cache key üretimi
-  - Aynı input için tekrar AI çağrısını azaltma
-- Stabilizasyon:
-  - Görsel formatını byte-level doğrulama (PNG/JPEG/JPG/WEBP/GIF)
-  - `jobStatus` (pending/processing/completed/failed) UI/API akışına yansıtıldı
-  - Başarısız analizde 0 puan ekranına düşmek yerine anlamlı hata mesajı
+### 2.7 Dashboard veri ve analiz katmanı
+- API: overview, analyses (+ filtre/paginasyon/silme), result, media
+- `Yeni Analiz` → `/api/analysis-jobs` + worker kuyruğu
+- Anthropic 5 kategori + rubric deterministic skor
+- Cache (fingerprint + model + rubric/prompt version + brand context)
+- `jobStatus` UI/API; başarısız analizde yanlış 0 skor engeli
+
+### 2.8 Brand Intelligence / Benchmark (yeni)
+- Sayfa: `/dashboard/benchmark` (`BenchmarkPageClient`)
+- Bölümler:
+  - Marka vaadi
+  - Rakip kaynakları (Instagram handle / website, max 8; son paylaşımlar / homepage görselleri)
+  - Marka hesabı bağla (Instagram OAuth, website tara, manuel 6–12 medya yükle)
+  - Güven kanıtları (PDF/görsel + metin çıkarımı)
+- Veri: `brand_intelligence` + `integrations` Firestore koleksiyonları
+- API’ler:
+  - `/api/dashboard/benchmark` (+ competitors, website-scan, historical-media, trust-proofs)
+  - `/api/dashboard/integrations/instagram` (OAuth başlat / sync / disconnect)
+  - `/api/auth/meta/callback` (Instagram Login callback)
+- Manuel `@username` ile “bağlandım” **kapatıldı** (sahiplik yok; API `410`)
+- Akış: **Instagram Hesabını Bağla** → Instagram Login → token + son 6–12 post
+- &lt;6 post → kullanıcıya uyarı toast’ı
+
+### 2.9 Instagram Login / Meta durum (operasyon)
+| Adım | Durum |
+| --- | --- |
+| Kod: Instagram Login (Facebook Page yok) | ✅ |
+| Env: `INSTAGRAM_APP_ID` / `SECRET` / `REDIRECT_URI` | ✅ (local + Vercel) |
+| Redirect URI | `https://usescore.net/api/auth/meta/callback` |
+| Meta App | ✅ Published |
+| Privacy URL | `https://usescore.net/privacy` |
+| Domain verification meta tag | ✅ kodda; deploy sonrası Meta’da Verify |
+| Business portfolio | 🟡 In review |
+| App Review `instagram_business_basic` Advanced Access | 🟡 Beklemede / Verification’a bağlı |
+| Tester ile OAuth | ✅ Mümkün (`Instagram Testers`, örn. `bat_32123`) |
+| Rastgele kullanıcı IG bağlama | ❌ Advanced Access onayına kadar |
+
+**Not:** Vercel deploy ≠ Meta Advanced Access. Site public olsa bile Meta Unpublished/Standard Access iken yalnız rol/tester hesapları OAuth tamamlar.
 
 ---
 
@@ -107,31 +107,22 @@
 - React 19 + TypeScript
 - Tailwind CSS v4
 - Framer Motion, Lucide, Sonner, Recharts
-- Vercel Analytics + Yandex Metrica script entegrasyonu
+- Vercel Analytics + Yandex Metrica
 
 ### Data & Backend
-- Firebase Firestore (`waitlist`, `blog_posts`, `early_access_invites`, `analyses`, `analysis_jobs`, `content_items`, `analysis_revisions`, `analysis_cache`)
-- Firebase Admin SDK (sunucu tarafı admin işlemleri)
-- Server Actions:
-  - waitlist kayıt akışı
-  - admin waitlist operasyonları
-  - blog CRUD ve yayın yönetimi
-- API routes:
-  - Dashboard query katmanı (overview/liste/detay/sonuç/media)
-  - Analysis job ingestion + internal worker endpoint
-- Anthropic SDK tabanlı kategori analiz servisi (`lib/ai/anthropic.ts`)
-- Rubric/puanlama motoru (`lib/analysis/rubric.ts`) ile deterministic skor üretimi
-- Nodemailer (opsiyonel SMTP)
-- jsPDF + AutoTable (PDF export)
+- Firestore: waitlist, blog, invites, analyses/jobs, `brand_intelligence`, `integrations`
+- Firebase Admin + Storage (benchmark medya / trust proofs)
+- Anthropic analiz + rubric skor
+- Brand intelligence: `lib/brand-intelligence/*`
+- Instagram Login OAuth: `lib/brand-intelligence/meta-oauth.ts`  
+  (`instagram.com/oauth/authorize`, `graph.instagram.com`, scope: `instagram_business_basic`)
+- Competitor/profile scrape yardımcıları: `lib/instagram/*` (rakip ve website tarama; marka hesabı OAuth ile)
 
 ### Güvenlik
-- Admin oturumu: imzalı `httpOnly` cookie (`scoreai_admin`)
-- Erken erişim oturumu: imzalı `httpOnly` cookie (`score_early_access`)
+- Admin / early access / user session imzalı cookie’ler
 - Route koruması: `proxy.ts`
-- Action seviyesinde ikinci doğrulama: `requireAdmin()`
-- Firestore kuralları:
-  - `waitlist`: create açık, read/update/delete client'ta kapalı
-  - `blog_posts`: sadece `published` içerikler okunabilir, write kapalı
+- Marka IG: yalnızca OAuth ile bağlanır (manuel handle claim yok)
+- Secrets commit edilmez
 
 ---
 
@@ -142,71 +133,77 @@ npm install
 npm run dev
 ```
 
-**Lokal URL'ler**
+**Lokal URL’ler**
 - `http://localhost:3000` → Landing
-- `http://localhost:3000/blog` → Public blog
-- `http://localhost:3000/dashboard` → İç ürün UI (mode'a bağlı)
-- `http://localhost:3000/admin/login` → Admin girişi
-- `http://localhost:3000/admin` → Admin panel
-
-Kalite kontrol:
+- `http://localhost:3000/blog` → Blog
+- `http://localhost:3000/dashboard` → Dashboard
+- `http://localhost:3000/dashboard/benchmark` → Brand Intelligence
+- `http://localhost:3000/privacy` → Privacy (EN)
+- `http://localhost:3000/gizlilik-politikasi` → Gizlilik (TR)
+- `http://localhost:3000/admin/login` → Admin
 
 ```bash
 npm run lint
 npm run build
 ```
 
+> Instagram OAuth redirect production URL’ye ayarlı (`usescore.net`). Local’de “Bağla” sonrası dönüş prod callback’e gider.
+
 ---
 
 ## 5) Kritik Konfigürasyon Notları
 
-### 5.1 Temel Firebase env (client)
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- `NEXT_PUBLIC_FIREBASE_APP_ID`
+### 5.1 Firebase (client)
+- `NEXT_PUBLIC_FIREBASE_*`
 
-### 5.2 Admin panel için zorunlu env
-- `FIREBASE_ADMIN_CLIENT_EMAIL`
-- `FIREBASE_ADMIN_PRIVATE_KEY`
-- `ADMIN_EMAIL`
-- `ADMIN_PASSWORD`
-- `ADMIN_SESSION_SECRET`
+### 5.2 Admin
+- `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY`
+- `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`
 
-### 5.3 Erken erişim ve davet akışı
-- `APP_ACCESS_MODE` (`waitlist` veya `early_access`)
-- `EARLY_ACCESS_SESSION_SECRET` (opsiyonel; yoksa `ADMIN_SESSION_SECRET` fallback)
-- `APP_BASE_URL` (invite link üretimi için)
-- `EARLY_ACCESS_INVITE_EXPIRY_DAYS` (opsiyonel)
+### 5.3 Erişim / davet
+- `APP_ACCESS_MODE` (`waitlist` | `early_access` | `public`)
+- `EARLY_ACCESS_SESSION_SECRET`, `APP_BASE_URL`, `USER_SESSION_SECRET`
 
-### 5.4 Opsiyonel env
-- SMTP: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
-- Çeviri: `GOOGLE_TRANSLATE_API_KEY`
-- AI: `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_TIMEOUT_MS`
-- Worker: `ANALYSIS_WORKER_SECRET`
+### 5.4 AI / worker
+- `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_TIMEOUT_MS`
+- `ANALYSIS_WORKER_SECRET`, `CRON_SECRET`
 
-> Not: `.env.local` veya service account JSON dosyaları repository'ye commit edilmez.
+### 5.5 Instagram Login (zorunlu — marka hesabı OAuth)
+- `INSTAGRAM_APP_ID` — Meta App → Instagram → API setup with Instagram login
+- `INSTAGRAM_APP_SECRET`
+- `INSTAGRAM_REDIRECT_URI` — Meta’daki OAuth redirect ile **birebir aynı**  
+  Prod: `https://usescore.net/api/auth/meta/callback`
+- Opsiyonel: `INSTAGRAM_OEMBED_ACCESS_TOKEN` (tek post görsel çözümleme; OAuth için gerekmez)
+- Geriye dönük: `META_APP_ID` / `META_APP_SECRET` / `META_REDIRECT_URI` hâlâ okunur (fallback)
+
+### 5.6 Opsiyonel
+- SMTP, Google Translate, Potential pipeline (Recraft / Bria / Fal)
+
+> `.env.local` ve service account JSON commit edilmez.
 
 ---
 
 ## 6) Sıradaki Öncelikler (Kısa Roadmap)
 
-### P1 — Ürünleşme (aktif)
-- Dashboard için gerçek `sectorAverage` ve benchmark metodolojisinin devreye alınması
-- `AI insight` metinlerinin çoklu şablon/ton ve daha güçlü veri anlatımıyla zenginleştirilmesi
-- Video input için ya tam destek (frame extraction) ya da ürün seviyesinde net kısıtlama
+### P0 — Instagram Live (bloklayıcı)
+- [ ] Meta Business Verification onayını bekle / tamamla
+- [ ] `instagram_business_basic` Advanced Access App Review onayını al
+- [ ] Domain Verify’nin Meta’da yeşil olduğunu doğrula (deploy sonrası)
+- [ ] Prod’da tester dışı gerçek kullanıcı ile OAuth smoke test
 
-### P1 — Güvenlik ve Operasyon
-- Admin login için rate limit / brute-force koruması
-- Admin aksiyonları ve invite kullanımına audit log
-- Invite yönetimi için iptal/yenileme panel aksiyonları
+### P1 — Brand Intelligence ürünleşme
+- [ ] Benchmark verisinin analiz prompt/context’e daha derin entegrasyonu
+- [ ] Rakip fetch güvenilirliği (Instagram public scrape kırılganlığı)
+- [ ] Historical media &lt;6 uyarısının UI’da kalıcı banner’ı
+- [ ] Creative Memory / Brand DNA ile benchmark sinyallerinin birleşimi
 
-### P2 — AI Katmanı
-- Rubric/prompt versiyonlamayı yönetim ekranına taşıma (operasyonel görünürlük)
-- İçgörü ve öneri kalitesini ölçen internal eval akışı
-- Retry/backoff + job orchestration metriklerinin üretim izlenebilirliği
+### P1 — Operasyon / güvenlik
+- [ ] Admin rate limit / audit log
+- [ ] Token refresh (`graph.instagram.com/refresh_access_token`) job’u
+
+### P2 — AI
+- [ ] Rubric/prompt yönetim görünürlüğü
+- [ ] Internal eval + job metrikleri
 
 ---
 
@@ -215,14 +212,14 @@ npm run build
 | Tarih | Özet |
 | --- | --- |
 | 5 Tem 2026 | Proje kurulum, tasarım sistemi, dashboard iskeleti, ilk ILERLEME |
-| 7 Tem 2026 | Landing ana yapı tamamlandı, screenshot altyapısı ve dashboard route'ları eklendi |
-| 8 Tem 2026 | Landing görsel/UX revizyonları ve pazarlama blokları genişletildi |
-| 10 Tem 2026 | Waitlist backend v1 (Firestore + SMTP opsiyon), responsive hardening |
-| 11 Tem 2026 | Admin panel v1: güvenli giriş, listeleme/silme, export (CSV/Word/PDF) |
-| 13-15 Tem 2026 | Blog altyapısı (public + admin CMS), erken erişim invite akışı, dashboard access mode ve proxy güncellemeleri |
-| 18 Tem 2026 | Dashboard mock’tan gerçek veriye geçirildi; analysis jobs + worker + Anthropic kategori analizi + rubric skor hesaplama canlıya alındı |
-| 18 Tem 2026 | `monthChange` ve `AI insight` gerçek veri mantığına alındı; insight kartında 3 satır kesme/expand UX eklendi |
-| 18 Tem 2026 | Görsel format doğrulaması sertleştirildi; `jobStatus` UI/API akışına işlendi, başarısız analizde yanlış 0 skor ekranı engellendi |
+| 7–15 Tem 2026 | Landing, waitlist, admin, blog, early access, access mode |
+| 18 Tem 2026 | Dashboard gerçek veri + analysis jobs + Anthropic + rubric |
+| ~Tem 2026 | Creative Memory sayfası |
+| 30 Tem 2026 | Benchmark / Brand Intelligence UI + API + Firestore modelleri |
+| 30 Tem 2026 | Instagram Login OAuth (Facebook Page’siz); `graph.instagram.com` medya sync |
+| 30 Tem 2026 | Manuel `@username` marka bağlama kaldırıldı; yalnız OAuth |
+| 30 Tem 2026 | Privacy sayfaları; Meta domain verification meta tag |
+| 30 Tem 2026 | Meta App Published; Business Verification + App Review süreci başlatıldı (In review) |
 
 ---
 
@@ -233,4 +230,3 @@ Her anlamlı geliştirmeden sonra şu 4 başlık güncellenir:
 2. Canlı kapsam / teknik mimari (değiştiyse)
 3. Roadmap öncelikleri
 4. Kısa değişiklik günlüğü
-

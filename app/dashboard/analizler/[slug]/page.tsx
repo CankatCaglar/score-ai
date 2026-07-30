@@ -323,8 +323,8 @@ export default function AnalizDetayPage() {
   };
 
   return (
-    <div className="px-4 pb-8 pt-1 sm:px-6 lg:px-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="px-4 pb-10 pt-1 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
         <div className="min-w-0 flex-1">
           {editingTitle ? (
             <div className="flex max-w-xl flex-col gap-2">
@@ -383,7 +383,7 @@ export default function AnalizDetayPage() {
             </div>
           ) : (
             <div className="flex items-start gap-2">
-              <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
+              <h1 className="break-words text-2xl font-semibold tracking-tight text-brand-dark sm:text-3xl">
                 {analysis.title}
               </h1>
               <button
@@ -405,7 +405,7 @@ export default function AnalizDetayPage() {
             {analysis.platform}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end">
           <button
             type="button"
             onClick={() => void handleDownload()}
