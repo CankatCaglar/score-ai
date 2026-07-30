@@ -205,9 +205,13 @@ function AnalizSonucuPageContent() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const load = async () => {
-      setLoading(true);
-      setError(null);
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const load = async (isPoll = false) => {
+      if (!isPoll) {
+        setLoading(true);
+        setError(null);
+      }
       try {
         const qs = id ? `?id=${encodeURIComponent(id)}` : "";
         const response = await fetch(`/api/dashboard/result${qs}`, {
@@ -219,15 +223,24 @@ function AnalizSonucuPageContent() {
         }
         const data = (await response.json()) as ResultPayload;
         setPayload(data);
+        const status = data.analysis?.jobStatus;
+        if (status === "pending" || status === "processing") {
+          pollTimer = setTimeout(() => {
+            void load(true);
+          }, 2500);
+        }
       } catch (fetchError) {
         if ((fetchError as Error).name === "AbortError") return;
-        setError("Analiz sonucu yüklenemedi.");
+        if (!isPoll) setError("Analiz sonucu yüklenemedi.");
       } finally {
-        setLoading(false);
+        if (!isPoll) setLoading(false);
       }
     };
     void load();
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      if (pollTimer) clearTimeout(pollTimer);
+    };
   }, [id]);
 
   const revision = payload?.revision;
@@ -366,21 +379,28 @@ function AnalizSonucuPageContent() {
     return (
       <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
         <div className="rounded-2xl border border-brand-dark/10 bg-bg-light p-5">
-          <p className="text-lg font-semibold text-brand-dark">
-            {isFailed ? "Analiz tamamlanamadi" : "Analiz hala isleniyor"}
-          </p>
-          <p className="mt-2 text-sm text-brand-dark/65">
-            {isFailed
-              ? payload.analysis.insight ||
-                "Yuklenen dosya formati veya icerik isleme adiminda bir sorun olustu."
-              : "Islem tamamlandiginda skor ve AI detaylari otomatik olarak guncellenecek."}
-          </p>
+          <div className="flex items-start gap-3">
+            {!isFailed ? (
+              <Loader2 className="mt-0.5 size-5 shrink-0 animate-spin text-brand-dark/55" />
+            ) : null}
+            <div className="min-w-0">
+              <p className="text-lg font-semibold text-brand-dark">
+                {isFailed ? "Analiz tamamlanamadı" : "Analiz işleniyor…"}
+              </p>
+              <p className="mt-2 text-sm text-brand-dark/65">
+                {isFailed
+                  ? payload.analysis.insight ||
+                    "Yüklenen dosya formatı veya içerik işleme adımında bir sorun oluştu."
+                  : "İşlem tamamlandığında skor ve AI detayları otomatik olarak güncellenecek."}
+              </p>
+            </div>
+          </div>
           <div className="mt-4 flex items-center gap-2">
             <Link
               href={detailHref}
               className="rounded-lg bg-brand-dark px-3.5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
-              Analiz Detayina Git
+              Analiz Detayına Git
             </Link>
             <button
               type="button"

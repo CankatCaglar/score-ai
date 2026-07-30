@@ -95,7 +95,11 @@ const BUSINESS_CRITERIA_KEYS = [
   "competitive_positioning",
 ];
 
-function buildBrandSystemPrompt(criteriaKeys: string[], strategic: boolean) {
+function buildBrandSystemPrompt(
+  criteriaKeys: string[],
+  strategic: boolean,
+  hasBrandDna: boolean,
+) {
   const lines = [
     basePrompt(
       "marka stratejisi, marka dili ve görsel kimlik",
@@ -103,11 +107,38 @@ function buildBrandSystemPrompt(criteriaKeys: string[], strategic: boolean) {
       criteriaKeys,
     ),
     "",
-    "Eğer Brand DNA veya Strategic Brand Intelligence bağlamı verilirse ona göre kıyasla; verilmezse sadece görseldeki marka sinyallerine dayan.",
+    "Brand Intelligence kuralı: Brand DNA varsa 'markaya göre' analiz et; yoksa yalnızca görselden çıkarılan marka sinyallerine göre analiz et. Varsayım yapma.",
+    "Kısmi Brand DNA (brand_dna_mode=partial): Mevcut alanları kullan; eksik alanlarda görsel-içi sinyallere düş. Bilgi yoksa ilgili alt boyutta puan tavanını düşür.",
   ];
+
+  if (hasBrandDna) {
+    lines.push(
+      "",
+      "A) BRAND DNA VAR / KISMİ (brand_dna_mode=provided|partial):",
+      "- brand_tone: 'Bu içerik markanın tanımlı tonu gibi mi konuşuyor ve hissettiriyor?' Tone of Voice + Marka Kişiliği + renk/tipografi atmosferiyle kıyasla. Dil tonu + görsel atmosfer uyumunu değerlendir.",
+      "- visual_identity: Logo, renk paleti ve tipografi Brand DNA ile karşılaştır. Logo kullanımı, renk kimliği, tipografi uyumu ve görsel stil/marka öğelerini kontrol et. Eksik DNA alanında (ör. renk yok) o alt boyutu görsel-içi tutarlılığa düşür.",
+      "- brand_consistency: Mevcut DNA sinyalleriyle (ve Strategic Brand Intelligence'ta Historical Content varsa geçmişle) tutarlılığı ölç. Sadece DNA varsa geçmiş yoksa tavanı düşür; eksik alanlarda görsel-içi tutarlılığa bak.",
+      "- value_proposition: Anahtar kelimeler, sektör, hedef kitle ve kişilik ile görseldeki değer önerisini kıyasla. 'Markanın tanımlı değerini net anlatıyor mu?'",
+      "- differentiation: Keywords / sektör / hedef kitle (ve Strategic Brand Intelligence'ta Competitors varsa rakipler) ile ayrışmayı ölç. Rakip yoksa sektör kalıplarına göre jeneriklik kontrolü yap, kesin rakip konumlandırması yapma.",
+      "- trust_building: DNA'daki kişilik/tone/sektör ile görsel güven sinyallerini değerlendir; somut Trust Proofs yoksa abartma, tavanı düşür.",
+    );
+  } else {
+    lines.push(
+      "",
+      "B) BRAND DNA YOK (brand_dna_mode=missing):",
+      "- brand_tone: Tahmini marka tonu analizi. İç ton tutarlılığı (metin dili ↔ görsel atmosfer) + ürün/sektör ton uyumu. Markanın gerçek tonu hakkında varsayım yapma.",
+      "- visual_identity: Logo/marka işareti varlığı + görsel kimlik tutarlılığı + renk/tipografi tutarlılığı + marka hissi netliği. Gerçek marka renk/font/logo standardı varsayma.",
+      "- brand_consistency: Gerçek geçmiş bilinmiyor. Sadece mevcut görselin iç marka tutarlılığını ölç; puan tavanını düşür.",
+      "- value_proposition: Sadece görselde açıkça görünen fayda/vaat üzerinden değerlendir. Markanın gerçek vaadini bilmiyorsun.",
+      "- differentiation: Jeneriklik / ayırt edicilik kontrolü. Rakipler bilinmiyor; kesin rekabetçi konumlandırma yapma.",
+      "- trust_building: Yalnızca görselde açıkça görünen güven sinyallerini puanla (sertifika, sosyal kanıt, garanti vb.). Markanın gerçek kanıtlarını varsayma; tavanı düşür.",
+    );
+  }
+
   if (strategic) {
     lines.push(
-      "Strategic Brand Intelligence kullanımı:",
+      "",
+      "Strategic Brand Intelligence kullanımı (Benchmark — Brand DNA'dan ayrı):",
       "- brand_tone / value_proposition: Brand Promise metnini referans al.",
       "- differentiation: Competitors özetlerini ve rakip içerik temalarını kullan.",
       "- brand_consistency / brand_memory_match: Historical Content ve bağlı marka hesabı sinyallerini kullan.",
@@ -136,8 +167,12 @@ function buildBusinessSystemPrompt(strategic: boolean) {
   return lines.join("\n");
 }
 
-export function getCategoryPrompts(mode: RubricMode = "strategic_brand"): CategoryPromptConfig[] {
+export function getCategoryPrompts(
+  mode: RubricMode = "strategic_brand",
+  options?: { hasBrandDna?: boolean },
+): CategoryPromptConfig[] {
   const strategic = mode === "strategic_brand";
+  const hasBrandDna = Boolean(options?.hasBrandDna);
   const brandKeys = strategic ? BRAND_CRITERIA_KEYS_STRATEGIC : BRAND_CRITERIA_KEYS_BASE;
 
   return [
@@ -173,7 +208,7 @@ export function getCategoryPrompts(mode: RubricMode = "strategic_brand"): Catego
       categoryId: "brand_intelligence",
       categoryLabel: "Brand Intelligence",
       criteriaKeys: brandKeys,
-      systemPrompt: buildBrandSystemPrompt(brandKeys, strategic),
+      systemPrompt: buildBrandSystemPrompt(brandKeys, strategic, hasBrandDna),
     },
     {
       categoryId: "channel_intelligence",
@@ -204,24 +239,33 @@ export const CATEGORY_PROMPTS: CategoryPromptConfig[] = getCategoryPrompts("stra
 export function getCategoryPromptConfig(
   categoryId: NcqsCategoryId,
   mode: RubricMode = "strategic_brand",
+  options?: { hasBrandDna?: boolean },
 ): CategoryPromptConfig {
-  const config = getCategoryPrompts(mode).find((item) => item.categoryId === categoryId);
+  const config = getCategoryPrompts(mode, options).find(
+    (item) => item.categoryId === categoryId,
+  );
   if (!config) {
     throw new Error(`Prompt tanimi bulunamadi: ${categoryId}`);
   }
   return config;
 }
 
-export function getAllPromptCriteriaKeys(mode: RubricMode = "strategic_brand"): string[] {
-  return getCategoryPrompts(mode).flatMap((config) => config.criteriaKeys);
+export function getAllPromptCriteriaKeys(
+  mode: RubricMode = "strategic_brand",
+  options?: { hasBrandDna?: boolean },
+): string[] {
+  return getCategoryPrompts(mode, options).flatMap((config) => config.criteriaKeys);
 }
 
-export function assertPromptConfigMatchesRubric(mode: RubricMode = "strategic_brand") {
+export function assertPromptConfigMatchesRubric(
+  mode: RubricMode = "strategic_brand",
+  options?: { hasBrandDna?: boolean },
+) {
   const rubricCriteriaCount = getMainCategoryDefinitions(mode).reduce(
     (sum, category) => sum + category.criteria.length,
     0,
   );
-  const promptCriteriaCount = getAllPromptCriteriaKeys(mode).length;
+  const promptCriteriaCount = getAllPromptCriteriaKeys(mode, options).length;
   if (rubricCriteriaCount !== promptCriteriaCount) {
     throw new Error(
       `Prompt kriter sayisi (${promptCriteriaCount}) ile rubric kriter sayisi (${rubricCriteriaCount}) uyusmuyor (mode=${mode}).`,

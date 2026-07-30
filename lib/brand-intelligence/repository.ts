@@ -715,6 +715,12 @@ export function isMetaOAuthConfigured(): boolean {
 export function serializeBrandIntelligenceContext(
   profile: BrandIntelligenceProfile,
 ): string | undefined {
+  // UI tamamlanma 0 iken strategic moda / context'e düşme:
+  // örn. 1–5 historical media tek başına completion'a yazılmaz ama eskiden serialize ediliyordu.
+  if (computeCompletion(profile).score <= 0) {
+    return undefined;
+  }
+
   const sections: string[] = [];
 
   if (profile.brandPromise.trim()) {

@@ -150,8 +150,13 @@ export function getRubricVersion(mode: RubricMode): string {
   return mode === "strategic_brand" ? RUBRIC_VERSION_STRATEGIC : RUBRIC_VERSION_BASE;
 }
 
-export function getPromptVersion(mode: RubricMode): string {
-  return mode === "strategic_brand" ? AI_PROMPT_VERSION_STRATEGIC : AI_PROMPT_VERSION_BASE;
+export function getPromptVersion(
+  mode: RubricMode,
+  options?: { hasBrandDna?: boolean },
+): string {
+  const base =
+    mode === "strategic_brand" ? AI_PROMPT_VERSION_STRATEGIC : AI_PROMPT_VERSION_BASE;
+  return options?.hasBrandDna ? `${base}+dna` : base;
 }
 
 export function rubricModeFromVersion(version: string | null | undefined): RubricMode {

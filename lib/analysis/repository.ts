@@ -44,6 +44,53 @@ import type {
 } from "@/lib/analysis/types";
 import { splitDisplayName, userDocIdFromEmail } from "@/lib/user-profile";
 
+async function loadMergedBrandContext(ownerEmail: string): Promise<{
+  brandContext: string | null;
+  hasStrategicBrand: boolean;
+  hasBrandDna: boolean;
+}> {
+  let strategicContext: string | undefined;
+  let dnaContext: string | undefined;
+
+  try {
+    const {
+      getBrandIntelligence,
+      serializeBrandIntelligenceContext,
+    } = await import("@/lib/brand-intelligence/repository");
+    const brandProfile = await getBrandIntelligence(ownerEmail);
+    strategicContext = serializeBrandIntelligenceContext(brandProfile);
+  } catch {
+    strategicContext = undefined;
+  }
+
+  try {
+    const {
+      getBrandDna,
+      serializeBrandDnaContext,
+      mergeBrandContexts,
+    } = await import("@/lib/brand-dna/repository");
+    const dnaProfile = await getBrandDna(ownerEmail);
+    dnaContext = serializeBrandDnaContext(dnaProfile);
+    const merged = mergeBrandContexts({
+      dnaContext,
+      strategicContext,
+    });
+    return {
+      brandContext: merged ?? null,
+      hasStrategicBrand: Boolean(strategicContext?.trim()),
+      hasBrandDna: Boolean(dnaContext?.trim()),
+    };
+  } catch {
+    return {
+      brandContext: strategicContext?.trim()
+        ? `## Strategic Brand Intelligence\n${strategicContext.trim()}`
+        : null,
+      hasStrategicBrand: Boolean(strategicContext?.trim()),
+      hasBrandDna: false,
+    };
+  }
+}
+
 const COLLECTIONS = {
   analyses: "analyses",
   jobs: "analysis_jobs",
@@ -283,6 +330,8 @@ function buildAnalysisCacheKey(params: {
   promptVersion: string;
   platformType: string;
   brandContext?: string;
+  hasStrategicBrand?: boolean;
+  hasBrandDna?: boolean;
 }) {
   return sha256(
     [
@@ -291,6 +340,8 @@ function buildAnalysisCacheKey(params: {
       params.rubricVersion,
       params.promptVersion,
       params.platformType,
+      params.hasStrategicBrand ? "strategic:1" : "strategic:0",
+      params.hasBrandDna ? "dna:1" : "dna:0",
       params.brandContext?.trim() ? sha256(params.brandContext.trim()) : "no-brand-context",
     ].join("|"),
   );
@@ -426,21 +477,15 @@ export async function createAnalysisJob(
 
   await ensureUserDoc(input.ownerEmail);
 
-  let brandContext: string | null = null;
-  try {
-    const {
-      getBrandIntelligence,
-      serializeBrandIntelligenceContext,
-    } = await import("@/lib/brand-intelligence/repository");
-    const brandProfile = await getBrandIntelligence(input.ownerEmail);
-    brandContext = serializeBrandIntelligenceContext(brandProfile) ?? null;
-  } catch {
-    brandContext = null;
-  }
+  const {
+    brandContext,
+    hasStrategicBrand,
+    hasBrandDna,
+  } = await loadMergedBrandContext(input.ownerEmail);
 
-  const rubricMode = resolveRubricMode(Boolean(brandContext?.trim()));
+  const rubricMode = resolveRubricMode(hasStrategicBrand);
   const rubricVersion = getRubricVersion(rubricMode);
-  const promptVersion = getPromptVersion(rubricMode);
+  const promptVersion = getPromptVersion(rubricMode, { hasBrandDna });
   const criteriaCount = getRubricCriteriaCount(rubricMode);
 
   const contentRef = db.collection(COLLECTIONS.contentItems).doc();
@@ -623,37 +668,27 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
         throw new Error("Analiz icin gorsel URL bulunamadi.");
       }
 
-      let brandContext =
-        typeof analysisData.brandContext === "string" && analysisData.brandContext.trim()
-          ? String(analysisData.brandContext)
-          : undefined;
-      if (!brandContext) {
-        try {
-          const {
-            getBrandIntelligence,
-            serializeBrandIntelligenceContext,
-          } = await import("@/lib/brand-intelligence/repository");
-          const brandProfile = await getBrandIntelligence(jobData.ownerEmail);
-          brandContext = serializeBrandIntelligenceContext(brandProfile);
-          if (brandContext) {
-            await analysisRef.set(
-              {
-                brandContext,
-                updatedAt: FieldValue.serverTimestamp(),
-              },
-              { merge: true },
-            );
-          }
-        } catch {
-          // brand intelligence is optional
-        }
-      }
+      // Always resolve mode from Benchmark only; merge fresh DNA + strategic context.
+      const merged = await loadMergedBrandContext(jobData.ownerEmail);
+      const hasStrategicBrand = merged.hasStrategicBrand;
+      const hasBrandDna = merged.hasBrandDna;
+      const brandContext = merged.brandContext ?? undefined;
+      // Clear stale context when Benchmark/DNA emptied since last run.
+      await analysisRef.set(
+        {
+          brandContext: brandContext ?? null,
+          hasStrategicBrand,
+          hasBrandDna,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
 
-      const rubricMode = resolveRubricMode(Boolean(brandContext?.trim()));
+      const rubricMode = resolveRubricMode(hasStrategicBrand);
       const rubricVersion = getRubricVersion(rubricMode);
-      const promptVersion = getPromptVersion(rubricMode);
+      const promptVersion = getPromptVersion(rubricMode, { hasBrandDna });
       const criteriaCount = getRubricCriteriaCount(rubricMode);
-      const categoryPrompts = getCategoryPrompts(rubricMode);
+      const categoryPrompts = getCategoryPrompts(rubricMode, { hasBrandDna });
       const criterionIds = getCriterionIds(rubricMode);
 
       const cacheKey = buildAnalysisCacheKey({
@@ -666,6 +701,8 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
             ? analysisData.platformType
             : "instagram",
         brandContext,
+        hasStrategicBrand,
+        hasBrandDna,
       });
       const cacheRef = db.collection(COLLECTIONS.cache).doc(cacheKey);
       const cacheDoc = await cacheRef.get();
@@ -673,12 +710,51 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
 
       let modelUsed: string | null = null;
       let criteriaEvaluations: Record<string, CriterionEvaluation> = {};
-      const cachedEvaluations =
+      let cachedEvaluations =
         cacheData.criteriaEvaluations &&
         typeof cacheData.criteriaEvaluations === "object" &&
         !Array.isArray(cacheData.criteriaEvaluations)
           ? (cacheData.criteriaEvaluations as Record<string, CriterionEvaluation>)
           : null;
+
+      // Ignore stale cache entries that don't match current rubric keys.
+      if (cachedEvaluations) {
+        const cacheCoverage = validateRubricCoverage(
+          Object.keys(cachedEvaluations),
+          rubricMode,
+        );
+        if (cacheCoverage.missing.length || cacheCoverage.extra.length) {
+          cachedEvaluations = null;
+        }
+      }
+
+      const currentTitle =
+        typeof analysisData.title === "string" ? analysisData.title.trim() : "";
+      const titleCustomized = analysisData.titleCustomized === true;
+      let nextTitle = currentTitle || "Yeni Analiz";
+      const shouldGenerateTitle =
+        !titleCustomized &&
+        (isTechnicalAnalysisTitle(nextTitle) || nextTitle === "Yeni Analiz");
+
+      // Overlap title call with category scoring to cut wall-clock time.
+      const titlePromise = shouldGenerateTitle
+        ? generateContentTitleWithAnthropic({
+            imageBase64,
+            imageMediaType,
+            imageUrl,
+            brandContext,
+            platformType:
+              typeof analysisData.platformType === "string"
+                ? analysisData.platformType
+                : "instagram",
+          }).catch((titleError) => {
+            console.error(
+              "[processPendingAnalysisJobs] title generation failed",
+              titleError instanceof Error ? titleError.message : titleError,
+            );
+            return null;
+          })
+        : Promise.resolve(null);
 
       if (cachedEvaluations) {
         criteriaEvaluations = cachedEvaluations;
@@ -688,8 +764,12 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
         const categoryResults = await mapWithConcurrency(
           categoryPrompts,
           getCategoryAnalysisConcurrency(),
-          (config) =>
-            analyzeCategoryWithAnthropic({
+          (config) => {
+            // Brand DNA / Benchmark context only matters for brand (+ business when strategic).
+            const needsBrandContext =
+              config.categoryId === "brand_intelligence" ||
+              (hasStrategicBrand && config.categoryId === "business_intelligence");
+            return analyzeCategoryWithAnthropic({
               categoryId: config.categoryId,
               categoryLabel: config.categoryLabel,
               systemPrompt: config.systemPrompt,
@@ -697,8 +777,12 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
               imageBase64,
               imageMediaType,
               imageUrl,
-              brandContext: rubricMode === "strategic_brand" ? brandContext : undefined,
-            }),
+              brandContext:
+                needsBrandContext && brandContext?.trim()
+                  ? brandContext
+                  : undefined,
+            });
+          },
         );
         modelUsed = categoryResults[0]?.modelUsed ?? null;
         criteriaEvaluations = Object.assign(
@@ -721,6 +805,11 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
         if (!evaluation) {
           throw new Error(`Eksik kriter degerlendirmesi: ${criterionId}`);
         }
+      }
+
+      const generatedTitle = await titlePromise;
+      if (generatedTitle?.title.trim()) {
+        nextTitle = generatedTitle.title.trim();
       }
 
       const currentScore = calculateCurrentScore(criteriaEvaluations, rubricMode);
@@ -746,33 +835,6 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
           value: previous?.value ?? 0,
         };
       });
-
-      const currentTitle =
-        typeof analysisData.title === "string" ? analysisData.title.trim() : "";
-      const titleCustomized = analysisData.titleCustomized === true;
-      let nextTitle = currentTitle || "Yeni Analiz";
-      if (!titleCustomized && (isTechnicalAnalysisTitle(nextTitle) || nextTitle === "Yeni Analiz")) {
-        try {
-          const generated = await generateContentTitleWithAnthropic({
-            imageBase64,
-            imageMediaType,
-            imageUrl,
-            brandContext,
-            platformType:
-              typeof analysisData.platformType === "string"
-                ? analysisData.platformType
-                : "instagram",
-          });
-          if (generated.title.trim()) {
-            nextTitle = generated.title.trim();
-          }
-        } catch (titleError) {
-          console.error(
-            "[processPendingAnalysisJobs] title generation failed",
-            titleError instanceof Error ? titleError.message : titleError,
-          );
-        }
-      }
 
       await analysisRef.set(
         {

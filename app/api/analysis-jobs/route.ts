@@ -604,6 +604,7 @@ export async function POST(request: Request) {
     sizeBytes,
   });
 
+  // Keep request open until job finishes so Yeni Analiz loading UI stays until done.
   await processPendingAnalysisJobs(1);
 
   const db = getAdminDb();
@@ -635,11 +636,9 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json(
-    {
-      ok: true,
-      ...result,
-      jobStatus,
-    },
-  );
+  return NextResponse.json({
+    ok: true,
+    ...result,
+    jobStatus,
+  });
 }

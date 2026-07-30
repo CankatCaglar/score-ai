@@ -7,7 +7,8 @@ import { normalizeCriterionLevel } from "@/lib/analysis/rubric";
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5";
 const DEFAULT_TIMEOUT_MS = 90_000;
 const MAX_CATEGORY_RETRIES = 2;
-const CATEGORY_CONCURRENCY = 2;
+/** Run all 5 NCQS categories in parallel when possible. */
+const CATEGORY_CONCURRENCY = 5;
 const MAX_VISION_IMAGE_EDGE = 1568;
 const MAX_VISION_IMAGE_BYTES = 1_800_000;
 const DEFAULT_FETCH_HEADERS = {
@@ -510,6 +511,62 @@ function cleanJsonText(rawText: string) {
   return trimmed;
 }
 
+/**
+ * LLMs often emit raw newlines/tabs inside JSON string values.
+ * Escape control chars that appear inside quoted strings so JSON.parse succeeds.
+ */
+function escapeControlCharsInJsonStrings(text: string): string {
+  let result = "";
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+
+    if (escaped) {
+      result += ch;
+      escaped = false;
+      continue;
+    }
+
+    if (ch === "\\") {
+      result += ch;
+      escaped = true;
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = !inString;
+      result += ch;
+      continue;
+    }
+
+    if (inString) {
+      const code = ch.charCodeAt(0);
+      if (ch === "\n") {
+        result += "\\n";
+        continue;
+      }
+      if (ch === "\r") {
+        result += "\\r";
+        continue;
+      }
+      if (ch === "\t") {
+        result += "\\t";
+        continue;
+      }
+      if (code < 0x20) {
+        result += `\\u${code.toString(16).padStart(4, "0")}`;
+        continue;
+      }
+    }
+
+    result += ch;
+  }
+
+  return result;
+}
+
 function repairTruncatedJson(rawText: string) {
   let text = cleanJsonText(rawText);
   if (!text) return text;
@@ -563,7 +620,13 @@ function repairTruncatedJson(rawText: string) {
 }
 
 function parseJsonObject(rawText: string): Record<string, unknown> {
-  const attempts = [cleanJsonText(rawText), repairTruncatedJson(rawText)];
+  const cleaned = cleanJsonText(rawText);
+  const attempts = [
+    cleaned,
+    escapeControlCharsInJsonStrings(cleaned),
+    repairTruncatedJson(rawText),
+    escapeControlCharsInJsonStrings(repairTruncatedJson(rawText)),
+  ];
   let lastError: Error | null = null;
 
   for (const candidate of attempts) {
@@ -706,7 +769,8 @@ export async function analyzeCategoryWithAnthropic(
           client.messages.create(
             buildMessageCreateParams({
               model: modelUsed,
-              max_tokens: 4096,
+              // Category JSON is compact; 4096 mostly adds latency/cost.
+              max_tokens: 2048,
               system: [
                 {
                   type: "text",
