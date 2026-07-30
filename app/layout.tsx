@@ -28,6 +28,9 @@ export async function generateMetadata(): Promise<Metadata> {
     description: isEnglish
       ? "AI-powered platform to analyze, score, and improve your content performance."
       : "Yapay zeka destekli içerik analizi ve puanlama platformu",
+    other: {
+      "facebook-domain-verification": "4b67ra1q5atq8er0x7xfeyezrahg6e",
+    },
   };
 }
 
