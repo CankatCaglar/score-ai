@@ -31,12 +31,6 @@ function passwordMeetsRules(password: string): boolean {
     /[^A-Za-z0-9]/.test(password)
   );
 }
-
-function getDashboard (){
-  const data = await getDashboardData(uid);
-  const cpData =
-}
-
 function AuthActionInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
