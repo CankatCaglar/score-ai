@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
+  ArrowDown,
   ArrowRight,
+  ArrowUp,
   Check,
   CheckCircle2,
   FileText,
@@ -14,7 +16,9 @@ import {
   Lightbulb,
   Minus,
   Plus,
+  Trophy,
   Upload,
+  Users,
   X,
 } from "lucide-react";
 import { FaInstagram } from "react-icons/fa6";
@@ -29,6 +33,7 @@ import {
   type Competitor,
   type TrustProof,
 } from "@/lib/brand-intelligence/types";
+import { getCatalogSectorPostingAverage } from "@/lib/benchmark/sector-posting";
 
 type PublicProfile = BrandIntelligenceProfile & {
   completion: BrandIntelligenceCompletion;
@@ -104,6 +109,59 @@ function emptyProfile(): PublicProfile {
   };
 }
 
+function postingPerformance(userPosts: number, sectorAvg: number) {
+  if (userPosts <= 0) {
+    return {
+      tone: "idle" as const,
+      label: "Başlangıç",
+      hint: "Hadi ilk analizinle ritmini başlat.",
+      Icon: Minus,
+    };
+  }
+  if (userPosts > sectorAvg) {
+    return {
+      tone: "up" as const,
+      label: "Sektörün üstünde",
+      hint: "Güçlü tempo. Yeni analizle ivmeyi koru.",
+      Icon: ArrowUp,
+    };
+  }
+  if (userPosts === sectorAvg) {
+    return {
+      tone: "flat" as const,
+      label: "Sektörle aynı",
+      hint: "Dengedesin. Bir analiz daha ile öne geç.",
+      Icon: Minus,
+    };
+  }
+  return {
+    tone: "down" as const,
+    label: "Sektörün altında",
+    hint: "Hadi yeni analiz yap, sektör ritmine yetiş.",
+    Icon: ArrowDown,
+  };
+}
+
+function PostingBar({
+  value,
+  max,
+  fillClass,
+}: {
+  value: number;
+  max: number;
+  fillClass: string;
+}) {
+  const width = max <= 0 ? 0 : Math.min(100, Math.round((value / max) * 100));
+  return (
+    <div className="h-2.5 w-full overflow-hidden rounded-full bg-brand-dark/8">
+      <div
+        className={`h-full rounded-full transition-all duration-500 ${fillClass}`}
+        style={{ width: `${width}%` }}
+      />
+    </div>
+  );
+}
+
 export default function BenchmarkPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -115,10 +173,50 @@ export default function BenchmarkPageClient() {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [integrations, setIntegrations] = useState<IntegrationsPublic | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [monthlyPostCount, setMonthlyPostCount] = useState(0);
   const trustInputRef = useRef<HTMLInputElement>(null);
   const historicalInputRef = useRef<HTMLInputElement>(null);
   const promiseSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedPromise = useRef("");
+
+  const sectorPostingAverage = useMemo(
+    () => getCatalogSectorPostingAverage(),
+    [],
+  );
+  const postingStats = useMemo(() => {
+    const performance = postingPerformance(
+      monthlyPostCount,
+      sectorPostingAverage,
+    );
+    const chartMax = Math.max(sectorPostingAverage, monthlyPostCount, 1);
+    const toneStyles = {
+      up: {
+        badge: "bg-[#EAF6EC] text-[#1D6A27]",
+        iconWrap: "bg-[#42B24D]/15 text-[#1D6A27]",
+        bar: "bg-[#42B24D]",
+        ring: "border-[#42B24D]/25",
+      },
+      flat: {
+        badge: "bg-brand-dark/6 text-brand-dark/70",
+        iconWrap: "bg-brand-dark/8 text-brand-dark/70",
+        bar: "bg-brand-dark/55",
+        ring: "border-brand-dark/12",
+      },
+      down: {
+        badge: "bg-[#FFF1E8] text-[#C2410C]",
+        iconWrap: "bg-[#FFEDD5] text-[#C2410C]",
+        bar: "bg-[#F97316]",
+        ring: "border-[#F97316]/20",
+      },
+      idle: {
+        badge: "bg-brand-neon/25 text-brand-dark",
+        iconWrap: "bg-brand-neon/40 text-brand-dark",
+        bar: "bg-brand-dark/25",
+        ring: "border-brand-dark/10",
+      },
+    }[performance.tone];
+    return { performance, chartMax, toneStyles };
+  }, [monthlyPostCount, sectorPostingAverage]);
 
   const igConnected =
     integrations?.instagram.connected || profile.brandAccount.instagram.connected;
@@ -203,6 +301,40 @@ export default function BenchmarkPageClient() {
     return () => {
       cancelled = true;
       controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          "/api/dashboard/analyses?dateRange=30d&scoreRange=all&pageSize=50&page=1",
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          analyses?: Array<{ createdAtMs?: number; updatedAtMs?: number }>;
+          total?: number;
+        };
+        if (cancelled) return;
+
+        const monthStart = new Date();
+        monthStart.setDate(1);
+        monthStart.setHours(0, 0, 0, 0);
+        const monthStartMs = monthStart.getTime();
+
+        const fromList = (data.analyses ?? []).filter((item) => {
+          const ts = item.updatedAtMs || item.createdAtMs || 0;
+          return ts >= monthStartMs;
+        }).length;
+
+        setMonthlyPostCount(fromList);
+      } catch {
+        // kartlar 0 ile kalır
+      }
+    })();
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -589,6 +721,8 @@ export default function BenchmarkPageClient() {
       document.removeEventListener("touchstart", onPointerDown);
     };
   }, [infoOpen]);
+
+  const PerformanceIcon = postingStats.performance.Icon;
 
   if (loading) {
     return (
@@ -990,6 +1124,131 @@ export default function BenchmarkPageClient() {
               </p>
             </div>
           </SectionCard>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
+        <div
+          className={`flex h-full flex-col rounded-2xl border bg-white p-5 ${postingStats.toneStyles.ring}`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <Trophy
+                className="size-6 shrink-0 text-[#1D6A27] sm:size-7"
+                strokeWidth={1.75}
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-brand-dark">
+                  Paylaşım Ortalamanız
+                </p>
+                <p className="mt-0.5 text-xs text-brand-dark/45">
+                  Bu ay analiz ettiğiniz içerikler
+                </p>
+              </div>
+            </div>
+            <span
+              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${postingStats.toneStyles.badge}`}
+            >
+              <PerformanceIcon className="size-3.5" strokeWidth={2.5} />
+              {postingStats.performance.label}
+            </span>
+          </div>
+
+          <div className="mt-5 flex items-end gap-2">
+            <p className="text-4xl font-semibold tracking-tight text-brand-dark sm:text-5xl">
+              {monthlyPostCount}
+            </p>
+            <p className="mb-1 text-sm font-semibold text-brand-dark/40">/ ay</p>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-medium text-brand-dark/45">
+              <span>Sizin ritminiz</span>
+              <span>{monthlyPostCount} paylaşım</span>
+            </div>
+            <PostingBar
+              value={monthlyPostCount}
+              max={postingStats.chartMax}
+              fillClass={postingStats.toneStyles.bar}
+            />
+            {/* Sağ karttaki "Siz X / Y" satırıyla aynı yüksekliği koru */}
+            <div className="flex items-center justify-between pt-1 text-[11px] font-medium text-transparent select-none" aria-hidden>
+              <span>Siz</span>
+              <span>0 / 0</span>
+            </div>
+          </div>
+
+          <p
+            className={`mt-auto pt-4 inline-flex items-center gap-1.5 text-sm font-semibold ${
+              postingStats.performance.tone === "up"
+                ? "text-[#1D6A27]"
+                : postingStats.performance.tone === "down"
+                  ? "text-[#C2410C]"
+                  : "text-brand-dark/70"
+            }`}
+          >
+            <PerformanceIcon className="size-3.5 shrink-0" strokeWidth={2.5} />
+            {postingStats.performance.hint}
+          </p>
+        </div>
+
+        <div className="flex h-full flex-col rounded-2xl border border-brand-dark/10 bg-white p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <Users
+                className="size-6 shrink-0 text-brand-dark/75 sm:size-7"
+                strokeWidth={1.75}
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-brand-dark">
+                  Sektör Paylaşım Ortalaması
+                </p>
+                <p className="mt-0.5 text-xs text-brand-dark/45">
+                  Sektör aylık analiz ortalaması
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-dark/6 px-2.5 py-1 text-xs font-semibold text-brand-dark/65">
+              Katalog ortalama
+            </span>
+          </div>
+
+          <div className="mt-5 flex items-end gap-2">
+            <p className="text-4xl font-semibold tracking-tight text-brand-dark sm:text-5xl">
+              {sectorPostingAverage}
+            </p>
+            <p className="mb-1 text-sm font-semibold text-brand-dark/40">/ ay</p>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-medium text-brand-dark/45">
+              <span>Sektör referansı</span>
+              <span>{sectorPostingAverage} paylaşım</span>
+            </div>
+            <PostingBar
+              value={sectorPostingAverage}
+              max={postingStats.chartMax}
+              fillClass="bg-brand-dark/70"
+            />
+            <div className="flex items-center justify-between pt-1 text-[11px] font-medium text-brand-dark/40">
+              <span>Siz</span>
+              <span
+                className={
+                  postingStats.performance.tone === "up"
+                    ? "font-semibold text-[#1D6A27]"
+                    : postingStats.performance.tone === "down"
+                      ? "font-semibold text-[#C2410C]"
+                      : "font-semibold text-brand-dark/60"
+                }
+              >
+                {monthlyPostCount} / {sectorPostingAverage}
+              </span>
+            </div>
+          </div>
+
+          <p className="mt-auto pt-4 text-sm font-semibold text-brand-dark/70">
+            Sektör ritmi bu. Hadi yeni analiz yap, kendi çizgini ölç.
+          </p>
         </div>
       </div>
 

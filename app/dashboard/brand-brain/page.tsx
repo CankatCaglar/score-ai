@@ -120,13 +120,16 @@ const bodyFontOptions = [
 ] as const;
 
 const sectorMainOptions = [
-  "Cilt Bakımı / Kozmetik",
-  "Moda / Tekstil",
-  "Gıda / İçecek",
-  "Teknoloji",
-  "Sağlık",
-  "Eğitim",
-  "Finans",
+  "Moda ve Giyim",
+  "Güzellik ve Kozmetik",
+  "Yeme-İçme / Restoran",
+  "Spor ve Fitness",
+  "Turizm ve Seyahat",
+  "Teknoloji ve Elektronik",
+  "Eğitim ve Online Kurslar",
+  "Sağlık ve Wellness",
+  "Oyun / E-Spor",
+  "E-Ticaret ve Perakende",
   "Diğer",
 ] as const;
 
