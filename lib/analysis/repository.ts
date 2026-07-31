@@ -43,6 +43,13 @@ import type {
   Platform,
 } from "@/lib/analysis/types";
 import { splitDisplayName, userDocIdFromEmail } from "@/lib/user-profile";
+import { sendMail } from "@/lib/mail/smtp";
+import { analysisCompletedEmail } from "@/lib/mail/templates";
+import {
+  createAppNotification,
+  getNotificationPreferences,
+} from "@/lib/notifications/repository";
+import { canSendAnalysisResultEmail } from "@/lib/notifications/types";
 
 async function loadMergedBrandContext(ownerEmail: string): Promise<{
   brandContext: string | null;
@@ -567,6 +574,21 @@ export async function createAnalysisJob(
     { merge: true },
   );
 
+  try {
+    await createAppNotification({
+      ownerEmail: input.ownerEmail,
+      type: "analysis_started",
+      title: "Analiz başladı",
+      body: `"${normalizedTitle}" analizi işleniyor. Sonuç hazır olduğunda bildireceğiz.`,
+      href: `/dashboard/analiz-sonucu?slug=${encodeURIComponent(slug)}`,
+    });
+  } catch (error) {
+    console.warn(
+      "[analysis-started-notification]",
+      error instanceof Error ? error.message : error,
+    );
+  }
+
   return { jobId: jobRef.id, analysisId: analysisRef.id, slug };
 }
 
@@ -914,6 +936,54 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
         },
         { merge: true },
       );
+
+      try {
+        const ownerEmail =
+          typeof jobData.ownerEmail === "string" ? jobData.ownerEmail.trim() : "";
+        if (ownerEmail) {
+          const resultSlug = String(analysisData.slug ?? jobData.analysisId);
+          const resultHref = `/dashboard/analiz-sonucu?slug=${encodeURIComponent(resultSlug)}`;
+          const prefs = await getNotificationPreferences(ownerEmail);
+
+          if (canSendAnalysisResultEmail(prefs)) {
+            const mail = analysisCompletedEmail({
+              title: nextTitle,
+              score: Math.round(currentScore),
+              slug: resultSlug,
+            });
+            const sent = await sendMail({
+              to: ownerEmail,
+              subject: mail.subject,
+              text: mail.text,
+              html: mail.html,
+              headers: {
+                "X-Score-Mail": "analysis-completed",
+                "X-Entity-Ref-ID": String(jobData.analysisId),
+              },
+            });
+            if (!sent.ok) {
+              console.warn(
+                "[analysis-complete-mail] failed",
+                ownerEmail,
+                sent.error,
+              );
+            }
+          }
+
+          await createAppNotification({
+            ownerEmail,
+            type: "analysis_completed",
+            title: "Analiz tamamlandı",
+            body: `"${nextTitle}" hazır · Skor: ${Math.round(currentScore)}/100`,
+            href: resultHref,
+          });
+        }
+      } catch (mailError) {
+        console.warn(
+          "[analysis-complete-notify] unexpected error",
+          mailError instanceof Error ? mailError.message : mailError,
+        );
+      }
 
       processed += 1;
     } catch (error) {

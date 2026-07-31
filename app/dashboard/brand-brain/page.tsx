@@ -11,6 +11,7 @@ import {
   Plus,
   Trash2,
   UploadCloud,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -70,13 +71,53 @@ const toneOptions = [
   "Otoriter",
 ];
 
+/** Google Fonts'ta en çok kullanılan başlık / display yüzleri */
 const headingFontOptions = [
+  "Montserrat",
+  "Poppins",
   "Playfair Display",
+  "Oswald",
+  "Raleway",
+  "Roboto Slab",
+  "Merriweather",
+  "Lora",
+  "Josefin Sans",
   "DM Serif Display",
+  "Space Grotesk",
   "Cormorant Garamond",
+  "Fraunces",
+  "Abril Fatface",
+  "Bebas Neue",
+  "Anton",
+  "Cinzel",
+  "Libre Baskerville",
+  "EB Garamond",
+  "Syne",
 ] as const;
 
-const bodyFontOptions = ["Inter", "Manrope", "Plus Jakarta Sans"] as const;
+/** Google Fonts'ta en çok kullanılan gövde / UI yüzleri */
+const bodyFontOptions = [
+  "Inter",
+  "Roboto",
+  "Open Sans",
+  "Lato",
+  "Noto Sans",
+  "Source Sans 3",
+  "Nunito Sans",
+  "Work Sans",
+  "DM Sans",
+  "Plus Jakarta Sans",
+  "Manrope",
+  "IBM Plex Sans",
+  "Ubuntu",
+  "Mulish",
+  "Figtree",
+  "Karla",
+  "PT Sans",
+  "Nunito",
+  "Outfit",
+  "Urbanist",
+] as const;
 
 const sectorMainOptions = [
   "Cilt Bakımı / Kozmetik",
@@ -89,16 +130,6 @@ const sectorMainOptions = [
   "Diğer",
 ] as const;
 
-const sectorSubByMain: Record<string, string[]> = {
-  "Cilt Bakımı / Kozmetik": ["Skincare", "Saç Bakımı", "Dermokozmetik", "Makyaj"],
-  "Moda / Tekstil": ["Giyim", "Aksesuar", "Ayakkabı", "Spor Giyim"],
-  "Gıda / İçecek": ["Restoran", "İçecek", "Atıştırmalık", "Organik"],
-  Teknoloji: ["SaaS", "Donanım", "Mobil Uygulama", "AI"],
-  Sağlık: ["Klinik", "Wellness", "Supplement", "Medikal"],
-  Eğitim: ["Online Kurs", "Kurumsal Eğitim", "Okul"],
-  Finans: ["Fintech", "Sigorta", "Yatırım"],
-};
-
 const targetAudience = [
   "B2B",
   "B2C",
@@ -108,7 +139,9 @@ const targetAudience = [
   "Mühendisler",
   "Öğrenciler",
   "Yöneticiler",
-];
+] as const;
+
+const MAX_CUSTOM_AUDIENCES = 2;
 
 const COMPLETION_LABELS: { key: keyof BrandDnaCompletion["sections"]; label: string }[] =
   [
@@ -329,19 +362,35 @@ export default function BrandBrainPage() {
   const [selectedPersonality, setSelectedPersonality] = useState<string[]>([]);
   const [selectedTone, setSelectedTone] = useState<string[]>([]);
   const [selectedAudience, setSelectedAudience] = useState<string[]>([]);
-  const [audienceNote, setAudienceNote] = useState("");
+  const [audienceDraft, setAudienceDraft] = useState("");
   const [sectorMain, setSectorMain] = useState("");
   const [sectorSub, setSectorSub] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
   const [colorDraft, setColorDraft] = useState("#42B24D");
   const [colorError, setColorError] = useState<string | null>(null);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const colorPickerInputRef = useRef<HTMLInputElement>(null);
+  const colorHexInputRef = useRef<HTMLInputElement>(null);
   const localPreviewRef = useRef<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextSave = useRef(true);
   const hydrated = useRef(false);
+
+  const isOtherSector = sectorMain === "Diğer";
+  const presetAudienceSet = useMemo(
+    () => new Set<string>(targetAudience),
+    [],
+  );
+  const customAudiences = selectedAudience.filter(
+    (item) => !presetAudienceSet.has(item),
+  );
+  const audienceItems = useMemo(
+    () => [...targetAudience, ...customAudiences],
+    [customAudiences],
+  );
 
   const draftProfile = useMemo(
     () => ({
@@ -352,9 +401,9 @@ export default function BrandBrainPage() {
       personality: selectedPersonality,
       toneOfVoice: selectedTone,
       audiences: selectedAudience,
-      audienceNote,
+      audienceNote: "",
       sectorMain: sectorMain || null,
-      sectorSub: sectorSub || null,
+      sectorSub: isOtherSector ? sectorSub || null : null,
       keywords,
     }),
     [
@@ -365,9 +414,9 @@ export default function BrandBrainPage() {
       selectedPersonality,
       selectedTone,
       selectedAudience,
-      audienceNote,
       sectorMain,
       sectorSub,
+      isOtherSector,
       keywords,
     ],
   );
@@ -383,11 +432,6 @@ export default function BrandBrainPage() {
     const strokeDashoffset = circumference - (score / 100) * circumference;
     return { radius, circumference, strokeDashoffset };
   }, [score]);
-
-  const isOtherSector = sectorMain === "Diğer";
-  const sectorSubOptions = !sectorMain || isOtherSector
-    ? []
-    : sectorSubByMain[sectorMain] ?? [];
 
   const clearLocalPreview = () => {
     if (localPreviewRef.current) {
@@ -405,7 +449,6 @@ export default function BrandBrainPage() {
     setSelectedPersonality(next.personality);
     setSelectedTone(next.toneOfVoice);
     setSelectedAudience(next.audiences);
-    setAudienceNote(next.audienceNote);
     setSectorMain(next.sectorMain ?? "");
     setSectorSub(next.sectorSub ?? "");
     setKeywords(next.keywords);
@@ -474,9 +517,9 @@ export default function BrandBrainPage() {
               personality: selectedPersonality,
               toneOfVoice: selectedTone,
               audiences: selectedAudience,
-              audienceNote,
+              audienceNote: "",
               sectorMain: sectorMain || null,
-              sectorSub: sectorSub || null,
+              sectorSub: isOtherSector ? sectorSub || null : null,
               keywords,
             }),
           });
@@ -501,9 +544,9 @@ export default function BrandBrainPage() {
     selectedPersonality,
     selectedTone,
     selectedAudience,
-    audienceNote,
     sectorMain,
     sectorSub,
+    isOtherSector,
     keywords,
   ]);
 
@@ -528,6 +571,37 @@ export default function BrandBrainPage() {
     }
     setKeywords((prev) => [...prev, value]);
     setKeywordInput("");
+  };
+
+  const addCustomAudience = () => {
+    const value = audienceDraft.trim();
+    if (!value) return;
+
+    if (presetAudienceSet.has(value)) {
+      if (!selectedAudience.includes(value)) {
+        toggleMulti(value, setSelectedAudience, selectedAudience, 8);
+      }
+      setAudienceDraft("");
+      return;
+    }
+
+    if (selectedAudience.includes(value)) {
+      setAudienceDraft("");
+      return;
+    }
+
+    if (customAudiences.length >= MAX_CUSTOM_AUDIENCES) {
+      toast.error(`En fazla ${MAX_CUSTOM_AUDIENCES} özel hedef kitle ekleyebilirsiniz`);
+      return;
+    }
+
+    if (selectedAudience.length >= 8) {
+      toast.error("En fazla 8 hedef kitle seçebilirsiniz");
+      return;
+    }
+
+    setSelectedAudience((prev) => [...prev, value]);
+    setAudienceDraft("");
   };
 
   const addColor = () => {
@@ -555,12 +629,25 @@ export default function BrandBrainPage() {
       return;
     }
     setColorError(null);
+    const nextLength = colors.length + 1;
     setColors((prev) => [...prev, normalized]);
     setColorDraft(normalized);
+    if (nextLength >= MAX_BRAND_DNA_COLORS) {
+      setColorPickerOpen(false);
+    }
   };
 
   const removeColor = (color: string) => {
     setColors((prev) => prev.filter((item) => item !== color));
+  };
+
+  const openColorPicker = () => {
+    if (colors.length >= MAX_BRAND_DNA_COLORS) return;
+    setColorPickerOpen(true);
+    requestAnimationFrame(() => {
+      colorPickerInputRef.current?.click();
+      colorHexInputRef.current?.focus();
+    });
   };
 
   const uploadLogo = async (file: File) => {
@@ -718,94 +805,119 @@ export default function BrandBrainPage() {
             }
           >
             <div className="flex h-full flex-col">
-              {colors.length > 0 ? (
-                <div className="grid grid-cols-3 gap-x-4 gap-y-4">
-                  {colors.map((color) => (
-                    <div key={color} className="flex flex-col items-center">
+              <div className="grid grid-cols-3 gap-x-4 gap-y-4">
+                {colors.map((color) => (
+                  <div key={color} className="flex flex-col items-center">
+                    <div className="group relative aspect-square w-full min-h-14 overflow-hidden rounded-xl border border-brand-dark/12 sm:min-h-6">
+                      <div
+                        className="absolute inset-0"
+                        style={{ backgroundColor: color }}
+                        aria-hidden
+                      />
                       <button
                         type="button"
                         onClick={() => removeColor(color)}
-                        title={`${color} — kaldırmak için tıklayın`}
-                        className="aspect-square w-full min-h-14 rounded-xl border border-brand-dark/12 sm:min-h-6"
-                        style={{ backgroundColor: color }}
-                      />
-                      <p className="mt-1.5 w-full text-center text-[10px] font-medium tabular-nums leading-tight text-brand-dark/55">
-                        {color}
-                      </p>
+                        title={`${color} — kaldır`}
+                        aria-label={`${color} rengini kaldır`}
+                        className="absolute right-1 top-1 flex size-5 cursor-pointer items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity hover:bg-black/70 focus-visible:opacity-100 group-hover:opacity-100"
+                      >
+                        <X className="size-3" strokeWidth={2.5} />
+                      </button>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-brand-dark/45">
-                  Henüz renk eklenmedi. Marka paletinizi tanımlayın.
-                </p>
-              )}
-              <div className="mt-auto space-y-1.5 pt-5">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={normalizeHexColor(colorDraft) ?? "#42B24D"}
-                    onChange={(e) => {
-                      const next = e.target.value.toUpperCase();
-                      setColorDraft(next);
-                      setColorError(null);
-                    }}
-                    className="size-9 shrink-0 cursor-pointer rounded-lg border border-brand-dark/12 bg-white p-1"
-                    aria-label="Renk seç"
-                  />
-                  <input
-                    value={colorDraft}
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      setColorDraft(next);
-                      if (!next.trim()) {
-                        setColorError(null);
-                        return;
-                      }
-                      setColorError(
-                        isValidHexColor(next)
-                          ? null
-                          : "Geçersiz HEX (#RGB veya #RRGGBB)",
-                      );
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addColor();
-                      }
-                    }}
-                    placeholder="#FFFFFF"
-                    spellCheck={false}
-                    aria-invalid={Boolean(colorError)}
-                    className={`min-w-0 flex-1 rounded-lg border bg-white px-2.5 py-2 text-xs font-medium tabular-nums text-brand-dark outline-none focus:border-brand-dark/30 ${
-                      colorError
-                        ? "border-[#D64545]/50"
-                        : "border-brand-dark/12"
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={addColor}
-                    disabled={
-                      colors.length >= MAX_BRAND_DNA_COLORS ||
-                      Boolean(colorError && colorDraft.trim())
-                    }
-                    className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-xs font-semibold text-brand-dark transition-colors hover:bg-brand-dark/5 disabled:opacity-50"
-                  >
-                    <Plus className="size-3.5" strokeWidth={2.2} />
-                    Ekle
-                  </button>
-                </div>
-                {colorError ? (
-                  <p className="text-[11px] font-medium text-[#D64545]">
-                    {colorError}
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-brand-dark/40">
-                    Format: #RGB veya #RRGGBB
-                  </p>
-                )}
+                    <p className="mt-1.5 w-full text-center text-[10px] font-medium tabular-nums leading-tight text-brand-dark/55">
+                      {color}
+                    </p>
+                  </div>
+                ))}
+                {colors.length < MAX_BRAND_DNA_COLORS ? (
+                  <div className="flex flex-col items-center">
+                    <button
+                      type="button"
+                      onClick={openColorPicker}
+                      title="Renk ekle"
+                      aria-label="Renk ekle"
+                      aria-expanded={colorPickerOpen}
+                      className={`flex aspect-square w-full min-h-14 cursor-pointer items-center justify-center rounded-xl border border-dashed transition-colors sm:min-h-6 ${
+                        colorPickerOpen
+                          ? "border-brand-dark/35 bg-brand-dark/4 text-brand-dark/50"
+                          : "border-brand-dark/20 bg-brand-dark/2 text-brand-dark/30 hover:border-brand-dark/35 hover:bg-brand-dark/4 hover:text-brand-dark/45"
+                      }`}
+                    >
+                      <Plus className="size-5" strokeWidth={1.75} />
+                    </button>
+                    <p className="mt-1.5 w-full text-center text-[10px] font-medium leading-tight text-brand-dark/40">
+                      Ekle
+                    </p>
+                  </div>
+                ) : null}
               </div>
+              {colorPickerOpen && colors.length < MAX_BRAND_DNA_COLORS ? (
+                <div className="mt-auto space-y-1.5 pt-5">
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={colorPickerInputRef}
+                      type="color"
+                      value={normalizeHexColor(colorDraft) ?? "#42B24D"}
+                      onChange={(e) => {
+                        const next = e.target.value.toUpperCase();
+                        setColorDraft(next);
+                        setColorError(null);
+                      }}
+                      className="size-9 shrink-0 cursor-pointer rounded-lg border border-brand-dark/12 bg-white p-1"
+                      aria-label="Renk seç"
+                    />
+                    <input
+                      ref={colorHexInputRef}
+                      value={colorDraft}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setColorDraft(next);
+                        if (!next.trim()) {
+                          setColorError(null);
+                          return;
+                        }
+                        setColorError(
+                          isValidHexColor(next)
+                            ? null
+                            : "Geçersiz HEX (#RGB veya #RRGGBB)",
+                        );
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addColor();
+                        }
+                      }}
+                      placeholder="#FFFFFF"
+                      spellCheck={false}
+                      aria-invalid={Boolean(colorError)}
+                      className={`min-w-0 flex-1 rounded-lg border bg-white px-2.5 py-2 text-xs font-medium tabular-nums text-brand-dark outline-none focus:border-brand-dark/30 ${
+                        colorError
+                          ? "border-[#D64545]/50"
+                          : "border-brand-dark/12"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={addColor}
+                      disabled={Boolean(colorError && colorDraft.trim())}
+                      className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-xs font-semibold text-brand-dark transition-colors hover:bg-brand-dark/5 disabled:opacity-50"
+                    >
+                      <Plus className="size-3.5" strokeWidth={2.2} />
+                      Ekle
+                    </button>
+                  </div>
+                  {colorError ? (
+                    <p className="text-[11px] font-medium text-[#D64545]">
+                      {colorError}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-brand-dark/40">
+                      Renk seçin veya HEX girip Ekle&apos;ye basın
+                    </p>
+                  )}
+                </div>
+              ) : null}
             </div>
           </SectionCard>
 
@@ -887,8 +999,9 @@ export default function BrandBrainPage() {
           <div className="lg:col-span-7">
             <SectionCard title="Hedef Kitle" subtitle="Hedef kitlenizi seçin.">
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
-                {targetAudience.map((audience) => {
+                {audienceItems.map((audience) => {
                   const active = selectedAudience.includes(audience);
+                  const isCustom = !presetAudienceSet.has(audience);
                   return (
                     <label
                       key={audience}
@@ -897,9 +1010,20 @@ export default function BrandBrainPage() {
                       <input
                         type="checkbox"
                         checked={active}
-                        onChange={() =>
-                          toggleMulti(audience, setSelectedAudience, selectedAudience, 8)
-                        }
+                        onChange={() => {
+                          if (isCustom && active) {
+                            setSelectedAudience((prev) =>
+                              prev.filter((item) => item !== audience),
+                            );
+                            return;
+                          }
+                          toggleMulti(
+                            audience,
+                            setSelectedAudience,
+                            selectedAudience,
+                            8,
+                          );
+                        }}
                         className="size-4 shrink-0 rounded border-brand-dark/25 text-brand-dark focus:ring-brand-dark/20"
                       />
                       <span className="truncate">{audience}</span>
@@ -909,59 +1033,70 @@ export default function BrandBrainPage() {
               </div>
               <div className="mt-3">
                 <textarea
-                  value={audienceNote}
-                  onChange={(e) => setAudienceNote(e.target.value)}
+                  value={audienceDraft}
+                  onChange={(e) => setAudienceDraft(e.target.value.slice(0, 80))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      addCustomAudience();
+                    }
+                  }}
                   placeholder="Diğer hedef kitleleri yazın..."
                   maxLength={80}
                   rows={2}
-                  className="w-full resize-none rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-brand-dark/35 outline-none transition-colors focus:border-brand-dark/30"
+                  disabled={customAudiences.length >= MAX_CUSTOM_AUDIENCES}
+                  className="w-full resize-none rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-brand-dark/35 outline-none transition-colors focus:border-brand-dark/30 disabled:cursor-not-allowed disabled:opacity-50"
                 />
-                <p className="mt-1 text-right text-[11px] text-brand-dark/40">
-                  {audienceNote.length}/80
-                </p>
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <p className="text-[11px] text-brand-dark/40">
+                    {customAudiences.length >= MAX_CUSTOM_AUDIENCES
+                      ? `En fazla ${MAX_CUSTOM_AUDIENCES} özel hedef kitle`
+                      : `${audienceDraft.length}/80`}
+                  </p>
+                  {audienceDraft.trim() ? (
+                    <button
+                      type="button"
+                      onClick={addCustomAudience}
+                      disabled={customAudiences.length >= MAX_CUSTOM_AUDIENCES}
+                      className="inline-flex items-center justify-center gap-1 rounded-lg border border-brand-dark/12 bg-white px-3 py-1.5 text-xs font-semibold text-brand-dark transition-colors hover:bg-brand-dark/5 disabled:opacity-50"
+                    >
+                      <Plus className="size-3.5" strokeWidth={2.2} />
+                      Ekle
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </SectionCard>
           </div>
 
           <div className="lg:col-span-5">
             <SectionCard title="Sektör" subtitle="Faaliyet gösterdiğiniz sektörü seçin.">
-              <div className="flex h-full flex-col justify-center gap-3">
+              <div className="flex flex-col gap-3 pt-1">
                 <BrandSelect
-                  label="Ana kategori"
+                  label="Sektör"
                   value={sectorMain}
                   options={sectorMainOptions}
                   onChange={(value) => {
                     setSectorMain(value);
                     setSectorSub("");
                   }}
-                  placeholder="Ana kategori seçin"
+                  placeholder="Sektör seçin"
                   allowClear
                 />
                 {isOtherSector ? (
-                  <div className={!sectorMain ? "opacity-45" : ""}>
+                  <div>
                     <p className="mb-1.5 text-xs font-medium text-brand-dark/55">
-                      Alt kategori
+                      Sektörünüzü yazın
                     </p>
                     <input
                       value={sectorSub}
                       onChange={(e) => setSectorSub(e.target.value)}
                       placeholder="Sektörünüzü yazın..."
                       maxLength={80}
-                      disabled={!sectorMain}
-                      className="w-full rounded-xl border border-brand-dark/12 bg-white px-3.5 py-2.5 text-sm font-medium text-brand-dark placeholder:font-normal placeholder:text-brand-dark/35 outline-none transition-colors focus:border-brand-dark/30 disabled:pointer-events-none disabled:cursor-not-allowed"
+                      className="w-full rounded-xl border border-brand-dark/12 bg-white px-3.5 py-2.5 text-sm font-medium text-brand-dark placeholder:font-normal placeholder:text-brand-dark/35 outline-none transition-colors focus:border-brand-dark/30"
                     />
                   </div>
-                ) : (
-                  <BrandSelect
-                    label="Alt kategori (opsiyonel)"
-                    value={sectorSub}
-                    options={sectorSubOptions}
-                    onChange={setSectorSub}
-                    placeholder="Alt kategori seçin"
-                    allowClear
-                    disabled={!sectorMain}
-                  />
-                )}
+                ) : null}
               </div>
             </SectionCard>
           </div>

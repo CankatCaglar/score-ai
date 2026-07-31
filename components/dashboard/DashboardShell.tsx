@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import {
   BarChart3,
-  Bell,
   Brain,
   ChevronDown,
   ChevronLeft,
@@ -24,6 +23,7 @@ import { toast } from "sonner";
 import { logoutUser } from "@/actions/auth";
 import { auth } from "@/lib/firebase";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 
 export type MembershipPlan = "normal" | "pro";
 
@@ -395,13 +395,7 @@ export function DashboardShell({
           </div>
 
           <div className="ml-auto flex items-center">
-            <button
-              type="button"
-              className="relative flex size-9 cursor-pointer items-center justify-center rounded-lg text-brand-dark/70 transition-colors hover:bg-brand-dark/5 hover:text-brand-dark"
-              aria-label="Bildirimler"
-            >
-              <Bell className="size-5" strokeWidth={1.75} />
-            </button>
+            <NotificationBell />
           </div>
         </header>
 

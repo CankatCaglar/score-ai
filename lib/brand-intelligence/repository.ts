@@ -10,6 +10,7 @@ import { userDocIdFromEmail } from "@/lib/user-profile";
 import {
   BRAND_PROMISE_MAX_LENGTH,
   MAX_COMPETITORS,
+  MAX_COMPETITOR_POSTS,
   MAX_HISTORICAL_MEDIA,
   MAX_TRUST_PROOFS,
   computeCompletion,
@@ -730,29 +731,32 @@ export function serializeBrandIntelligenceContext(
   const readyCompetitors = profile.competitors.filter((c) => c.status === "ready");
   if (readyCompetitors.length > 0) {
     const lines = readyCompetitors.map((c) => {
-      const captions = c.posts
+      const recentPosts = c.posts.slice(0, MAX_COMPETITOR_POSTS);
+      const captions = recentPosts
         .map((p) => p.caption?.trim())
         .filter(Boolean)
-        .slice(0, 3)
         .join(" | ");
-      return `- ${c.input} (${c.type})${c.summary ? `: ${c.summary}` : ""}${
-        captions ? ` Captions: ${captions}` : ""
-      }`;
+      const mediaCount = recentPosts.filter((p) => p.mediaUrl || p.storagePath).length;
+      return `- ${c.input} (${c.type}, last ${recentPosts.length} posts, ${mediaCount} media)${
+        c.summary ? `: ${c.summary}` : ""
+      }${captions ? ` Captions: ${captions}` : ""}`;
     });
-    sections.push(`Competitors (for differentiation):\n${lines.join("\n")}`);
+    sections.push(
+      `Competitors — analyze differentiation vs their last ${MAX_COMPETITOR_POSTS} Instagram/web posts:\n${lines.join("\n")}`,
+    );
   }
 
-  const hist = profile.brandAccount.historicalMedia;
+  const hist = profile.brandAccount.historicalMedia.slice(0, MAX_HISTORICAL_MEDIA);
   if (hist.length > 0 || profile.brandAccount.instagram.connected) {
     const ig = profile.brandAccount.instagram;
     sections.push(
       [
-        "Brand Historical Content:",
+        `Brand Historical Content (last ${MAX_HISTORICAL_MEDIA} own posts/media for consistency analysis):`,
         ig.connected && ig.username ? `- Instagram connected: @${ig.username}` : null,
         profile.brandAccount.websiteUrl
           ? `- Website: ${profile.brandAccount.websiteUrl}`
           : null,
-        `- Stored historical media count: ${hist.length}`,
+        `- Stored historical media count: ${hist.length}/${MAX_HISTORICAL_MEDIA}`,
         hist.length
           ? `- Sources: ${[...new Set(hist.map((h) => h.source))].join(", ")}`
           : null,
@@ -773,7 +777,7 @@ export function serializeBrandIntelligenceContext(
   if (sections.length === 0) return undefined;
   const serialized = `Strategic Brand Intelligence:\n\n${sections.join("\n\n")}`;
   // Keep vision prompts lean; long dumps increase timeout risk.
-  return serialized.length > 3500
-    ? `${serialized.slice(0, 3500)}\n…(truncated)`
+  return serialized.length > 4500
+    ? `${serialized.slice(0, 4500)}\n…(truncated)`
     : serialized;
 }

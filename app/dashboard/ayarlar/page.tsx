@@ -6,6 +6,7 @@ import {
   Camera,
   Check,
   ChevronDown,
+  Clock,
   CreditCard,
   Eye,
   EyeOff,
@@ -13,12 +14,10 @@ import {
   Lock,
   Mail,
   MessageSquare,
-  Shield,
-  Smartphone,
   User,
 } from "lucide-react";
 import { onAuthStateChanged } from "firebase/auth";
-import { FaFacebookF, FaInstagram, FaLinkedinIn } from "react-icons/fa6";
+import { FaInstagram, FaLinkedinIn } from "react-icons/fa6";
 import { toast } from "sonner";
 import {
   getCurrentUserProfile,
@@ -240,19 +239,25 @@ function PasswordField({
 function Toggle({
   enabled,
   onChange,
+  disabled,
 }: {
   enabled: boolean;
   onChange: (v: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={enabled}
-      onClick={() => onChange(!enabled)}
-      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+      disabled={disabled}
+      onClick={() => {
+        if (disabled) return;
+        onChange(!enabled);
+      }}
+      className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
         enabled ? "bg-brand-neon" : "bg-brand-dark/20"
-      }`}
+      } ${disabled ? "" : "cursor-pointer"}`}
     >
       <span
         className={`pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ${
@@ -552,93 +557,6 @@ function ProfilTab() {
 
 // ─── Güvenlik Tab ─────────────────────────────────────────────────────────────
 
-function TwoFactorSection() {
-  const [enabled, setEnabled] = useState(true);
-  const [method, setMethod] = useState<"authenticator" | "sms" | "email">(
-    "authenticator"
-  );
-
-  const methods = [
-    {
-      id: "authenticator" as const,
-      icon: Shield,
-      label: "Authenticator",
-      desc: "Google Authenticator veya benzeri uygulama",
-    },
-    {
-      id: "sms" as const,
-      icon: Smartphone,
-      label: "SMS",
-      desc: "Kayıtlı telefon numarasına kod gönderilir",
-    },
-    {
-      id: "email" as const,
-      icon: Mail,
-      label: "E-posta",
-      desc: "Doğrulama kodu e-posta adresine gönderilir",
-    },
-  ];
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between rounded-xl bg-brand-dark/3 px-3.5 py-3">
-        <div>
-          <p className="text-sm font-medium text-brand-dark">
-            {enabled ? "Doğrulama açık" : "Doğrulama kapalı"}
-          </p>
-          {enabled && (
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-green-600">
-              <Check className="size-3" strokeWidth={2.5} />
-              Girişlerde ek doğrulama istenecek
-            </p>
-          )}
-        </div>
-        <Toggle enabled={enabled} onChange={setEnabled} />
-      </div>
-
-      <p className="text-xs font-medium text-brand-dark/50">Doğrulama Yöntemi</p>
-      <div className="space-y-2">
-        {methods.map(({ id, icon: Icon, label, desc }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setMethod(id)}
-            className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors ${
-              method === id
-                ? "border-brand-dark/20 bg-brand-dark/3"
-                : "border-brand-dark/8 bg-white hover:bg-brand-dark/3"
-            }`}
-          >
-            <Icon className="size-4 shrink-0 text-brand-dark/50" strokeWidth={1.75} />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-brand-dark">{label}</p>
-              <p className="text-xs text-brand-dark/50">{desc}</p>
-            </div>
-            <div
-              className={`flex size-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                method === id ? "border-brand-dark bg-brand-dark" : "border-brand-dark/25"
-              }`}
-            >
-              {method === id && (
-                <div className="size-1.5 rounded-full bg-white" />
-              )}
-            </div>
-          </button>
-        ))}
-      </div>
-
-      <div className="flex justify-end pt-1">
-        <button
-          type="button"
-          className="cursor-pointer rounded-xl bg-brand-neon px-5 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
-        >
-          Doğrulama Ayarlarını Kaydet
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function ChangePasswordSection() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -757,20 +675,12 @@ function GuvenlikTab() {
       <div>
         <h2 className="text-lg font-semibold text-brand-dark">Güvenlik Ayarları</h2>
         <p className="mt-0.5 text-sm text-brand-dark/50">
-          Şifrenizi güncelleyin ve iki aşamalı doğrulama yönteminizi yönetin.
+          Şifrenizi güncelleyin ve hesap güvenliğinizi yönetin.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="max-w-lg">
         <ChangePasswordSection />
-
-        <div className="rounded-2xl border border-brand-dark/8 bg-white p-5">
-          <h3 className="mb-1 font-semibold text-brand-dark">İki Aşamalı Doğrulama</h3>
-          <p className="mb-4 text-xs text-brand-dark/50">
-            Hesaba girişlerde ikinci bir doğrulama adımı kullanın.
-          </p>
-          <TwoFactorSection />
-        </div>
       </div>
     </div>
   );
@@ -778,7 +688,23 @@ function GuvenlikTab() {
 
 // ─── Bildirimler Tab ──────────────────────────────────────────────────────────
 
-type NotifKey = "email" | "app" | "analiz" | "guvenlik" | "anlik" | "durum";
+type NotifPrefsState = {
+  emailEnabled: boolean;
+  emailAnalysisResults: boolean;
+  emailReminders: boolean;
+  appEnabled: boolean;
+  appInstant: boolean;
+  appAnalysisStatus: boolean;
+};
+
+const DEFAULT_NOTIF_PREFS: NotifPrefsState = {
+  emailEnabled: true,
+  emailAnalysisResults: true,
+  emailReminders: true,
+  appEnabled: true,
+  appInstant: true,
+  appAnalysisStatus: true,
+};
 
 function NotifRow({
   icon: Icon,
@@ -786,15 +712,21 @@ function NotifRow({
   desc,
   enabled,
   onChange,
+  disabled,
 }: {
   icon: typeof Bell;
   label: string;
   desc: string;
   enabled: boolean;
   onChange: () => void;
+  disabled?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-brand-dark/3 px-3.5 py-3">
+    <div
+      className={`flex items-center gap-3 rounded-xl bg-brand-dark/3 px-3.5 py-3 ${
+        disabled ? "opacity-45" : ""
+      }`}
+    >
       <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-dark/8">
         <Icon className="size-4 text-brand-dark/60" strokeWidth={1.75} />
       </div>
@@ -802,30 +734,71 @@ function NotifRow({
         <p className="text-sm font-medium text-brand-dark">{label}</p>
         <p className="text-xs text-brand-dark/50">{desc}</p>
       </div>
-      <Toggle enabled={enabled} onChange={onChange} />
+      <Toggle
+        enabled={enabled}
+        onChange={onChange}
+        disabled={disabled}
+      />
     </div>
   );
 }
 
 function BildirimlerTab() {
-  const [notifs, setNotifs] = useState<Record<NotifKey, boolean>>({
-    email: true,
-    app: true,
-    analiz: true,
-    guvenlik: true,
-    anlik: true,
-    durum: true,
-  });
+  const [prefs, setPrefs] = useState<NotifPrefsState>(DEFAULT_NOTIF_PREFS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const toggle = (key: NotifKey) =>
-    setNotifs((prev) => ({ ...prev, [key]: !prev[key] }));
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/dashboard/notifications/preferences");
+        if (!res.ok) return;
+        const data = (await res.json()) as { preferences?: NotifPrefsState };
+        if (!cancelled && data.preferences) {
+          setPrefs({ ...DEFAULT_NOTIF_PREFS, ...data.preferences });
+        }
+      } catch {
+        // keep defaults
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggle = (key: keyof NotifPrefsState) =>
+    setPrefs((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/dashboard/notifications/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferences: prefs }),
+      });
+      if (!res.ok) throw new Error("save failed");
+      const data = (await res.json()) as { preferences?: NotifPrefsState };
+      if (data.preferences) {
+        setPrefs({ ...DEFAULT_NOTIF_PREFS, ...data.preferences });
+      }
+      toast.success("Bildirim tercihleri kaydedildi");
+    } catch {
+      toast.error("Bildirim tercihleri kaydedilemedi");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-brand-dark">Bildirim Ayarları</h2>
         <p className="mt-0.5 text-sm text-brand-dark/50">
-          E-posta ve uygulama bildirim tercihlerinizi yönetin.
+          E-posta, hatırlatma ve uygulama bildirim tercihlerinizi yönetin.
         </p>
       </div>
 
@@ -838,22 +811,20 @@ function BildirimlerTab() {
                 Önemli güncellemeler e-posta adresinize gönderilir.
               </p>
             </div>
-            <Toggle enabled={notifs.email} onChange={() => toggle("email")} />
+            <Toggle
+              enabled={prefs.emailEnabled}
+              onChange={() => toggle("emailEnabled")}
+              disabled={loading}
+            />
           </div>
           <div className="space-y-3">
             <NotifRow
               icon={Mail}
               label="Analiz sonuçları"
               desc="Rapor hazır olduğunda e-posta gönderilir."
-              enabled={notifs.analiz}
-              onChange={() => toggle("analiz")}
-            />
-            <NotifRow
-              icon={Shield}
-              label="Güvenlik uyarıları"
-              desc="Kritik hesap hareketlerinde uyarı alınır."
-              enabled={notifs.guvenlik}
-              onChange={() => toggle("guvenlik")}
+              enabled={prefs.emailAnalysisResults}
+              onChange={() => toggle("emailAnalysisResults")}
+              disabled={loading || !prefs.emailEnabled}
             />
           </div>
         </div>
@@ -863,25 +834,64 @@ function BildirimlerTab() {
             <div>
               <h3 className="font-semibold text-brand-dark">Uygulama Bildirimleri</h3>
               <p className="mt-0.5 text-xs text-brand-dark/50">
-                Platform içi uyarılar ve anlık bilgilendirmeler gösterilir.
+                Sağ üstteki zil ikonunda görünür.
               </p>
             </div>
-            <Toggle enabled={notifs.app} onChange={() => toggle("app")} />
+            <Toggle
+              enabled={prefs.appEnabled}
+              onChange={() => toggle("appEnabled")}
+              disabled={loading}
+            />
           </div>
           <div className="space-y-3">
             <NotifRow
               icon={Bell}
               label="Anlık uyarılar"
-              desc="Önemli gelişmeler uygulama içinde görünür."
-              enabled={notifs.anlik}
-              onChange={() => toggle("anlik")}
+              desc="Hatırlatmalar ve önemli gelişmeler uygulama içinde görünür."
+              enabled={prefs.appInstant}
+              onChange={() => toggle("appInstant")}
+              disabled={loading || !prefs.appEnabled}
             />
             <NotifRow
               icon={MessageSquare}
               label="Analiz durumu"
               desc="Analiz başladığında ve tamamlandığında bildirilir."
-              enabled={notifs.durum}
-              onChange={() => toggle("durum")}
+              enabled={prefs.appAnalysisStatus}
+              onChange={() => toggle("appAnalysisStatus")}
+              disabled={loading || !prefs.appEnabled}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-brand-dark/8 bg-white p-5 lg:col-span-2">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-dark/8">
+              <Clock className="size-4 text-brand-dark/60" strokeWidth={1.75} />
+            </div>
+            <div>
+              <h3 className="font-semibold text-brand-dark">Hatırlatmalar</h3>
+              <p className="mt-0.5 text-xs text-brand-dark/50">
+                Uzun süredir giriş yapmadığınızda veya analiziniz yarım kaldığında
+                hatırlatma alın.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <NotifRow
+              icon={Mail}
+              label="E-posta hatırlatmaları"
+              desc="3 gün giriş yoksa veya analiz yarım kaldıysa mail gönderilir."
+              enabled={prefs.emailReminders}
+              onChange={() => toggle("emailReminders")}
+              disabled={loading || !prefs.emailEnabled}
+            />
+            <NotifRow
+              icon={Bell}
+              label="Uygulama hatırlatmaları"
+              desc="Aynı hatırlatmalar sağ üst bildirimlerde de görünür."
+              enabled={prefs.appInstant}
+              onChange={() => toggle("appInstant")}
+              disabled={loading || !prefs.appEnabled}
             />
           </div>
         </div>
@@ -890,9 +900,11 @@ function BildirimlerTab() {
       <div className="flex justify-end">
         <button
           type="button"
-          className="cursor-pointer rounded-xl bg-brand-neon px-5 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
+          onClick={() => void save()}
+          disabled={loading || saving}
+          className="cursor-pointer rounded-xl bg-brand-neon px-5 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          Bildirimleri Kaydet
+          {saving ? "Kaydediliyor…" : "Bildirimleri Kaydet"}
         </button>
       </div>
     </div>
@@ -901,7 +913,7 @@ function BildirimlerTab() {
 
 // ─── Entegrasyonlar Tab ───────────────────────────────────────────────────────
 
-type IntegrationId = "canva" | "facebook" | "instagram" | "linkedin";
+type IntegrationId = "instagram" | "linkedin";
 
 type Integration = {
   id: IntegrationId;
@@ -909,31 +921,11 @@ type Integration = {
   desc: string;
   connected: boolean;
   meta: string;
+  comingSoon?: boolean;
 };
 
 function IntegrationIcon({ id }: { id: IntegrationId }) {
-  if (id === "canva") {
-    return (
-      <span
-        className="inline-flex size-10 items-center justify-center"
-        aria-hidden="true"
-      >
-        <img
-          src="/brands/canva/canva-icon-logo.svg"
-          alt=""
-          className="size-10"
-          loading="lazy"
-          decoding="async"
-        />
-      </span>
-    );
-  }
-
   const iconMap = {
-    facebook: {
-      IconComponent: FaFacebookF,
-      wrapperClass: "bg-[#1877F2] text-white",
-    },
     instagram: {
       IconComponent: FaInstagram,
       wrapperClass:
@@ -959,20 +951,6 @@ function IntegrationIcon({ id }: { id: IntegrationId }) {
 
 const integrations: Integration[] = [
   {
-    id: "canva",
-    name: "Canva",
-    desc: "Önerilen tasarımları Canva'da açıp düzenleyin.",
-    connected: true,
-    meta: "Son eşitleme: bugün",
-  },
-  {
-    id: "facebook",
-    name: "Facebook",
-    desc: "Sayfa içeriklerini ve reklam kreatiflerini analiz edin.",
-    connected: false,
-    meta: "Meta hesabı gerekir",
-  },
-  {
     id: "instagram",
     name: "Instagram",
     desc: "Gönderi ve Reels içerikleri için skor takibi yapın.",
@@ -983,8 +961,9 @@ const integrations: Integration[] = [
     id: "linkedin",
     name: "LinkedIn",
     desc: "Şirket sayfası içeriklerini puanlayın ve iyileştirin.",
-    connected: true,
-    meta: "Nera Digital sayfası",
+    connected: false,
+    meta: "Entegrasyon yakında kullanıma açılacak",
+    comingSoon: true,
   },
 ];
 
@@ -1097,16 +1076,19 @@ function EntegrasyonlarTab() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {items.map((item) => {
             const isInstagram = item.id === "instagram";
+            const comingSoon = Boolean(item.comingSoon);
             const connected = isInstagram ? instagramConnected : item.connected;
-            const meta = isInstagram
-              ? connected
-                ? instagramUsername
-                  ? `@${instagramUsername}`
-                  : "Bağlı"
-                : instagramConfigured
-                  ? "Instagram Login ile doğrula"
-                  : "Instagram Login yapılandırılmamış"
-              : item.meta;
+            const meta = comingSoon
+              ? item.meta
+              : isInstagram
+                ? connected
+                  ? instagramUsername
+                    ? `@${instagramUsername}`
+                    : "Bağlı"
+                  : instagramConfigured
+                    ? "Instagram Login ile doğrula"
+                    : "Instagram Login yapılandırılmamış"
+                : item.meta;
 
             return (
               <div
@@ -1124,12 +1106,14 @@ function EntegrasyonlarTab() {
                       </p>
                       <span
                         className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                          connected
-                            ? "bg-green-100 text-green-700"
-                            : "bg-brand-dark/8 text-brand-dark/50"
+                          comingSoon
+                            ? "bg-amber-50 text-amber-700"
+                            : connected
+                              ? "bg-green-100 text-green-700"
+                              : "bg-brand-dark/8 text-brand-dark/50"
                         }`}
                       >
-                        {connected ? "Bağlı" : "Bağlı Değil"}
+                        {comingSoon ? "Yakında" : connected ? "Bağlı" : "Bağlı Değil"}
                       </span>
                     </div>
                     <p className="mt-0.5 text-xs leading-relaxed text-brand-dark/50">
@@ -1142,25 +1126,34 @@ function EntegrasyonlarTab() {
                   <p className="text-xs text-brand-dark/40">{meta}</p>
                   <button
                     type="button"
-                    disabled={isInstagram && instagramBusy}
-                    onClick={() =>
-                      isInstagram ? void handleInstagramConnect() : toggleConnection(item.id)
-                    }
-                    className={`cursor-pointer rounded-xl px-4 py-2 text-xs font-semibold transition-colors disabled:opacity-60 ${
-                      connected
-                        ? "border border-brand-dark/15 bg-white text-brand-dark hover:bg-brand-dark/5"
-                        : "bg-brand-neon text-brand-dark hover:opacity-90"
+                    disabled={comingSoon || (isInstagram && instagramBusy)}
+                    onClick={() => {
+                      if (comingSoon) return;
+                      if (isInstagram) {
+                        void handleInstagramConnect();
+                        return;
+                      }
+                      toggleConnection(item.id);
+                    }}
+                    className={`rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+                      comingSoon
+                        ? "cursor-not-allowed border border-brand-dark/10 bg-brand-dark/5 text-brand-dark/40"
+                        : connected
+                          ? "cursor-pointer border border-brand-dark/15 bg-white text-brand-dark hover:bg-brand-dark/5 disabled:opacity-60"
+                          : "cursor-pointer bg-brand-neon text-brand-dark hover:opacity-90 disabled:opacity-60"
                     }`}
                   >
-                    {isInstagram
-                      ? connected
-                        ? "Kopar"
-                        : instagramBusy
-                          ? "..."
-                          : "Bağla"
-                      : connected
-                        ? "Yönet"
-                        : "Bağla"}
+                    {comingSoon
+                      ? "Yakında"
+                      : isInstagram
+                        ? connected
+                          ? "Kopar"
+                          : instagramBusy
+                            ? "..."
+                            : "Bağla"
+                        : connected
+                          ? "Yönet"
+                          : "Bağla"}
                   </button>
                 </div>
               </div>

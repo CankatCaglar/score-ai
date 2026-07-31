@@ -29,8 +29,9 @@ function buildSharedRules(criteriaKeys: string[]): string {
     "3) Her madde için seviye sadece 0, 1, 2 veya 3 olmalı.",
     "4) JSON dışı hiçbir metin, markdown, açıklama veya not döndürme.",
     "5) Önce görseldeki yaratıcı metinlerin ORİJİNAL dilini tespit et. aksiyon_onerisi içinde önerdiğin somut yaratıcı metin örnekleri (CTA metni, başlık, değer önerisi, rozet metni) görselin KENDİ dilinde olmalı: Türkçe görsele Türkçe, İngilizce görsele İngilizce metin öner. Açıklama cümlelerin Türkçe kalabilir ama tırnak içindeki önerilen metinler kaynak dilde yazılmalı.",
-    "6) Sadece aşağıdaki anahtarları üret; eksik veya ekstra anahtar üretme.",
+    "6) Sadece aşağıdaki anahtarları üret; eksik veya ekstra anahtar üretme. listedeki HER anahtar zorunlu.",
     formatCriteriaKeysForPrompt(criteriaKeys),
+    "7) mevcut_durum, eksiklikler ve aksiyon_onerisi alanlarını kısa tut (her biri en fazla 1-2 cümle).",
     "",
     'JSON formatı kesinlikle şu şemada olmalı: { "madde_anahtari": { "seviye": 0, "mevcut_durum": "...", "eksiklikler": "...", "aksiyon_onerisi": "..." } }',
   ].join("\n");

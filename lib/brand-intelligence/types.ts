@@ -1,7 +1,7 @@
 export const BRAND_PROMISE_MAX_LENGTH = 160;
-export const MAX_COMPETITORS = 8;
+export const MAX_COMPETITORS = 3;
 export const MAX_COMPETITOR_POSTS = 6;
-export const MAX_HISTORICAL_MEDIA = 12;
+export const MAX_HISTORICAL_MEDIA = 6;
 /** Analiz kalitesi için önerilen minimum geçmiş içerik sayısı. */
 export const MIN_HISTORICAL_MEDIA = 6;
 export const MAX_TRUST_PROOFS = 10;

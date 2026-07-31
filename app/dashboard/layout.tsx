@@ -2,6 +2,7 @@ import { getCurrentUserSession } from "@/actions/auth";
 import { getCurrentUserProfile } from "@/actions/profile";
 import { getCurrentDashboardUserEmail } from "@/lib/analysis/auth";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { touchUserActivity } from "@/lib/mail/engagement";
 import { initialsFromProfile } from "@/lib/user-profile";
 
 export default async function DashboardLayout({
@@ -25,6 +26,12 @@ export default async function DashboardLayout({
   const initials = profile
     ? initialsFromProfile(profile)
     : (name.slice(0, 2) || "SC").toUpperCase();
+
+  if (email && !email.endsWith("@score.local")) {
+    void touchUserActivity(email).catch(() => {
+      // activity touch must not block dashboard render
+    });
+  }
 
   return (
     <DashboardShell

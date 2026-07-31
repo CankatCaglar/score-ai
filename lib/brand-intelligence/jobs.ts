@@ -6,7 +6,11 @@ import {
   updateCompetitor,
   uploadBrandIntelligenceBytes,
 } from "@/lib/brand-intelligence/repository";
-import type { CompetitorPost } from "@/lib/brand-intelligence/types";
+import {
+  MAX_COMPETITOR_POSTS,
+  MAX_HISTORICAL_MEDIA,
+  type CompetitorPost,
+} from "@/lib/brand-intelligence/types";
 import {
   detectCompetitorType,
   downloadProfilePostMedia,
@@ -23,11 +27,15 @@ function buildCompetitorSummary(
   input: string,
   captions: Array<string | null>,
 ): string {
-  const usable = captions.filter((c): c is string => Boolean(c?.trim())).slice(0, 3);
+  const usable = captions
+    .filter((c): c is string => Boolean(c?.trim()))
+    .slice(0, MAX_COMPETITOR_POSTS);
   if (usable.length === 0) {
-    return `${input} için son paylaşımlar alındı; görsel odaklı farklılaşma sinyali.`;
+    return `${input} için son ${MAX_COMPETITOR_POSTS} paylaşım alındı; görsel odaklı farklılaşma sinyali.`;
   }
-  return `${input} son içerik temaları: ${usable.map((c) => c.slice(0, 80)).join(" · ")}`;
+  return `${input} son ${usable.length} içerik temaları: ${usable
+    .map((c) => c.slice(0, 80))
+    .join(" · ")}`;
 }
 
 export async function processCompetitorFetch(
@@ -48,10 +56,13 @@ export async function processCompetitorFetch(
       competitor.type || detectCompetitorType(competitor.input);
 
     if (type === "instagram") {
-      const feed = await fetchInstagramProfileRecentPosts(competitor.input);
+      const feed = await fetchInstagramProfileRecentPosts(
+        competitor.input,
+        MAX_COMPETITOR_POSTS,
+      );
       const posts: CompetitorPost[] = [];
 
-      for (const item of feed) {
+      for (const item of feed.slice(0, MAX_COMPETITOR_POSTS)) {
         try {
           const media = await downloadProfilePostMedia(item);
           const uploaded = await uploadBrandIntelligenceBytes({
@@ -99,7 +110,10 @@ export async function processCompetitorFetch(
     }
 
     // Website competitor: capture homepage imagery as proxy for recent presence
-    const images = await extractWebsiteImageCandidates(competitor.input, 6);
+    const images = await extractWebsiteImageCandidates(
+      competitor.input,
+      MAX_COMPETITOR_POSTS,
+    );
     const posts: CompetitorPost[] = [];
     for (const imageUrl of images) {
       try {
@@ -164,7 +178,7 @@ export async function syncInstagramHistoricalMedia(
     "fields",
     "id,caption,media_url,thumbnail_url,permalink,timestamp,media_type",
   );
-  endpoint.searchParams.set("limit", "12");
+  endpoint.searchParams.set("limit", String(MAX_HISTORICAL_MEDIA));
   endpoint.searchParams.set("access_token", ig.accessToken);
 
   const response = await fetch(endpoint.toString(), { method: "GET" });
@@ -183,10 +197,13 @@ export async function syncInstagramHistoricalMedia(
     }>;
   };
 
-  const items = Array.isArray(payload.data) ? payload.data : [];
+  const items = Array.isArray(payload.data)
+    ? payload.data.slice(0, MAX_HISTORICAL_MEDIA)
+    : [];
   let added = 0;
 
   for (const item of items) {
+    if (added >= MAX_HISTORICAL_MEDIA) break;
     const type = (item.media_type ?? "IMAGE").toUpperCase();
     const imageUrl =
       type === "VIDEO" || type === "REELS"
@@ -214,7 +231,8 @@ export async function syncInstagramHistoricalMedia(
       ]);
       added += 1;
     } catch {
-      // skip item
+      // skip item — MAX_HISTORICAL_MEDIA may already be full
+      if (added === 0) continue;
     }
   }
 
@@ -229,7 +247,7 @@ export async function syncBrandHistoricalFromUsername(
   const handle = extractInstagramHandle(username);
   if (!handle) return 0;
 
-  const feed = await fetchInstagramProfileRecentPosts(handle, 12);
+  const feed = await fetchInstagramProfileRecentPosts(handle, MAX_HISTORICAL_MEDIA);
   let added = 0;
   for (const item of feed) {
     try {
@@ -291,7 +309,7 @@ export async function attachManualCompetitorPost(
     fetchedAt: new Date().toISOString(),
   };
 
-  const posts = [...competitor.posts, post].slice(0, 6);
+  const posts = [...competitor.posts, post].slice(0, MAX_COMPETITOR_POSTS);
   await updateCompetitor(ownerEmail, competitorId, {
     status: "ready",
     posts,

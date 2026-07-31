@@ -110,7 +110,18 @@ function isRetryableAnthropicError(error: unknown): boolean {
   if (lower.includes("429")) return true;
   if (lower.includes("503") || lower.includes("502") || lower.includes("504")) return true;
   if (lower.includes("temporarily")) return true;
+  // Truncated / incomplete category JSON — retry with higher budget.
+  if (lower.includes("max_tokens") || lower.includes("truncated")) return true;
+  if (lower.includes("objesi eksik") || lower.includes("gecersiz")) return true;
+  if (lower.includes("gecerli json degil")) return true;
   return false;
+}
+
+/** Scale output budget with criterion count (Turkish prose fields are token-heavy). */
+function categoryMaxTokens(criteriaCount: number, attempt = 0) {
+  const perCriterion = 360;
+  const base = 900 + criteriaCount * perCriterion + attempt * 1024;
+  return Math.min(8192, Math.max(3072, base));
 }
 
 async function sleep(ms: number) {
@@ -675,6 +686,29 @@ function isLikelyTechnicalOverlayText(text: string) {
   return false;
 }
 
+function normalizeCriterionLookupKey(key: string) {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function findCriterionObject(
+  parsed: Record<string, unknown>,
+  criterionKey: string,
+): Record<string, unknown> | null {
+  const direct = parsed[criterionKey];
+  if (direct && typeof direct === "object" && !Array.isArray(direct)) {
+    return direct as Record<string, unknown>;
+  }
+
+  const target = normalizeCriterionLookupKey(criterionKey);
+  for (const [key, value] of Object.entries(parsed)) {
+    if (normalizeCriterionLookupKey(key) !== target) continue;
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+  }
+  return null;
+}
+
 function parseAndValidateEvaluations(
   rawText: string,
   criteriaKeys: string[],
@@ -682,19 +716,26 @@ function parseAndValidateEvaluations(
   const parsed = parseJsonObject(rawText);
 
   const result: Record<string, CriterionEvaluation> = {};
+  const missing: string[] = [];
   for (const criterionKey of criteriaKeys) {
-    const value = parsed[criterionKey];
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
-      throw new Error(`AI cevabinda ${criterionKey} objesi eksik veya gecersiz.`);
+    const item = findCriterionObject(parsed, criterionKey);
+    if (!item) {
+      missing.push(criterionKey);
+      continue;
     }
 
-    const item = value as Record<string, unknown>;
     result[criterionKey] = {
       seviye: normalizeCriterionLevel(item.seviye),
       mevcut_durum: String(item.mevcut_durum ?? "").trim(),
       eksiklikler: String(item.eksiklikler ?? "").trim(),
       aksiyon_onerisi: String(item.aksiyon_onerisi ?? "").trim(),
     };
+  }
+
+  if (missing.length) {
+    throw new Error(
+      `AI cevabinda ${missing.join(", ")} objesi eksik veya gecersiz.`,
+    );
   }
 
   return result;
@@ -763,14 +804,15 @@ export async function analyzeCategoryWithAnthropic(
   ];
 
   try {
-    const response = await withRetry(
-      () =>
-        withTimeout(
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= MAX_CATEGORY_RETRIES; attempt += 1) {
+      try {
+        const maxTokens = categoryMaxTokens(input.criteriaKeys.length, attempt);
+        const response = await withTimeout(
           client.messages.create(
             buildMessageCreateParams({
               model: modelUsed,
-              // Category JSON is compact; 4096 mostly adds latency/cost.
-              max_tokens: 2048,
+              max_tokens: maxTokens,
               system: [
                 {
                   type: "text",
@@ -782,19 +824,50 @@ export async function analyzeCategoryWithAnthropic(
             }),
           ),
           timeoutMs,
-        ),
-      { label: input.categoryId },
-    );
+        );
 
-    const rawText = extractTextContent(response);
-    const evaluations = parseAndValidateEvaluations(rawText, input.criteriaKeys);
+        const stopReason =
+          response &&
+          typeof response === "object" &&
+          "stop_reason" in response
+            ? String((response as { stop_reason?: unknown }).stop_reason ?? "")
+            : "";
+        const rawText = extractTextContent(response);
 
-    return {
-      categoryId: input.categoryId,
-      modelUsed,
-      evaluations,
-      rawResponse: rawText,
-    };
+        if (stopReason === "max_tokens") {
+          throw new Error(
+            `Anthropic yaniti max_tokens nedeniyle kesildi (truncated, budget=${maxTokens}).`,
+          );
+        }
+
+        const evaluations = parseAndValidateEvaluations(
+          rawText,
+          input.criteriaKeys,
+        );
+
+        return {
+          categoryId: input.categoryId,
+          modelUsed,
+          evaluations,
+          rawResponse: rawText,
+        };
+      } catch (error) {
+        lastError = error;
+        if (attempt >= MAX_CATEGORY_RETRIES || !isRetryableAnthropicError(error)) {
+          throw error;
+        }
+        const delayMs = 1_200 * (attempt + 1);
+        console.warn(
+          `[anthropic] retry ${attempt + 1}/${MAX_CATEGORY_RETRIES} (${input.categoryId}) after ${delayMs}ms`,
+          error instanceof Error ? error.message : error,
+        );
+        await sleep(delayMs);
+      }
+    }
+
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("Anthropic kategori analizi basarisiz.");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Bilinmeyen Anthropic hatasi.";
     throw new Error(`Anthropic kategori analizi basarisiz (${input.categoryId}): ${message}`);

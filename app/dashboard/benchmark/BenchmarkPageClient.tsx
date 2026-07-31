@@ -225,7 +225,7 @@ export default function BenchmarkPageClient() {
       } else if (postsWarning === "none" || posts === 0) {
         toast.message("Instagram hesabı bağlandı", {
           description:
-            "Henüz içerik çekilemedi. 6–12 görsel/video manuel yükleyebilirsin.",
+            "Henüz içerik çekilemedi. En fazla 6 görsel/video manuel yükleyebilirsin.",
         });
       } else {
         toast.success(
@@ -930,7 +930,7 @@ export default function BenchmarkPageClient() {
               </button>
               <p className="mt-auto pt-1 text-[11px] leading-relaxed text-brand-dark/40">
                 Tara: kendi sitenin ana sayfasındaki görselleri geçmiş içerik olarak kaydeder
-                (Brand Consistency / Memory). Instagram bağlamak istemezsen 6–12 içeriği
+                (Brand Consistency / Memory). Instagram bağlamak istemezsen son 6 içeriği
                 aşağıdan manuel yükleyebilirsin.
                 {profile.brandAccount.historicalMedia.length > 0
                   ? ` · ${profile.brandAccount.historicalMedia.length} içerik kayıtlı`
