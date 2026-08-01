@@ -34,6 +34,7 @@ import {
   type TrustProof,
 } from "@/lib/brand-intelligence/types";
 import { getCatalogSectorPostingAverage } from "@/lib/benchmark/sector-posting";
+import { withReturnTo } from "@/lib/dashboard/return-navigation";
 
 type PublicProfile = BrandIntelligenceProfile & {
   completion: BrandIntelligenceCompletion;
@@ -462,7 +463,11 @@ export default function BenchmarkPageClient() {
       const data = (await res.json()) as { profile: PublicProfile };
       applyProfile(data.profile);
       toast.success("Kaydedildi");
-      if (andContinue) router.push("/dashboard/yeni-analiz");
+      if (andContinue) {
+        router.push(
+          withReturnTo("/dashboard/yeni-analiz", "/dashboard/benchmark"),
+        );
+      }
     } catch {
       toast.error("Kaydedilemedi");
     } finally {
@@ -1259,7 +1264,7 @@ export default function BenchmarkPageClient() {
             analiz güven seviyesi artar.
           </p>
           <Link
-            href="/dashboard/yeni-analiz"
+            href={withReturnTo("/dashboard/yeni-analiz", "/dashboard/benchmark")}
             onClick={() => void save(false)}
             className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-[#1D4D28] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#163B1F] sm:ml-auto sm:w-auto"
           >

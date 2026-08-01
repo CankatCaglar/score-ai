@@ -10,7 +10,7 @@ export const AI_PROMPT_VERSION_BASE = "v1.0.0-ncqs-main5";
 
 /** Benchmark’ta kullanılabilir veri varken. */
 export const RUBRIC_VERSION_STRATEGIC = "v2.1.0-ncqs-main5-criteria33";
-export const AI_PROMPT_VERSION_STRATEGIC = "v1.1.0-ncqs-main5";
+export const AI_PROMPT_VERSION_STRATEGIC = "v1.2.0-ncqs-main5-benchmark-explicit";
 
 /** @deprecated Use getRubricVersion(mode). Defaults to strategic for display. */
 export const RUBRIC_VERSION = RUBRIC_VERSION_STRATEGIC;

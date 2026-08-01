@@ -393,6 +393,7 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
     contentType: String(data.contentType ?? "Gönderi"),
     criteriaCount: Number(data.criteriaCount ?? RUBRIC_CRITERIA_COUNT),
     sectorAverage: Number(data.sectorAverage ?? 0),
+    hasStrategicBrand: Boolean(data.hasStrategicBrand),
     rubricVersion: String(data.rubricVersion ?? RUBRIC_VERSION),
     aiRubricVersion:
       typeof data.aiRubricVersion === "string"
@@ -573,21 +574,6 @@ export async function createAnalysisJob(
     },
     { merge: true },
   );
-
-  try {
-    await createAppNotification({
-      ownerEmail: input.ownerEmail,
-      type: "analysis_started",
-      title: "Analiz başladı",
-      body: `"${normalizedTitle}" analizi işleniyor. Sonuç hazır olduğunda bildireceğiz.`,
-      href: `/dashboard/analiz-sonucu?slug=${encodeURIComponent(slug)}`,
-    });
-  } catch (error) {
-    console.warn(
-      "[analysis-started-notification]",
-      error instanceof Error ? error.message : error,
-    );
-  }
 
   return { jobId: jobRef.id, analysisId: analysisRef.id, slug };
 }

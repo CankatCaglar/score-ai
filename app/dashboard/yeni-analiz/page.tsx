@@ -13,6 +13,7 @@ import {
   Palette,
   UploadCloud,
 } from "lucide-react";
+import { requestNotificationsRefresh } from "@/lib/notifications/toast-analysis";
 
 const features = [
   {
@@ -127,6 +128,7 @@ export default function YeniAnalizPage() {
         }
         throw new Error("Analiz isleme alindi fakat yonlendirme verisi alinamadi.");
       }
+      requestNotificationsRefresh();
       const target = data.analysisId
         ? `/dashboard/analiz-sonucu?id=${data.analysisId}`
         : data.slug

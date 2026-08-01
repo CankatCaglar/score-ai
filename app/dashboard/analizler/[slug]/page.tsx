@@ -24,6 +24,9 @@ import {
 import { type Analysis } from "../data";
 import { ScoreRing } from "../ScoreRing";
 import { SocialShareMenu } from "@/components/dashboard/SocialShareMenu";
+import { BenchmarkInsightCard } from "@/components/analysis/BenchmarkInsightCard";
+import { summarizeBenchmarkCommentary } from "@/lib/analysis/insight-summary";
+import { withReturnTo } from "@/lib/dashboard/return-navigation";
 
 const tabs = [
   "Genel Bakış",
@@ -421,7 +424,10 @@ export default function AnalizDetayPage() {
           </button>
           <SocialShareMenu title={analysis.title} url={`/dashboard/analiz-sonucu?id=${analysis.id}`} />
           <Link
-            href={`/dashboard/analiz-sonucu?id=${analysis.id}`}
+            href={withReturnTo(
+              `/dashboard/analiz-sonucu?id=${analysis.id}`,
+              `/dashboard/analizler/${analysis.slug}`,
+            )}
             className="flex items-center gap-1.5 rounded-lg bg-brand-neon px-3.5 py-2 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
           >
             <ExternalLink className="size-4" strokeWidth={2} />
@@ -733,7 +739,10 @@ function SuggestionsTab({
           </p>
         </div>
         <Link
-          href={`/dashboard/analiz-sonucu?id=${analysis.id}&focus=sonuc`}
+          href={withReturnTo(
+            `/dashboard/analiz-sonucu?id=${analysis.id}&focus=sonuc`,
+            `/dashboard/analizler/${analysis.slug}`,
+          )}
           className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-neon px-3 py-2 text-xs font-semibold text-brand-dark transition-opacity hover:opacity-90"
         >
           <ExternalLink className="size-3.5" strokeWidth={2} />
@@ -750,45 +759,13 @@ function SuggestionsTab({
 }
 
 function ComparisonTab({ analysis }: { analysis: Analysis }) {
+  const benchmarkSummary = summarizeBenchmarkCommentary(analysis);
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Card>
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-base font-semibold text-brand-dark">
-            Benzer İçeriklerle Karşılaştırma
-          </h2>
-          <Link
-            href="/dashboard/benchmark"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-neon px-3 py-2 text-xs font-semibold text-brand-dark transition-opacity hover:opacity-90"
-          >
-            Benchmark
-            <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
-          </Link>
-        </div>
-        <Comparison analysis={analysis} />
-      </Card>
-      <Card>
-        <h2 className="text-base font-semibold text-brand-dark">
-          Kategori Kırılımı
-        </h2>
-        <div className="mt-4 space-y-3">
-          {analysis.categories.map((cat) => (
-            <div key={cat.label}>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-brand-dark/70">{cat.label}</span>
-                <span className="font-semibold text-brand-dark">{cat.value}</span>
-              </div>
-              <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-brand-dark/8">
-                <div
-                  className="h-full rounded-full bg-brand-dark"
-                  style={{ width: `${cat.value}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-    </div>
+    <BenchmarkInsightCard
+      summary={benchmarkSummary}
+      variant="light"
+      showEmptyState
+    />
   );
 }
 
@@ -802,7 +779,7 @@ function InsightsTab({ analysis }: { analysis: Analysis }) {
           <Bot className="size-5 text-brand-dark" strokeWidth={1.75} />
         </div>
         <Link
-          href="/dashboard/creative-memory"
+          href={`/dashboard/creative-memory/${encodeURIComponent(analysis.slug)}`}
           className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-neon px-3 py-2 text-xs font-semibold text-brand-dark transition-opacity hover:opacity-90"
         >
           Creative Memory

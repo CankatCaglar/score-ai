@@ -51,6 +51,8 @@ export type Analysis = {
   contentType: string;
   criteriaCount: number;
   sectorAverage: number;
+  /** True when Benchmark (Strategic Brand Intelligence) context was used. */
+  hasStrategicBrand?: boolean;
   rubricVersion: string;
   aiRubricVersion?: string;
   promptVersion?: string;

@@ -24,6 +24,7 @@ import {
   type BrandDnaCompletion,
   type BrandDnaPublicProfile,
 } from "@/lib/brand-dna/types";
+import { withReturnTo } from "@/lib/dashboard/return-navigation";
 
 const personalityOptions = [
   "Lüks",
@@ -745,14 +746,14 @@ export default function BrandBrainPage() {
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:items-stretch">
           <SectionCard title="Logo" subtitle="Marka logonuzu yükleyin.">
-            <div className="flex h-full flex-col rounded-xl border border-brand-dark/10 bg-bg-offwhite p-3.5">
-              <div className="relative flex h-32 w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-brand-dark/15 bg-white px-4 py-4">
+            <div className="flex h-full min-h-0 flex-1 flex-col rounded-xl border border-brand-dark/10 bg-bg-offwhite p-3.5">
+              <div className="relative flex min-h-32 w-full flex-1 items-center justify-center overflow-hidden rounded-lg border border-dashed border-brand-dark/15 bg-white px-4 py-4">
                 {logoPreviewUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={logoPreviewUrl}
                     alt="Marka logosu"
-                    className="h-full w-full object-contain object-center"
+                    className="max-h-full max-w-full object-contain object-center"
                   />
                 ) : (
                   <p className="text-center text-xs text-brand-dark/40">
@@ -770,31 +771,33 @@ export default function BrandBrainPage() {
                   if (file) void uploadLogo(file);
                 }}
               />
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  disabled={logoBusy}
-                  onClick={() => logoInputRef.current?.click()}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-xs font-semibold text-brand-dark transition-colors hover:bg-brand-dark/5 disabled:opacity-50"
-                >
-                  <UploadCloud className="size-3.5" strokeWidth={2} />
-                  {logoBusy ? "İşleniyor…" : "Logo Yükle"}
-                </button>
-                {profile.logo ? (
+              <div className="mt-3 shrink-0">
+                <div className="flex gap-2">
                   <button
                     type="button"
                     disabled={logoBusy}
-                    onClick={() => void removeLogo()}
-                    className="inline-flex items-center justify-center rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-brand-dark/60 transition-colors hover:bg-brand-dark/5 disabled:opacity-50"
-                    aria-label="Logoyu kaldır"
+                    onClick={() => logoInputRef.current?.click()}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-xs font-semibold text-brand-dark transition-colors hover:bg-brand-dark/5 disabled:opacity-50"
                   >
-                    <Trash2 className="size-3.5" strokeWidth={2} />
+                    <UploadCloud className="size-3.5" strokeWidth={2} />
+                    {logoBusy ? "İşleniyor…" : "Logo Yükle"}
                   </button>
-                ) : null}
+                  {profile.logo ? (
+                    <button
+                      type="button"
+                      disabled={logoBusy}
+                      onClick={() => void removeLogo()}
+                      className="inline-flex items-center justify-center rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-brand-dark/60 transition-colors hover:bg-brand-dark/5 disabled:opacity-50"
+                      aria-label="Logoyu kaldır"
+                    >
+                      <Trash2 className="size-3.5" strokeWidth={2} />
+                    </button>
+                  ) : null}
+                </div>
+                <p className="mt-2 text-center text-[11px] text-brand-dark/40">
+                  SVG, PNG, JPG (max. 5MB)
+                </p>
               </div>
-              <p className="mt-2 text-center text-[11px] text-brand-dark/40">
-                SVG, PNG, JPG (max. 5MB)
-              </p>
             </div>
           </SectionCard>
 
@@ -1027,8 +1030,23 @@ export default function BrandBrainPage() {
                             8,
                           );
                         }}
-                        className="size-4 shrink-0 rounded border-brand-dark/25 text-brand-dark focus:ring-brand-dark/20"
+                        className="peer sr-only"
                       />
+                      <span
+                        className={`flex size-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                          active
+                            ? "border-brand-dark bg-brand-dark"
+                            : "border-brand-dark/25 bg-white"
+                        }`}
+                        aria-hidden
+                      >
+                        <Check
+                          className={`size-3 text-brand-neon transition-opacity ${
+                            active ? "opacity-100" : "opacity-0"
+                          }`}
+                          strokeWidth={3}
+                        />
+                      </span>
                       <span className="truncate">{audience}</span>
                     </label>
                   );
@@ -1279,7 +1297,7 @@ export default function BrandBrainPage() {
           </p>
         </div>
         <Link
-          href="/dashboard/yeni-analiz"
+          href={withReturnTo("/dashboard/yeni-analiz", "/dashboard/brand-brain")}
           className="inline-flex items-center gap-2 rounded-lg bg-brand-dark px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
         >
           Test Analizi Yap

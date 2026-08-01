@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { ScoreRing } from "@/app/dashboard/analizler/ScoreRing";
 import type { Analysis, DashboardOverview } from "@/lib/analysis/types";
+import { withReturnTo } from "@/lib/dashboard/return-navigation";
 
 type ScoreRangeValue = "all" | "0-49" | "50-69" | "70-84" | "85-100";
 
@@ -394,7 +395,10 @@ export default function CreativeMemoryPage() {
           </p>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="/dashboard/yeni-analiz"
+              href={withReturnTo(
+                "/dashboard/yeni-analiz",
+                "/dashboard/creative-memory",
+              )}
               className="inline-flex items-center gap-1.5 rounded-xl bg-brand-neon px-4 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
             >
               Yeni analiz başlat

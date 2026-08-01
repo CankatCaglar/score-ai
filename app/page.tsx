@@ -216,7 +216,12 @@ const PAGE_COPY = {
       { question: "Score AI ücretsiz mi?", answer: "Beta döneminde waitlist'e katılan kullanıcılara özel erken erişim ve indirimli fiyatlandırma sunulacaktır. Detaylar lansman öncesinde paylaşılacak." },
       { question: "Ne zaman erişime açılacak?", answer: "Waitlist sırasına göre kademeli olarak erişim verilecektir. Kayıt olduğunuzda sıranızı ve tahmini erişim tarihinizi e-posta ile bildireceğiz." },
     ],
-    footer: { rights: "© 2026 Score AI. Tüm Hakları Saklıdır.", mapsAria: "Tallinn, Estonya konumunu Google Maps'te aç", mailAria: "Score AI ekibine e-posta gönder" },
+    footer: {
+      rights: "© 2026 Score AI. Tüm Hakları Saklıdır.",
+      disclosure: "Score AI, Nera Reklam Pazarlama Yazılım Teknoloji Limited Şirketinin girişimidir.",
+      mapsAria: "Tallinn, Estonya konumunu Google Maps'te aç",
+      mailAria: "Score AI ekibine e-posta gönder",
+    },
   },
   en: {
     menuItems: ["Features", "How It Works?"],
@@ -260,7 +265,12 @@ const PAGE_COPY = {
       { question: "Is Score AI free?", answer: "During beta, users on the waitlist will get early access and special pricing. Details will be shared before launch." },
       { question: "When will it be available?", answer: "Access will be granted gradually based on waitlist order." },
     ],
-    footer: { rights: "© 2026 Score AI. All rights reserved.", mapsAria: "Open Tallinn, Estonia in Google Maps", mailAria: "Send email to Score AI team" },
+    footer: {
+      rights: "© 2026 Score AI. All rights reserved.",
+      disclosure: "Score AI is an initiative of Nera Reklam Pazarlama Yazılım Teknoloji Limited Şirketi.",
+      mapsAria: "Open Tallinn, Estonia in Google Maps",
+      mailAria: "Send email to Score AI team",
+    },
   },
 } as const;
 
@@ -1798,6 +1808,7 @@ export default function LandingPage() {
 
           <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/40">
             <p>{pageCopy.footer.rights}</p>
+            <p>{pageCopy.footer.disclosure}</p>
             <a
               href="mailto:info@usescore.net"
               className="flex items-center gap-1.5 transition hover:text-white"

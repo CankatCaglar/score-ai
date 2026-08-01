@@ -145,6 +145,12 @@ function buildBrandSystemPrompt(
       "- brand_consistency / brand_memory_match: Historical Content ve bağlı marka hesabı sinyallerini kullan.",
       "- historical_performance_match: Geçmiş içerik kaynakları varsa tutarlılık/performans uyumunu değerlendir; yoksa görsel-only sınırlı değerlendir ve bunu eksikliklerde belirt.",
       "- trust_building: Trust Proofs (sertifika, test, yorum) metinlerini dönüşüm güveni için kullan.",
+      "",
+      "ZORUNLU çıktı stili (Benchmark doluysa — kullanıcı sonuçlarda bunu görmeli):",
+      "- value_proposition / brand_tone: mevcut_durum, eksiklikler veya aksiyon_onerisi içinde Brand Promise'e açıkça değin (ör. 'Brand Promise...', 'marka vaadiniz...').",
+      "- differentiation: rakip adlarını veya 'Benchmark'taki rakiplerinize göre' ifadesini kullan; jenerik 'rakiplerden ayrışın' demek yetmez.",
+      "- trust_building: Trust Proofs varsa hangisinin kullanılmadığını yaz; yoksa Benchmark'ta güven kanıtı eksikliğini belirt.",
+      "- brand_memory_match / historical_performance_match / brand_consistency: 'geçmiş içerikleriniz / Historical Content' ile kıyasla veya eksikse bunu yaz.",
     );
   }
   return lines.join("\n");
@@ -163,6 +169,8 @@ function buildBusinessSystemPrompt(strategic: boolean) {
   if (strategic) {
     lines.push(
       "Strategic Brand Intelligence içinde Trust Proofs varsa conversion_potential değerlendirmesinde güven kanıtı etkisini dikkate al.",
+      "competitive_positioning: Benchmark Competitors verisine dayan; eksiklikler/aksiyon metninde rakip adını veya 'rakiplerinizin içerik temasına göre' ifadesini kullan.",
+      "decision_readiness / conversion_potential: Trust Proofs varsa (sertifika, yorum, test) kullanılmayan kanıtları aksiyonlarda belirt.",
     );
   }
   return lines.join("\n");

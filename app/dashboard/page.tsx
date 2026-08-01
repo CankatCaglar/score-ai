@@ -16,11 +16,16 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { DashboardOverview } from "@/lib/analysis/types";
+import { withReturnTo } from "@/lib/dashboard/return-navigation";
 
 const BRAND_DARK = "#00272c";
 
 const quickActions = [
-  { label: "Yeni Analiz Başlat", href: "/dashboard/yeni-analiz", icon: UploadCloud },
+  {
+    label: "Yeni Analiz Başlat",
+    href: withReturnTo("/dashboard/yeni-analiz", "/dashboard"),
+    icon: UploadCloud,
+  },
   { label: "Brand DNA'yı Güncelle", href: "/dashboard/brand-brain", icon: Brain },
   { label: "Benchmark Karşılaştır", href: "/dashboard/benchmark", icon: Target },
   { label: "Creative Memory", href: "/dashboard/creative-memory", icon: Sparkles },
@@ -163,7 +168,7 @@ export default function DashboardPage() {
           </p>
         </div>
         <Link
-          href="/dashboard/yeni-analiz"
+          href={withReturnTo("/dashboard/yeni-analiz", "/dashboard")}
           className="inline-flex shrink-0 items-center gap-2 self-start rounded-lg bg-brand-neon px-4 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
         >
           <Plus className="size-4" strokeWidth={2.25} />

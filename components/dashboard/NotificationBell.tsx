@@ -1,10 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, CheckCheck, Trash2, X } from "lucide-react";
+import { ArrowUpRight, Bell, CheckCheck, Trash2, X } from "lucide-react";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import type { AppNotification } from "@/lib/notifications/types";
+import {
+  NOTIFICATIONS_REFRESH_EVENT,
+  toastAnalysisCompleted,
+} from "@/lib/notifications/toast-analysis";
+
+const POLL_MS = 4000;
 
 function formatRelativeTime(iso: string): string {
   const date = new Date(iso);
@@ -24,17 +31,19 @@ function formatRelativeTime(iso: string): string {
 }
 
 export function NotificationBell() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
-  const fetchedOnce = useRef(false);
+  const knownIdsRef = useRef<Set<string>>(new Set());
+  const primedRef = useRef(false);
 
   useClickOutside(rootRef, () => setOpen(false));
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const res = await fetch("/api/dashboard/notifications");
       if (!res.ok) return;
@@ -42,26 +51,66 @@ export function NotificationBell() {
         notifications?: AppNotification[];
         unreadCount?: number;
       };
-      setNotifications(data.notifications ?? []);
-      setUnreadCount(data.unreadCount ?? 0);
+      const items = (data.notifications ?? []).filter(
+        (item) => item.type !== "analysis_started",
+      );
+      setNotifications(items);
+      setUnreadCount(items.filter((item) => !item.read).length);
+
+      if (!primedRef.current) {
+        for (const item of items) knownIdsRef.current.add(item.id);
+        primedRef.current = true;
+        return;
+      }
+
+      for (const item of items) {
+        if (knownIdsRef.current.has(item.id)) continue;
+        knownIdsRef.current.add(item.id);
+        if (item.type !== "analysis_completed" || item.read) continue;
+        toastAnalysisCompleted({
+          id: item.id,
+          title: item.title,
+          body: item.body,
+          href: item.href,
+          onOpen: (href) => {
+            router.push(href);
+          },
+        });
+      }
     } catch {
       // keep previous
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
-    if (!fetchedOnce.current) {
-      fetchedOnce.current = true;
-      void load();
-    }
+    void load();
   }, [load]);
 
   useEffect(() => {
     if (!open) return;
     void load();
   }, [open, load]);
+
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      void load({ silent: true });
+    };
+    const id = window.setInterval(tick, POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    const onRefresh = () => tick();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener(NOTIFICATIONS_REFRESH_EVENT, onRefresh);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener(NOTIFICATIONS_REFRESH_EVENT, onRefresh);
+    };
+  }, [load]);
 
   const markRead = async (id: string) => {
     setNotifications((prev) =>
@@ -213,28 +262,26 @@ export function NotificationBell() {
                           item.read ? "bg-white" : "bg-brand-neon/8"
                         }`}
                       >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!item.read) void markRead(item.id);
+                          }}
+                          className="flex min-w-0 flex-1 cursor-pointer gap-2 text-left"
+                        >
+                          {content}
+                        </button>
                         {item.href ? (
                           <Link
                             href={item.href}
-                            onClick={() => {
-                              if (!item.read) void markRead(item.id);
-                              setOpen(false);
-                            }}
-                            className="flex min-w-0 flex-1 gap-2 text-left"
+                            onClick={() => setOpen(false)}
+                            className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg text-brand-dark/35 transition-colors hover:bg-brand-dark/5 hover:text-brand-dark"
+                            aria-label="Bildirimi aç"
+                            title="Aç"
                           >
-                            {content}
+                            <ArrowUpRight className="size-3.5" strokeWidth={2} />
                           </Link>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!item.read) void markRead(item.id);
-                            }}
-                            className="flex min-w-0 flex-1 cursor-pointer gap-2 text-left"
-                          >
-                            {content}
-                          </button>
-                        )}
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => void remove(item.id)}

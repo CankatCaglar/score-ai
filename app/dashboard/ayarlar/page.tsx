@@ -855,7 +855,7 @@ function BildirimlerTab() {
             <NotifRow
               icon={MessageSquare}
               label="Analiz durumu"
-              desc="Analiz başladığında ve tamamlandığında bildirilir."
+              desc="Analiz tamamlandığında bildirim ve popup gösterilir."
               enabled={prefs.appAnalysisStatus}
               onChange={() => toggle("appAnalysisStatus")}
               disabled={loading || !prefs.appEnabled}

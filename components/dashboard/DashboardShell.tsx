@@ -1,14 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Logo } from "@/components/Logo";
 import { usePathname, useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import {
   BarChart3,
   Brain,
   ChevronDown,
-  ChevronLeft,
   HelpCircle,
   LayoutDashboard,
   LogOut,
@@ -22,8 +20,11 @@ import {
 import { toast } from "sonner";
 import { logoutUser } from "@/actions/auth";
 import { auth } from "@/lib/firebase";
+import { Logo } from "@/components/Logo";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
+import { DashboardBackProvider } from "@/components/dashboard/DashboardBackContext";
+import { DashboardHeaderBack } from "@/components/dashboard/DashboardHeaderBack";
 
 export type MembershipPlan = "normal" | "pro";
 
@@ -92,14 +93,16 @@ function NavLink({
   );
 }
 
+const HELP_CENTER_URL = "https://www.nerasocial.com/iletisim";
+
 function ProfilePopup({
   user,
   onClose,
-  onLogout,
+  onLogoutRequest,
 }: {
   user: DashboardUser;
   onClose: () => void;
-  onLogout: () => void;
+  onLogoutRequest: () => void;
 }) {
   return (
     <div className="absolute bottom-full left-0 right-0 z-50 mb-2 mx-2">
@@ -131,8 +134,10 @@ function ProfilePopup({
         </div>
 
         <div className="border-t border-brand-dark/8 px-2 py-1.5">
-          <Link
-            href="/dashboard/ayarlar"
+          <a
+            href={HELP_CENTER_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={onClose}
             className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-brand-dark/5"
           >
@@ -140,16 +145,16 @@ function ProfilePopup({
             <div className="min-w-0 text-left">
               <p className="text-sm font-medium text-brand-dark">Yardım Merkezi</p>
               <p className="text-[11px] text-brand-dark/45">
-                Destek ve sık sorulan sorular
+                Destek ve iletişim
               </p>
             </div>
-          </Link>
+          </a>
         </div>
 
         <div className="border-t border-brand-dark/8 px-2 py-1.5">
           <button
             type="button"
-            onClick={onLogout}
+            onClick={onLogoutRequest}
             className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-red-50"
           >
             <LogOut className="size-4 shrink-0 text-red-500" strokeWidth={1.75} />
@@ -248,7 +253,7 @@ function SidebarContent({
           <ProfilePopup
             user={user}
             onClose={() => setProfileOpen(false)}
-            onLogout={() => {
+            onLogoutRequest={() => {
               setProfileOpen(false);
               onLogout();
             }}
@@ -301,11 +306,17 @@ export function DashboardShell({
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const isAnalysisDetail = /^\/dashboard\/analizler\/.+/.test(pathname);
-  const isCreativeMemoryDetail = /^\/dashboard\/creative-memory\/.+/.test(pathname);
-  const isAnalizSonucu = pathname.startsWith("/dashboard/analiz-sonucu");
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const requestLogout = () => {
+    setMobileOpen(false);
+    setLogoutConfirmOpen(true);
+  };
 
   const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
     try {
       await logoutUser();
       await auth.signOut().catch(() => undefined);
@@ -314,95 +325,120 @@ export function DashboardShell({
       router.refresh();
     } catch {
       toast.error("Çıkış yapılamadı.");
+      setIsLoggingOut(false);
+      setLogoutConfirmOpen(false);
     }
   };
 
   return (
-    <div className="dashboard-ui flex h-dvh max-h-dvh overflow-hidden [&_a]:cursor-pointer [&_button:not(:disabled)]:cursor-pointer [&_input[type='checkbox']]:cursor-pointer [&_input[type='radio']]:cursor-pointer [&_label]:cursor-pointer **:[[role='button']]:cursor-pointer **:[[role='switch']]:cursor-pointer **:[[role='tab']]:cursor-pointer [&_summary]:cursor-pointer">
-      <aside className="hidden h-full w-64 shrink-0 flex-col bg-brand-dark text-white lg:flex">
-        <SidebarContent
-          pathname={pathname}
-          user={user}
-          onLogout={handleLogout}
-        />
-      </aside>
-
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
+    <DashboardBackProvider>
+      <div className="dashboard-ui flex h-dvh max-h-dvh overflow-hidden [&_a]:cursor-pointer [&_button:not(:disabled)]:cursor-pointer [&_input[type='checkbox']]:cursor-pointer [&_input[type='radio']]:cursor-pointer [&_label]:cursor-pointer **:[[role='button']]:cursor-pointer **:[[role='switch']]:cursor-pointer **:[[role='tab']]:cursor-pointer [&_summary]:cursor-pointer">
+        <aside className="hidden h-full w-64 shrink-0 flex-col bg-brand-dark text-white lg:flex">
+          <SidebarContent
+            pathname={pathname}
+            user={user}
+            onLogout={requestLogout}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-64 max-w-[80%] flex-col bg-brand-dark text-white shadow-xl">
-            <button
-              type="button"
+        </aside>
+
+        {mobileOpen && (
+          <div className="fixed inset-0 z-40 lg:hidden">
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
               onClick={() => setMobileOpen(false)}
-              className="absolute right-3 top-4 flex size-8 cursor-pointer items-center justify-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white"
-              aria-label="Menüyü kapat"
-            >
-              <X className="size-5" strokeWidth={1.75} />
-            </button>
-            <SidebarContent
-              pathname={pathname}
-              user={user}
-              onNavigate={() => setMobileOpen(false)}
-              onLogout={handleLogout}
             />
-          </aside>
+            <aside className="absolute inset-y-0 left-0 flex w-64 max-w-[80%] flex-col bg-brand-dark text-white shadow-xl">
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="absolute right-3 top-4 flex size-8 cursor-pointer items-center justify-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white"
+                aria-label="Menüyü kapat"
+              >
+                <X className="size-5" strokeWidth={1.75} />
+              </button>
+              <SidebarContent
+                pathname={pathname}
+                user={user}
+                onNavigate={() => setMobileOpen(false)}
+                onLogout={requestLogout}
+              />
+            </aside>
+          </div>
+        )}
+
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-y-contain bg-bg-offwhite">
+          <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 bg-bg-offwhite px-4 sm:px-6 lg:h-16 lg:px-8">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setMobileOpen(true)}
+                className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-brand-dark/70 transition-colors hover:bg-brand-dark/5 hover:text-brand-dark lg:hidden"
+                aria-label="Menüyü aç"
+              >
+                <Menu className="size-5" strokeWidth={1.75} />
+              </button>
+              <Suspense fallback={null}>
+                <DashboardHeaderBack />
+              </Suspense>
+            </div>
+
+            <div className="ml-auto flex items-center">
+              <NotificationBell />
+            </div>
+          </header>
+
+          <main className="min-w-0 flex-1 pb-[max(2rem,env(safe-area-inset-bottom))]">
+            {children}
+          </main>
         </div>
-      )}
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-y-contain bg-bg-offwhite">
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 bg-bg-offwhite px-4 sm:px-6 lg:h-16 lg:px-8">
-          <div className="flex min-w-0 items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setMobileOpen(true)}
-              className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-brand-dark/70 transition-colors hover:bg-brand-dark/5 hover:text-brand-dark lg:hidden"
-              aria-label="Menüyü aç"
+        {logoutConfirmOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-brand-dark/50 px-4"
+            onClick={() => {
+              if (!isLoggingOut) setLogoutConfirmOpen(false);
+            }}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl bg-bg-light p-6 shadow-2xl"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="logout-confirm-title"
+              onClick={(event) => event.stopPropagation()}
             >
-              <Menu className="size-5" strokeWidth={1.75} />
-            </button>
-            {isAnalysisDetail ? (
-              <Link
-                href="/dashboard/analizler"
-                className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark/50 transition-colors hover:text-brand-dark"
+              <h2
+                id="logout-confirm-title"
+                className="text-lg font-semibold text-brand-dark"
               >
-                <ChevronLeft className="size-4" strokeWidth={2} />
-                Analizler
-              </Link>
-            ) : isCreativeMemoryDetail ? (
-              <Link
-                href="/dashboard/creative-memory"
-                className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark/50 transition-colors hover:text-brand-dark"
-              >
-                <ChevronLeft className="size-4" strokeWidth={2} />
-                Creative Memory
-              </Link>
-            ) : isAnalizSonucu ? (
-              <Link
-                href="/dashboard/analizler"
-                className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark/50 transition-colors hover:text-brand-dark"
-              >
-                <ChevronLeft className="size-4" strokeWidth={2} />
-                Analiz Sonucu
-              </Link>
-            ) : (
-              <Link href="/dashboard" className="lg:hidden">
-                <Logo className="h-6 w-auto text-brand-dark" />
-              </Link>
-            )}
+                Çıkış yapmak istediğinize emin misiniz?
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-brand-dark/65">
+                Hesabınızdan güvenli şekilde çıkış yapılacak. Tekrar giriş yaparak
+                kaldığınız yerden devam edebilirsiniz.
+              </p>
+              <div className="mt-5 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={isLoggingOut}
+                  onClick={() => setLogoutConfirmOpen(false)}
+                  className="rounded-lg border border-brand-dark/10 px-3.5 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="button"
+                  disabled={isLoggingOut}
+                  onClick={handleLogout}
+                  className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3.5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <LogOut className="size-4" strokeWidth={2} />
+                  {isLoggingOut ? "Çıkış yapılıyor..." : "Evet, Çıkış Yap"}
+                </button>
+              </div>
+            </div>
           </div>
-
-          <div className="ml-auto flex items-center">
-            <NotificationBell />
-          </div>
-        </header>
-
-        <main className="min-w-0 flex-1 pb-[max(2rem,env(safe-area-inset-bottom))]">
-          {children}
-        </main>
+        )}
       </div>
-    </div>
+    </DashboardBackProvider>
   );
 }

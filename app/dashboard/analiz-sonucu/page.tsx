@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -22,6 +22,9 @@ import { SocialShareMenu } from "@/components/dashboard/SocialShareMenu";
 import { assessPotentialImageEligibility } from "@/lib/analysis/edge-cases";
 import { summarizeAiCommentary } from "@/lib/analysis/insight-summary";
 import type { Analysis } from "@/lib/analysis/types";
+import { useRegisterDashboardBack } from "@/components/dashboard/DashboardBackContext";
+import { withReturnTo } from "@/lib/dashboard/return-navigation";
+import { requestNotificationsRefresh } from "@/lib/notifications/toast-analysis";
 
 const CANVA_MAGIC_LAYERS_URL = "https://www.canva.com/?highlight=magicLayers";
 
@@ -202,6 +205,7 @@ function AnalizSonucuPageContent() {
   const [openingCanva, setOpeningCanva] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [canvaError, setCanvaError] = useState<string | null>(null);
+  const previousJobStatusRef = useRef<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -223,7 +227,15 @@ function AnalizSonucuPageContent() {
         }
         const data = (await response.json()) as ResultPayload;
         setPayload(data);
-        const status = data.analysis?.jobStatus;
+        const status = data.analysis?.jobStatus ?? null;
+        const previous = previousJobStatusRef.current;
+        previousJobStatusRef.current = status;
+        if (
+          status === "completed" &&
+          (previous === "pending" || previous === "processing")
+        ) {
+          requestNotificationsRefresh();
+        }
         if (status === "pending" || status === "processing") {
           pollTimer = setTimeout(() => {
             void load(true);
@@ -277,6 +289,15 @@ function AnalizSonucuPageContent() {
   const detailHref = payload?.analysis?.slug
     ? `/dashboard/analizler/${payload.analysis.slug}`
     : "/dashboard/analizler";
+
+  useRegisterDashboardBack(
+    payload?.analysis?.slug
+      ? {
+          href: `/dashboard/analizler/${payload.analysis.slug}`,
+          label: "Analiz",
+        }
+      : null,
+  );
 
   useEffect(() => {
     if (!focusSonuc || loading || !isCompleted) return;
@@ -639,7 +660,10 @@ function AnalizSonucuPageContent() {
                 ))}
               </ul>
               <Link
-                href="/dashboard/yeni-analiz"
+                href={withReturnTo(
+                  "/dashboard/yeni-analiz",
+                  "/dashboard/analiz-sonucu",
+                )}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand-dark px-3 py-2 text-xs font-semibold text-brand-neon transition-opacity hover:opacity-90"
               >
                 Yeni analiz başlat
