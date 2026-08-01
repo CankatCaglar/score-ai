@@ -78,22 +78,24 @@ export function summarizeBenchmarkCommentary(
   if (!analysis?.criteriaEvaluations) return empty;
   if (!analysisHasBenchmarkContext(analysis)) return empty;
 
-  const items: BenchmarkInsightItem[] = BENCHMARK_COMMENTARY_CRITERION_IDS.map(
+  const items: BenchmarkInsightItem[] = BENCHMARK_COMMENTARY_CRITERION_IDS.flatMap(
     (id) => {
       const evaluation = analysis.criteriaEvaluations?.[id] as
         | CriterionEvaluation
         | undefined;
-      if (!evaluation) return null;
-      return {
-        id,
-        label: benchmarkLabel(id),
-        seviye: evaluation.seviye,
-        status: evaluation.mevcut_durum?.trim() || "",
-        gap: evaluation.eksiklikler?.trim() || "",
-        action: evaluation.aksiyon_onerisi?.trim() || "",
-      };
+      if (!evaluation) return [];
+      return [
+        {
+          id,
+          label: benchmarkLabel(id),
+          seviye: evaluation.seviye,
+          status: evaluation.mevcut_durum?.trim() || "",
+          gap: evaluation.eksiklikler?.trim() || "",
+          action: evaluation.aksiyon_onerisi?.trim() || "",
+        },
+      ];
     },
-  ).filter((item): item is BenchmarkInsightItem => Boolean(item));
+  );
 
   if (items.length === 0) return empty;
 
