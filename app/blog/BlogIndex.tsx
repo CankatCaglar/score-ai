@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, CalendarDays, Mail, MapPin, Menu, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { LiveSupportWidget } from "@/components/landing/LiveSupportWidget";
 
 const PAGE_CONTAINER =
   "mx-auto w-full max-w-[1880px] px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12";
@@ -51,6 +52,7 @@ const COPY = {
       privacy: "Gizlilik Politikası",
       terms: "Kullanım Koşulları",
       rights: "© 2026 Score AI. Tüm Hakları Saklıdır.",
+      disclosure: "Score AI, Nera Reklam Pazarlama Yazılım Teknoloji Limited Şirketinin girişimidir.",
       mapsLabel: "Tallinn, Estonya konumunu Google Maps'te aç",
       mapsText: "Tallinn, Estonya",
       mailLabel: "Score AI ekibine e-posta gönder",
@@ -80,6 +82,7 @@ const COPY = {
       privacy: "Privacy Policy",
       terms: "Terms",
       rights: "© 2026 Score AI. All rights reserved.",
+      disclosure: "Score AI is an initiative of Nera Reklam Pazarlama Yazılım Teknoloji Limited Şirketi.",
       mapsLabel: "Open Tallinn, Estonia in Google Maps",
       mapsText: "Tallinn, Estonia",
       mailLabel: "Send email to Score AI team",
@@ -313,7 +316,7 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
         </section>
       </main>
 
-      <footer className="relative overflow-hidden bg-brand-dark pb-10 pt-16">
+      <footer className="relative overflow-hidden bg-brand-dark pb-20 pt-16">
         <p className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 select-none text-[28vw] leading-none font-black text-white/3 md:text-[12rem]">
           SCORE
         </p>
@@ -384,6 +387,7 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
 
           <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/40">
             <p>{copy.footer.rights}</p>
+            <p>{copy.footer.disclosure}</p>
             <a
               href="mailto:info@usescore.net"
               className="flex items-center gap-1.5 transition hover:text-white"
@@ -405,6 +409,8 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
           </div>
         </div>
       </footer>
+
+      <LiveSupportWidget locale={locale} />
     </div>
   );
 }

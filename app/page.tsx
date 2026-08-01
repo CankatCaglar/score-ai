@@ -30,6 +30,7 @@ import {
   DashboardScreenshot,
   MacbookFrame,
 } from "@/components/landing/DashboardScreenshot";
+import { LiveSupportWidget } from "@/components/landing/LiveSupportWidget";
 import { joinWaitlist } from "@/actions/waitlist";
 
 const PAGE_CONTAINER =
@@ -1674,7 +1675,7 @@ export default function LandingPage() {
       </section>
 
       {/* FOOTER */}
-      <footer className="relative overflow-hidden bg-brand-dark pb-10 pt-16">
+      <footer className="relative overflow-hidden bg-brand-dark pb-20 pt-12">
         <p className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 text-[28vw] font-black leading-none text-white/3 select-none md:text-[12rem]">
           SCORE
         </p>
@@ -1830,6 +1831,8 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      <LiveSupportWidget locale={locale} />
     </div>
   );
 }
