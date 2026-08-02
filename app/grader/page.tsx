@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getCurrentUserSession } from "@/actions/auth";
+import { ADMIN_COOKIE_NAME, verifySessionToken } from "@/lib/admin-auth";
 import { listAnalysesByGuestId } from "@/lib/analysis/repository";
 import { GraderClient } from "./GraderClient";
 import {
@@ -18,20 +19,24 @@ export default async function GraderPage() {
   }
 
   const cookieStore = await cookies();
+  const isAdmin = Boolean(
+    verifySessionToken(cookieStore.get(ADMIN_COOKIE_NAME)?.value),
+  );
   const graderLockToken = cookieStore.get(GRADER_LOCK_COOKIE_NAME)?.value;
   const guestToken = cookieStore.get(GRADER_GUEST_COOKIE_NAME)?.value;
   const guestId = verifyGraderGuestToken(guestToken)?.guestId;
   const lockedByCookie = Boolean(verifyGraderLockToken(graderLockToken));
 
   let existingSlug: string | null = null;
-  if (guestId) {
+  if (!isAdmin && guestId) {
     const existing = await listAnalysesByGuestId(guestId);
     const primary =
       existing.find((item) => item.jobStatus === "completed") ?? existing[0];
     existingSlug = primary?.slug ?? null;
   }
 
-  const isFreeUsed = lockedByCookie || Boolean(existingSlug);
+  // Admin waitlist test: kilidi UI'da gösterme.
+  const isFreeUsed = !isAdmin && (lockedByCookie || Boolean(existingSlug));
 
   return (
     <GraderClient

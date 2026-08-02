@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { ArrowRight, Bot, ImageIcon, PartyPopper, Sparkles } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ScoreRing } from "@/app/dashboard/analizler/ScoreRing";
@@ -121,28 +121,29 @@ function writeCachedResult(result: GraderResult) {
 export function GraderReportClient({ slug }: { slug: string }) {
   const [locale, setLocale] = useState<GraderLocale>("tr");
   const [localeReady, setLocaleReady] = useState(false);
-  const [result, setResult] = useState<GraderResult | null>(() =>
-    typeof window === "undefined" ? null : readCachedResult(slug),
-  );
+  // SSR + ilk client render aynı olmalı (sessionStorage burada okunursa hydration patlar).
+  const [result, setResult] = useState<GraderResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Resume waiting immediately after /grader → /grader/[slug] so progress doesn't "restart".
-  const [waitingForJob, setWaitingForJob] = useState(() => {
-    if (typeof window === "undefined") return false;
-    if (readCachedResult(slug)) {
-      clearGraderWait(slug);
-      return false;
-    }
-    return hasActiveGraderWait(slug);
-  });
-  const [bootstrapping, setBootstrapping] = useState(() => {
-    if (typeof window === "undefined") return true;
-    if (readCachedResult(slug)) return false;
-    // Active wait from submit: skip white bootstrap flash.
-    return !hasActiveGraderWait(slug);
-  });
+  const [waitingForJob, setWaitingForJob] = useState(false);
+  const [bootstrapping, setBootstrapping] = useState(true);
   const [tipIndex, setTipIndex] = useState(0);
 
   const t = GRADER_COPY[locale];
+
+  useLayoutEffect(() => {
+    const cached = readCachedResult(slug);
+    if (cached) {
+      clearGraderWait(slug);
+      setResult(cached);
+      setWaitingForJob(false);
+      setBootstrapping(false);
+      return;
+    }
+    if (hasActiveGraderWait(slug)) {
+      setWaitingForJob(true);
+      setBootstrapping(false);
+    }
+  }, [slug]);
 
   useEffect(() => {
     setLocale(getDefaultGraderLocale());

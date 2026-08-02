@@ -1,5 +1,6 @@
 import { after, NextResponse } from "next/server";
-import { getAuthenticatedDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
+import { hasAdminSessionFromCookieHeader } from "@/lib/admin-auth";
+import { getVerifiedUserEmailFromCookieHeader } from "@/lib/analysis/auth";
 import {
   assertCanCreateAnalysis,
   consumeFreeAnalysis,
@@ -64,7 +65,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "GRADER_CLOSED" }, { status: 403 });
   }
 
-  if (!allowIp(clientIp(request))) {
+  const isAdmin = hasAdminSessionFromCookieHeader(cookieHeader);
+
+  if (!isAdmin && !allowIp(clientIp(request))) {
     return NextResponse.json(
       {
         error: "RATE_LIMITED",
@@ -74,26 +77,29 @@ export async function POST(request: Request) {
     );
   }
 
-  const loggedInEmail =
-    getAuthenticatedDashboardUserEmailFromCookieHeader(cookieHeader);
+  // Admin cookie erişim kapısıdır; Grader'da "giriş yapmış kullanıcı" sayılmaz.
+  // Böylece waitlist'te admin gerçek guest akışını tekrar tekrar test edebilir.
+  const loggedInEmail = getVerifiedUserEmailFromCookieHeader(cookieHeader);
   const graderLockSubject = getGraderLockSubjectFromCookieHeader(cookieHeader);
   const formData = await request.formData();
 
   if (loggedInEmail) {
-    try {
-      await assertCanCreateAnalysis(loggedInEmail);
-    } catch (error) {
-      if (error instanceof Error && error.name === "NO_FREE_ANALYSES") {
-        return NextResponse.json(
-          {
-            error: "NO_FREE_ANALYSES",
-            message:
-              "Ücretsiz analiz hakkınızı kullandınız. Dashboard'dan planınızı kontrol edin.",
-          },
-          { status: 402 },
-        );
+    if (!isAdmin) {
+      try {
+        await assertCanCreateAnalysis(loggedInEmail);
+      } catch (error) {
+        if (error instanceof Error && error.name === "NO_FREE_ANALYSES") {
+          return NextResponse.json(
+            {
+              error: "NO_FREE_ANALYSES",
+              message:
+                "Ücretsiz analiz hakkınızı kullandınız. Dashboard'dan planınızı kontrol edin.",
+            },
+            { status: 402 },
+          );
+        }
+        throw error;
       }
-      throw error;
     }
 
     const result = await runAnalysisJobSubmission({
@@ -110,7 +116,9 @@ export async function POST(request: Request) {
     }
 
     scheduleAnalysisProcessing();
-    await consumeFreeAnalysis(loggedInEmail);
+    if (!isAdmin) {
+      await consumeFreeAnalysis(loggedInEmail);
+    }
 
     const response = NextResponse.json(
       {
@@ -124,23 +132,25 @@ export async function POST(request: Request) {
       { status: result.status },
     );
 
-    response.cookies.set(
-      GRADER_LOCK_COOKIE_NAME,
-      createGraderLockToken(loggedInEmail),
-      {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: GRADER_LOCK_TTL_SECONDS,
-      },
-    );
-    response.cookies.delete(GRADER_GUEST_COOKIE_NAME);
+    if (!isAdmin) {
+      response.cookies.set(
+        GRADER_LOCK_COOKIE_NAME,
+        createGraderLockToken(loggedInEmail),
+        {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: GRADER_LOCK_TTL_SECONDS,
+        },
+      );
+      response.cookies.delete(GRADER_GUEST_COOKIE_NAME);
+    }
     return response;
   }
 
   const existingGuestId = getGraderGuestIdFromCookieHeader(cookieHeader);
-  if (graderLockSubject) {
+  if (graderLockSubject && !isAdmin) {
     const lockedExisting = existingGuestId
       ? await listAnalysesByGuestId(existingGuestId)
       : [];
@@ -166,7 +176,13 @@ export async function POST(request: Request) {
     issueGuestCookie = true;
   }
 
-  const existing = await listAnalysesByGuestId(guestId);
+  // Admin test: her seferinde taze guest kimliği — eski 1-analiz kaydına takılma.
+  if (isAdmin) {
+    guestId = createGraderGuestId();
+    issueGuestCookie = true;
+  }
+
+  const existing = isAdmin ? [] : await listAnalysesByGuestId(guestId);
   const primary =
     existing.find((item) => item.jobStatus === "completed") ?? existing[0];
 
@@ -224,18 +240,22 @@ export async function POST(request: Request) {
     { status: result.status },
   );
 
-  // İlk ücretsiz hakkı tüketildi: geri gelip yeni analiz açılamasın.
-  response.cookies.set(
-    GRADER_LOCK_COOKIE_NAME,
-    createGraderLockToken(`guest:${guestId}`),
-    {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: GRADER_LOCK_TTL_SECONDS,
-    },
-  );
+  // Normal kullanıcı: kilitle. Admin: kilitleme — tekrar test edebilsin.
+  if (!isAdmin) {
+    response.cookies.set(
+      GRADER_LOCK_COOKIE_NAME,
+      createGraderLockToken(`guest:${guestId}`),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: GRADER_LOCK_TTL_SECONDS,
+      },
+    );
+  } else {
+    response.cookies.delete(GRADER_LOCK_COOKIE_NAME);
+  }
 
   if (issueGuestCookie) {
     response.cookies.set(GRADER_GUEST_COOKIE_NAME, createGraderGuestToken(guestId), {

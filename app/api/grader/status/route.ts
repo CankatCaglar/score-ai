@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasAdminSessionFromCookieHeader } from "@/lib/admin-auth";
 import { listAnalysesByGuestId } from "@/lib/analysis/repository";
 import { assertGraderApiAccess } from "@/lib/grader/access";
 import {
@@ -10,6 +11,15 @@ export async function GET(request: Request) {
   const cookieHeader = request.headers.get("cookie");
   if (!assertGraderApiAccess(cookieHeader)) {
     return NextResponse.json({ error: "GRADER_CLOSED" }, { status: 403 });
+  }
+
+  // Admin waitlist test: UI'yi kilitli gösterme.
+  if (hasAdminSessionFromCookieHeader(cookieHeader)) {
+    return NextResponse.json({
+      freeUsed: false,
+      existingSlug: null,
+      adminBypass: true,
+    });
   }
 
   const locked = Boolean(getGraderLockSubjectFromCookieHeader(cookieHeader));

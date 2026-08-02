@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasAdminSessionFromCookieHeader } from "@/lib/admin-auth";
 import { getDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
 import {
   assertCanCreateAnalysis,
@@ -12,27 +13,31 @@ import {
 } from "@/lib/grader-auth";
 
 export async function POST(request: Request) {
-  const ownerEmail = getDashboardUserEmailFromCookieHeader(
-    request.headers.get("cookie"),
-  );
+  const cookieHeader = request.headers.get("cookie");
+  const ownerEmail = getDashboardUserEmailFromCookieHeader(cookieHeader);
   if (!ownerEmail) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  try {
-    await assertCanCreateAnalysis(ownerEmail);
-  } catch (error) {
-    if (error instanceof Error && error.name === "NO_FREE_ANALYSES") {
-      return NextResponse.json(
-        {
-          error: "NO_FREE_ANALYSES",
-          message:
-            "Ücretsiz analiz hakkınızı kullandınız. Daha fazla analiz için planınızı yükseltin.",
-        },
-        { status: 402 },
-      );
+  // Waitlist döneminde admin testlerini 1 ücretsiz hak kilidine takma.
+  const isAdmin = hasAdminSessionFromCookieHeader(cookieHeader);
+
+  if (!isAdmin) {
+    try {
+      await assertCanCreateAnalysis(ownerEmail);
+    } catch (error) {
+      if (error instanceof Error && error.name === "NO_FREE_ANALYSES") {
+        return NextResponse.json(
+          {
+            error: "NO_FREE_ANALYSES",
+            message:
+              "Ücretsiz analiz hakkınızı kullandınız. Daha fazla analiz için planınızı yükseltin.",
+          },
+          { status: 402 },
+        );
+      }
+      throw error;
     }
-    throw error;
   }
 
   const formData = await request.formData();
@@ -45,7 +50,9 @@ export async function POST(request: Request) {
     );
   }
 
-  await consumeFreeAnalysis(ownerEmail);
+  if (!isAdmin) {
+    await consumeFreeAnalysis(ownerEmail);
+  }
 
   const response = NextResponse.json(
     {

@@ -79,6 +79,21 @@ export function getAuthenticatedDashboardUserEmailFromCookieHeader(
   return null;
 }
 
+/**
+ * Yalnızca doğrulanmış Firebase kullanıcı oturumu.
+ * Admin cookie'yi saymaz — waitlist'te admin Grader'ı guest gibi test edebilsin.
+ */
+export function getVerifiedUserEmailFromCookieHeader(
+  cookieHeader: string | null,
+): string | null {
+  const userToken = getCookieValue(cookieHeader, USER_COOKIE_NAME);
+  const userSession = verifyUserSessionToken(userToken);
+  if (userSession?.email && userSession.emailVerified) {
+    return normalizeEmail(userSession.email);
+  }
+  return null;
+}
+
 export async function getCurrentDashboardUserEmail(): Promise<string | null> {
   const cookieStore = await cookies();
   const email = getDashboardUserEmailFromCookieHeader(

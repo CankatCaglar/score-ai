@@ -178,22 +178,20 @@ export function GraderClient({
       };
 
       if (!response.ok) {
+        // 402 = ücretsiz hak bitmiş; analiz "yarıda kesildi" gibi görünmesin.
         if (
-          (data.error === "GUEST_LIMIT" || data.error === "FREE_ALREADY_USED") &&
-          data.slug
-        ) {
-          bindGraderWaitToSlug(data.slug);
-          router.replace(`/grader/${data.slug}`);
-          return;
-        }
-        if (
-          data.error === "NO_FREE_ANALYSES" ||
           data.error === "GUEST_LIMIT" ||
-          data.error === "FREE_ALREADY_USED"
+          data.error === "FREE_ALREADY_USED" ||
+          data.error === "NO_FREE_ANALYSES"
         ) {
           setFreeUsedLocked(true);
-          setError(t.freeUsedApiError);
           setSubmitting(false);
+          if (data.slug) {
+            setExistingSlug(data.slug);
+            router.replace(`/grader/${data.slug}`);
+            return;
+          }
+          setError(t.freeUsedApiError);
           return;
         }
         throw new Error(data.message || t.genericSubmitError);

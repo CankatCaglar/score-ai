@@ -71,6 +71,25 @@ function safeEqual(a: string, b: string): boolean {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
+function getCookieValue(cookieHeader: string | null, key: string): string | null {
+  if (!cookieHeader) return null;
+  return (
+    cookieHeader
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${key}=`))
+      ?.split("=")[1] ?? null
+  );
+}
+
+/** Waitlist/admin test: scoreai_admin cookie geçerliyse true. */
+export function hasAdminSessionFromCookieHeader(
+  cookieHeader: string | null,
+): boolean {
+  const token = getCookieValue(cookieHeader, ADMIN_COOKIE_NAME);
+  return Boolean(verifySessionToken(token));
+}
+
 /** .env.local'daki ADMIN_EMAIL + ADMIN_PASSWORD ile karşılaştırır (timing-safe). */
 export function verifyCredentials(email: string, password: string): boolean {
   const adminEmail = process.env.ADMIN_EMAIL;
