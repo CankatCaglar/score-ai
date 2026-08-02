@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
+import { getVerifiedUserEmailFromCookieHeader } from "@/lib/analysis/auth";
 import {
   getAnalysisById,
   getAnalysisByIdForGuest,
@@ -22,8 +22,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "MISSING_ID" }, { status: 400 });
   }
 
-  const loggedInEmail =
-    getAuthenticatedDashboardUserEmailFromCookieHeader(cookieHeader);
+  // Jobs ile aynı kimlik: yalnızca verified Firebase user.
+  // Admin cookie burada "owner" sayılırsa guest analizi 404 olur.
+  const loggedInEmail = getVerifiedUserEmailFromCookieHeader(cookieHeader);
   if (loggedInEmail) {
     const analysis = analysisId
       ? await getAnalysisById(loggedInEmail, analysisId)

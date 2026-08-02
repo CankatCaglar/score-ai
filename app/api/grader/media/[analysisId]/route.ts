@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
+import { getVerifiedUserEmailFromCookieHeader } from "@/lib/analysis/auth";
 import {
   getAdminDb,
   getAdminStorage,
@@ -79,8 +79,8 @@ export async function GET(request: Request, { params }: Params) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 
-  const loggedInEmail =
-    getAuthenticatedDashboardUserEmailFromCookieHeader(cookieHeader);
+  // Jobs/result ile aynı: admin cookie owner sayılmaz; guest analizi bozulmasın.
+  const loggedInEmail = getVerifiedUserEmailFromCookieHeader(cookieHeader);
   const guestId = getGraderGuestIdFromCookieHeader(cookieHeader);
   const allowed =
     (loggedInEmail && source.ownerEmail === loggedInEmail) ||
