@@ -92,6 +92,19 @@ export function getFastAnthropicModel() {
   );
 }
 
+function isModelUnavailableError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("not_found_error") ||
+    lower.includes("model_not_found") ||
+    lower.includes("does not exist") ||
+    lower.includes("invalid model") ||
+    (lower.includes("model") && lower.includes("not found")) ||
+    lower.includes("404")
+  );
+}
+
 /** Sonnet 5 defaults to adaptive thinking (expensive). Scoring only needs JSON. */
 function buildMessageCreateParams(params: {
   model: string;
@@ -813,7 +826,8 @@ export async function analyzeCategoryWithAnthropic(
 ): Promise<AnalyzeCategoryResult> {
   const client = getAnthropicClient();
   const fast = Boolean(input.fast);
-  const modelUsed = fast ? getFastAnthropicModel() : getAnthropicModel();
+  const primaryModel = fast ? getFastAnthropicModel() : getAnthropicModel();
+  const fallbackModel = getAnthropicModel();
   const timeoutMs = fast
     ? Math.min(getTimeoutMs(), 45_000)
     : getTimeoutMs();
@@ -860,12 +874,15 @@ export async function analyzeCategoryWithAnthropic(
 
   try {
     let lastError: unknown;
+    let modelUsed = primaryModel;
+    let fellBackFromFast = false;
+
     for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
       try {
         const maxTokens = categoryMaxTokens(
           input.criteriaKeys.length,
           attempt,
-          fast,
+          fast && !fellBackFromFast,
         );
         const response = await withTimeout(
           client.messages.create(
@@ -919,6 +936,23 @@ export async function analyzeCategoryWithAnthropic(
         };
       } catch (error) {
         lastError = error;
+
+        // Haiku yok / erişilemiyor → aynı API key ile Sonnet'e düş (env zorunlu değil).
+        if (
+          fast &&
+          !fellBackFromFast &&
+          modelUsed !== fallbackModel &&
+          isModelUnavailableError(error)
+        ) {
+          console.warn(
+            `[anthropic] fast model unavailable (${modelUsed}), falling back to ${fallbackModel}`,
+            error instanceof Error ? error.message : error,
+          );
+          modelUsed = fallbackModel;
+          fellBackFromFast = true;
+          continue;
+        }
+
         if (attempt >= maxRetries || !isRetryableAnthropicError(error)) {
           throw error;
         }

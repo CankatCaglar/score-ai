@@ -178,7 +178,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
         try {
           const response = await fetch(
             `/api/grader/result?slug=${encodeURIComponent(slug)}`,
-            { cache: "no-store" },
+            { cache: "no-store", credentials: "same-origin" },
           );
           const data = (await response.json().catch(() => ({}))) as {
             analysis?: GraderResult;
@@ -187,7 +187,14 @@ export function GraderReportClient({ slug }: { slug: string }) {
           };
 
           if (!response.ok || !data.analysis) {
+            // Guest cookie Set-Cookie sonrası ilk poll bazen 401 gelebilir; hemen bırakma.
             if (response.status === 401 || response.status === 404) {
+              if (attempt < 4) {
+                await new Promise((resolve) =>
+                  window.setTimeout(resolve, 400 * (attempt + 1)),
+                );
+                continue;
+              }
               clearGraderWait(slug);
               if (!cached) {
                 setError(data.message || t.genericSubmitError);
