@@ -532,8 +532,10 @@ export async function runAnalysisJobSubmission(input: {
   ownerEmail: string;
   formData: FormData;
   guestId?: string;
+  /** When false, create the job and return immediately (caller must process). */
+  waitForCompletion?: boolean;
 }): Promise<AnalysisJobSubmissionResult> {
-  const { ownerEmail, formData, guestId } = input;
+  const { ownerEmail, formData, guestId, waitForCompletion = true } = input;
   const sourceUrl = normalizeIncomingSourceUrl(String(formData.get("sourceUrl") ?? ""));
   const platformType: Platform = "instagram";
   const file = formData.get("file");
@@ -620,6 +622,16 @@ export async function runAnalysisJobSubmission(input: {
     originalFileName,
     sizeBytes,
   });
+
+  // Grader (and similar) can return immediately and process in `after()`.
+  if (!waitForCompletion) {
+    return {
+      ok: true,
+      status: 202,
+      ...result,
+      jobStatus: "pending",
+    };
+  }
 
   // Keep request open until job finishes so loading UI stays until done.
   await processPendingAnalysisJobs(1);

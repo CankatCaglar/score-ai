@@ -1,11 +1,14 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { getAuthenticatedDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
 import {
   assertCanCreateAnalysis,
   consumeFreeAnalysis,
 } from "@/lib/analysis/credits";
 import { runAnalysisJobSubmission } from "@/lib/analysis/submit-job";
-import { listAnalysesByGuestId } from "@/lib/analysis/repository";
+import {
+  listAnalysesByGuestId,
+  processPendingAnalysisJobs,
+} from "@/lib/analysis/repository";
 import { assertGraderApiAccess } from "@/lib/grader/access";
 import {
   GRADER_GUEST_COOKIE_NAME,
@@ -19,6 +22,19 @@ import {
   createGraderLockToken,
   guestOwnerEmail,
 } from "@/lib/grader-auth";
+
+function scheduleAnalysisProcessing() {
+  after(async () => {
+    try {
+      await processPendingAnalysisJobs(1);
+    } catch (error) {
+      console.error(
+        "[grader/jobs] background processPendingAnalysisJobs failed",
+        error instanceof Error ? error.message : error,
+      );
+    }
+  });
+}
 
 const ipHits = new Map<string, { count: number; resetAt: number }>();
 const IP_WINDOW_MS = 60 * 60 * 1000;
@@ -83,6 +99,7 @@ export async function POST(request: Request) {
     const result = await runAnalysisJobSubmission({
       ownerEmail: loggedInEmail,
       formData,
+      waitForCompletion: false,
     });
 
     if (!result.ok) {
@@ -92,6 +109,7 @@ export async function POST(request: Request) {
       );
     }
 
+    scheduleAnalysisProcessing();
     await consumeFreeAnalysis(loggedInEmail);
 
     const response = NextResponse.json(
@@ -182,6 +200,7 @@ export async function POST(request: Request) {
     ownerEmail,
     formData,
     guestId,
+    waitForCompletion: false,
   });
 
   if (!result.ok) {
@@ -190,6 +209,8 @@ export async function POST(request: Request) {
       { status: result.status },
     );
   }
+
+  scheduleAnalysisProcessing();
 
   const response = NextResponse.json(
     {

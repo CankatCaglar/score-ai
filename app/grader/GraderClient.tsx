@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ChevronRight, UploadCloud, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import {
@@ -15,6 +15,8 @@ import {
   AnalysisWaitingScreen,
   GRADER_SHELL_PAD,
   LocaleToggle,
+  bindGraderWaitToSlug,
+  markGraderWaitPending,
 } from "./shared";
 import "./grader.css";
 
@@ -33,13 +35,13 @@ export function GraderClient({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stepIndex, setStepIndex] = useState(0);
   const [tipIndex, setTipIndex] = useState(0);
   const [freeUsedLocked, setFreeUsedLocked] = useState(initialFreeUsed);
   const [existingSlug, setExistingSlug] = useState<string | null>(
     initialExistingSlug,
   );
   const [heroVisualReady, setHeroVisualReady] = useState(false);
+  const heroImgRef = useRef<HTMLImageElement>(null);
 
   const t = GRADER_COPY[locale];
   const heroVisualSrc =
@@ -47,7 +49,14 @@ export function GraderClient({
       ? "/grader/hero-visual-en.png"
       : "/grader/hero-visual-tr.png";
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // Cached images often fire onLoad before React attaches the handler, then a
+    // naive reset can leave ready=false forever. Re-check after src mounts.
+    const img = heroImgRef.current;
+    if (img?.complete && img.naturalWidth > 0) {
+      setHeroVisualReady(true);
+      return;
+    }
     setHeroVisualReady(false);
   }, [heroVisualSrc]);
 
@@ -147,13 +156,8 @@ export function GraderClient({
     }
 
     setSubmitting(true);
-    setStepIndex(0);
     setTipIndex(0);
-    const timer = window.setInterval(() => {
-      setStepIndex((prev) =>
-        prev < t.loadingSteps.length - 1 ? prev + 1 : prev,
-      );
-    }, 1400);
+    markGraderWaitPending();
 
     try {
       const formData = new FormData();
@@ -178,7 +182,8 @@ export function GraderClient({
           (data.error === "GUEST_LIMIT" || data.error === "FREE_ALREADY_USED") &&
           data.slug
         ) {
-          router.push(`/grader/${data.slug}`);
+          bindGraderWaitToSlug(data.slug);
+          router.replace(`/grader/${data.slug}`);
           return;
         }
         if (
@@ -188,6 +193,7 @@ export function GraderClient({
         ) {
           setFreeUsedLocked(true);
           setError(t.freeUsedApiError);
+          setSubmitting(false);
           return;
         }
         throw new Error(data.message || t.genericSubmitError);
@@ -198,14 +204,14 @@ export function GraderClient({
       }
 
       if (data.mode === "authenticated") {
-        window.location.href =
-          data.jobStatus === "completed"
-            ? `/dashboard/analiz-sonucu?id=${data.analysisId}`
-            : `/dashboard/analizler/${data.slug}`;
+        // Job runs in the background; analiz-sonucu polls until complete.
+        window.location.href = `/dashboard/analiz-sonucu?id=${data.analysisId}`;
         return;
       }
 
-      router.push(`/grader/${data.slug}`);
+      // Same wait clock continues on the report page — no progress reset.
+      bindGraderWaitToSlug(data.slug);
+      router.replace(`/grader/${data.slug}`);
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -213,8 +219,6 @@ export function GraderClient({
           : t.genericSubmitError,
       );
       setSubmitting(false);
-    } finally {
-      window.clearInterval(timer);
     }
   };
 
@@ -444,6 +448,7 @@ export function GraderClient({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               key={heroVisualSrc}
+              ref={heroImgRef}
               src={heroVisualSrc}
               alt=""
               className={`block h-auto w-full object-contain transition-opacity ${
@@ -453,19 +458,10 @@ export function GraderClient({
               onError={() => setHeroVisualReady(false)}
             />
             {!heroVisualReady ? (
-              <div className="flex aspect-4/3 items-center justify-center rounded-2xl bg-[#f4f7f5] px-6 text-center">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#0b1f22]/40">
-                    {t.visualSlotLabel}
-                  </p>
-                  <p className="mt-2 text-sm text-[#0b1f22]/55">
-                    {t.visualSlotHintBefore}{" "}
-                    <span className="font-medium text-[#0b1f22]">
-                      {t.visualSlotPath}
-                    </span>
-                  </p>
-                </div>
-              </div>
+              <div
+                className="flex aspect-4/3 animate-pulse items-center justify-center rounded-2xl bg-[#f4f7f5]"
+                aria-hidden
+              />
             ) : null}
           </div>
         </section>
@@ -535,9 +531,10 @@ export function GraderClient({
 
       {submitting && (
         <AnalysisWaitingScreen
-          stepIndex={stepIndex}
           tipIndex={tipIndex}
           copy={t}
+          previewUrl={selectedFilePreviewUrl}
+          waitKey="pending"
         />
       )}
     </div>

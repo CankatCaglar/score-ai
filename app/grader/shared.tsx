@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
   Bot,
@@ -12,6 +13,61 @@ import type { GraderCopy, GraderLocale } from "./copy";
 
 export const GRADER_SHELL_PAD =
   "mx-auto w-full max-w-[1680px] px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12";
+
+/** Guest/grader fast path target (Haiku + compact prompts). */
+const EXPECTED_ANALYSIS_MS = 28_000;
+const WAIT_STORAGE_PREFIX = "scoreai_grader_wait:";
+const WAIT_PENDING_KEY = `${WAIT_STORAGE_PREFIX}pending`;
+
+function readWaitStartedAt(key: string): number | null {
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return null;
+    const value = Number(raw);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Call when user clicks analyze — keeps progress across /grader → /grader/[slug]. */
+export function markGraderWaitPending(): number {
+  const startedAt = Date.now();
+  try {
+    window.sessionStorage.setItem(WAIT_PENDING_KEY, String(startedAt));
+  } catch {
+    // ignore quota / private mode
+  }
+  return startedAt;
+}
+
+/** Bind the pending wait clock to the new report slug before navigating. */
+export function bindGraderWaitToSlug(slug: string): number {
+  const startedAt = readWaitStartedAt(WAIT_PENDING_KEY) ?? Date.now();
+  try {
+    window.sessionStorage.setItem(
+      `${WAIT_STORAGE_PREFIX}${slug}`,
+      String(startedAt),
+    );
+    window.sessionStorage.removeItem(WAIT_PENDING_KEY);
+  } catch {
+    // ignore
+  }
+  return startedAt;
+}
+
+export function readGraderWaitStart(slug: string): number | null {
+  return readWaitStartedAt(`${WAIT_STORAGE_PREFIX}${slug}`);
+}
+
+export function clearGraderWait(slug: string) {
+  try {
+    window.sessionStorage.removeItem(`${WAIT_STORAGE_PREFIX}${slug}`);
+    window.sessionStorage.removeItem(WAIT_PENDING_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export const categoryIcons: Record<string, typeof ImageIcon> = {
   "Visual Intelligence": ImageIcon,
@@ -125,15 +181,74 @@ export function LocaleToggle({
   );
 }
 
+function progressFromElapsed(elapsedMs: number): number {
+  // Ease toward ~90% over the expected window, then crawl so we never fake "done".
+  const ratio = Math.min(1, elapsedMs / EXPECTED_ANALYSIS_MS);
+  const eased = 1 - (1 - ratio) ** 1.35;
+  if (elapsedMs <= EXPECTED_ANALYSIS_MS) {
+    return Math.max(4, Math.min(90, eased * 90));
+  }
+  const overtime = elapsedMs - EXPECTED_ANALYSIS_MS;
+  return Math.min(97, 90 + (1 - Math.exp(-overtime / 18_000)) * 7);
+}
+
+function stepIndexFromProgress(progress: number, stepCount: number): number {
+  if (stepCount <= 1) return 0;
+  const idx = Math.floor((progress / 100) * stepCount);
+  return Math.min(stepCount - 1, Math.max(0, idx));
+}
+
 export function AnalysisWaitingScreen({
-  stepIndex,
   tipIndex,
   copy,
+  previewUrl,
+  waitKey,
 }: {
-  stepIndex: number;
   tipIndex: number;
   copy: GraderCopy;
+  previewUrl?: string | null;
+  /** sessionStorage key slug — resumes the same clock after route change */
+  waitKey?: string | null;
 }) {
+  const [progress, setProgress] = useState(4);
+  const [elapsedSec, setElapsedSec] = useState(0);
+
+  useEffect(() => {
+    let startedAt = Date.now();
+    if (waitKey) {
+      startedAt =
+        readWaitStartedAt(`${WAIT_STORAGE_PREFIX}${waitKey}`) ??
+        readWaitStartedAt(WAIT_PENDING_KEY) ??
+        startedAt;
+      try {
+        window.sessionStorage.setItem(
+          `${WAIT_STORAGE_PREFIX}${waitKey}`,
+          String(startedAt),
+        );
+      } catch {
+        // ignore
+      }
+    } else {
+      startedAt = readWaitStartedAt(WAIT_PENDING_KEY) ?? startedAt;
+      try {
+        window.sessionStorage.setItem(WAIT_PENDING_KEY, String(startedAt));
+      } catch {
+        // ignore
+      }
+    }
+
+    const tick = () => {
+      const elapsed = Date.now() - startedAt;
+      setProgress(progressFromElapsed(elapsed));
+      setElapsedSec(Math.floor(elapsed / 1000));
+    };
+    tick();
+    const timer = window.setInterval(tick, 200);
+    return () => window.clearInterval(timer);
+  }, [waitKey]);
+
+  const stepIndex = stepIndexFromProgress(progress, copy.loadingSteps.length);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-[#061618]">
       <div className="pointer-events-none absolute inset-0">
@@ -147,25 +262,41 @@ export function AnalysisWaitingScreen({
         <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70">
           Score · Grader
         </p>
+        {previewUrl ? (
+          <div className="mx-auto mt-6 flex size-20 items-center justify-center overflow-hidden rounded-xl bg-white/10 ring-1 ring-white/15 sm:size-24">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          </div>
+        ) : null}
         <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">
           {copy.waitingTitle}
         </h2>
+        <p className="mt-3 text-sm leading-relaxed text-white/65 sm:text-[15px]">
+          {copy.waitingEta}
+        </p>
         <p className="grader-pulse-soft mt-4 text-base leading-relaxed text-white/80 sm:text-lg">
           {copy.loadingTips[tipIndex]}
         </p>
         <div className="mx-auto mt-8 max-w-sm rounded-2xl bg-white/10 px-5 py-4 text-left backdrop-blur-md">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-white/50">
-            {copy.waitingProgress}
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-white/50">
+              {copy.waitingProgress}
+            </p>
+            <p className="tabular-nums text-[11px] font-medium text-white/45">
+              {elapsedSec}s · {Math.round(progress)}%
+            </p>
+          </div>
           <p className="mt-2 text-sm font-medium text-white">
             {copy.loadingSteps[stepIndex]}
           </p>
           <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/15">
             <div
-              className="h-full rounded-full bg-[#d8ff3f] transition-all duration-700"
-              style={{
-                width: `${((stepIndex + 1) / copy.loadingSteps.length) * 100}%`,
-              }}
+              className="h-full rounded-full bg-[#d8ff3f] transition-[width] duration-200 ease-out"
+              style={{ width: `${progress}%` }}
             />
           </div>
         </div>

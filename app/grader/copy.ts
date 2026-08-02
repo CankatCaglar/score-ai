@@ -41,6 +41,7 @@ export type GraderCopy = {
   loadingSteps: string[];
   loadingTips: string[];
   waitingTitle: string;
+  waitingEta: string;
   waitingProgress: string;
   analysisDone: string;
   contentScoreFallback: string;
@@ -73,7 +74,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     heroBody:
       "Görselini yükle; Score 31 objektif kriterle skorlasın, eksikleri göstersin ve geliştirme potansiyelini açıklasın. Canva ve ChatGPT'den sonra gelen kalite katmanı.",
     bullets: [
-      "30 saniyede skor ve kategori kırılımı",
+      "Yaklaşık 30 saniyede skor ve kategori kırılımı",
       "Score AI önerileri ve aksiyon alanları",
       "İlk analiz ücretsiz, kayıtsız dene",
     ],
@@ -184,11 +185,11 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
       },
     ],
     loadingSteps: [
-      "Görsel yükleniyor...",
+      "Görsel hazırlanıyor...",
       "31 kritere göre analiz ediliyor...",
       "Kategori skorları hesaplanıyor...",
       "Geliştirme alanları belirleniyor...",
-      "Rapor hazırlanıyor...",
+      "Rapor son rötuşlarda...",
     ],
     loadingTips: [
       "İyi içerik yalnızca güzel görünmez, ölçülebilir olur.",
@@ -197,6 +198,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
       "31 kriter, subjektif 'güzel olmuş' yorumunun yerini alır.",
     ],
     waitingTitle: "İçeriğiniz analiz ediliyor",
+    waitingEta: "Bu genelde 20–30 saniye sürer. 31 kriteri görsel üzerinden paralel tarıyoruz.",
     waitingProgress: "İlerleme",
     analysisDone: "Analiz tamamlandı",
     contentScoreFallback: "İçerik skoru",
@@ -229,7 +231,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     heroBody:
       "Upload your visual; Score grades it against 31 objective criteria, shows gaps, and explains improvement potential. The quality layer after Canva and ChatGPT.",
     bullets: [
-      "Score and category breakdown in 30 seconds",
+      "Score and category breakdown in about 30 seconds",
       "Score AI suggestions and action areas",
       "First analysis free, no signup required",
     ],
@@ -340,11 +342,11 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
       },
     ],
     loadingSteps: [
-      "Uploading image...",
+      "Preparing image...",
       "Analyzing against 31 criteria...",
       "Calculating category scores...",
       "Identifying improvement areas...",
-      "Preparing your report...",
+      "Putting the final touches on your report...",
     ],
     loadingTips: [
       "Great content is not only beautiful, it is measurable.",
@@ -353,6 +355,8 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
       "31 criteria replace subjective 'looks good' feedback.",
     ],
     waitingTitle: "Your content is being analyzed",
+    waitingEta:
+      "This usually takes 20–30 seconds. We scan all 31 criteria from the image in parallel.",
     waitingProgress: "Progress",
     analysisDone: "Analysis complete",
     contentScoreFallback: "Content score",

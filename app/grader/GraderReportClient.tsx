@@ -17,10 +17,17 @@ import {
   LocaleToggle,
   ReportCard,
   categoryIcons,
+  clearGraderWait,
   formatGain,
+  readGraderWaitStart,
   type GraderResult,
 } from "./shared";
 import "./grader.css";
+
+function hasActiveGraderWait(slug: string): boolean {
+  if (typeof window === "undefined") return false;
+  return readGraderWaitStart(slug) != null;
+}
 
 function estimatePotentialCategories(
   categories: GraderResult["categories"],
@@ -114,11 +121,25 @@ function writeCachedResult(result: GraderResult) {
 export function GraderReportClient({ slug }: { slug: string }) {
   const [locale, setLocale] = useState<GraderLocale>("tr");
   const [localeReady, setLocaleReady] = useState(false);
-  const [result, setResult] = useState<GraderResult | null>(null);
+  const [result, setResult] = useState<GraderResult | null>(() =>
+    typeof window === "undefined" ? null : readCachedResult(slug),
+  );
   const [error, setError] = useState<string | null>(null);
-  const [waitingForJob, setWaitingForJob] = useState(false);
-  const [bootstrapping, setBootstrapping] = useState(true);
-  const [stepIndex, setStepIndex] = useState(0);
+  // Resume waiting immediately after /grader → /grader/[slug] so progress doesn't "restart".
+  const [waitingForJob, setWaitingForJob] = useState(() => {
+    if (typeof window === "undefined") return false;
+    if (readCachedResult(slug)) {
+      clearGraderWait(slug);
+      return false;
+    }
+    return hasActiveGraderWait(slug);
+  });
+  const [bootstrapping, setBootstrapping] = useState(() => {
+    if (typeof window === "undefined") return true;
+    if (readCachedResult(slug)) return false;
+    // Active wait from submit: skip white bootstrap flash.
+    return !hasActiveGraderWait(slug);
+  });
   const [tipIndex, setTipIndex] = useState(0);
 
   const t = GRADER_COPY[locale];
@@ -136,19 +157,11 @@ export function GraderReportClient({ slug }: { slug: string }) {
 
   useEffect(() => {
     if (!waitingForJob) return;
-    const stepTimer = window.setInterval(() => {
-      setStepIndex((prev) =>
-        prev < t.loadingSteps.length - 1 ? prev + 1 : prev,
-      );
-    }, 1400);
     const tipTimer = window.setInterval(() => {
       setTipIndex((prev) => (prev + 1) % t.loadingTips.length);
     }, 3200);
-    return () => {
-      window.clearInterval(stepTimer);
-      window.clearInterval(tipTimer);
-    };
-  }, [waitingForJob, t.loadingSteps.length, t.loadingTips.length]);
+    return () => window.clearInterval(tipTimer);
+  }, [waitingForJob, t.loadingTips.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -175,6 +188,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
 
           if (!response.ok || !data.analysis) {
             if (response.status === 401 || response.status === 404) {
+              clearGraderWait(slug);
               if (!cached) {
                 setError(data.message || t.genericSubmitError);
               }
@@ -189,6 +203,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
             data.analysis.jobStatus === "completed" ||
             data.analysis.jobStatus === "failed"
           ) {
+            clearGraderWait(slug);
             if (data.analysis.jobStatus === "failed") {
               setError(data.analysis.insight || t.genericSubmitError);
               setBootstrapping(false);
@@ -261,9 +276,9 @@ export function GraderReportClient({ slug }: { slug: string }) {
     return (
       <div className="grader-page min-h-screen bg-white text-[#0b1f22]">
         <AnalysisWaitingScreen
-          stepIndex={stepIndex}
           tipIndex={tipIndex}
           copy={t}
+          waitKey={slug}
         />
       </div>
     );

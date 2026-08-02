@@ -5,12 +5,17 @@ import type { NcqsCategoryId } from "@/lib/analysis/prompts";
 import { normalizeCriterionLevel } from "@/lib/analysis/rubric";
 
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5";
+/** Guest/grader image-only path — prioritize latency over prose depth. */
+const DEFAULT_FAST_ANTHROPIC_MODEL = "claude-haiku-4-5";
 const DEFAULT_TIMEOUT_MS = 90_000;
 const MAX_CATEGORY_RETRIES = 2;
+const MAX_FAST_CATEGORY_RETRIES = 1;
 /** Run all 5 NCQS categories in parallel when possible. */
 const CATEGORY_CONCURRENCY = 5;
 const MAX_VISION_IMAGE_EDGE = 1568;
+const MAX_FAST_VISION_IMAGE_EDGE = 1024;
 const MAX_VISION_IMAGE_BYTES = 1_800_000;
+const MAX_FAST_VISION_IMAGE_BYTES = 900_000;
 const DEFAULT_FETCH_HEADERS = {
   "user-agent":
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
@@ -28,6 +33,8 @@ type AnalyzeCategoryInput = {
   imageBase64?: string;
   imageMediaType?: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
   brandContext?: string;
+  /** Guest/grader: faster model, tighter budgets, tolerate a few missing keys. */
+  fast?: boolean;
 };
 
 type AnalyzeCategoryResult = {
@@ -79,6 +86,12 @@ function getAnthropicModel() {
   return process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_ANTHROPIC_MODEL;
 }
 
+export function getFastAnthropicModel() {
+  return (
+    process.env.ANTHROPIC_FAST_MODEL?.trim() || DEFAULT_FAST_ANTHROPIC_MODEL
+  );
+}
+
 /** Sonnet 5 defaults to adaptive thinking (expensive). Scoring only needs JSON. */
 function buildMessageCreateParams(params: {
   model: string;
@@ -118,7 +131,16 @@ function isRetryableAnthropicError(error: unknown): boolean {
 }
 
 /** Scale output budget with criterion count (Turkish prose fields are token-heavy). */
-function categoryMaxTokens(criteriaCount: number, attempt = 0) {
+function categoryMaxTokens(
+  criteriaCount: number,
+  attempt = 0,
+  fast = false,
+) {
+  if (fast) {
+    const perCriterion = 160;
+    const base = 500 + criteriaCount * perCriterion + attempt * 512;
+    return Math.min(4096, Math.max(1536, base));
+  }
   const perCriterion = 360;
   const base = 900 + criteriaCount * perCriterion + attempt * 1024;
   return Math.min(8192, Math.max(3072, base));
@@ -160,31 +182,37 @@ async function withRetry<T>(
 export async function optimizeImageForVision(params: {
   bytes: Buffer;
   mimeType?: string | null;
+  /** Guest/grader: smaller payload for lower vision latency. */
+  fast?: boolean;
 }): Promise<{
   bytes: Buffer;
   mediaType: SupportedImageType;
   base64: string;
 }> {
   const sharp = (await import("sharp")).default;
+  const maxEdge = params.fast ? MAX_FAST_VISION_IMAGE_EDGE : MAX_VISION_IMAGE_EDGE;
+  const maxBytes = params.fast ? MAX_FAST_VISION_IMAGE_BYTES : MAX_VISION_IMAGE_BYTES;
   let pipeline = sharp(params.bytes, { failOn: "none" }).rotate();
   const meta = await pipeline.metadata();
   const width = meta.width ?? 0;
   const height = meta.height ?? 0;
   const longest = Math.max(width, height);
 
-  if (longest > MAX_VISION_IMAGE_EDGE) {
+  if (longest > maxEdge) {
     pipeline = pipeline.resize({
-      width: width >= height ? MAX_VISION_IMAGE_EDGE : undefined,
-      height: height > width ? MAX_VISION_IMAGE_EDGE : undefined,
+      width: width >= height ? maxEdge : undefined,
+      height: height > width ? maxEdge : undefined,
       fit: "inside",
       withoutEnlargement: true,
     });
   }
 
-  let out = await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer();
-  if (out.length > MAX_VISION_IMAGE_BYTES) {
+  let out = await pipeline
+    .jpeg({ quality: params.fast ? 72 : 82, mozjpeg: true })
+    .toBuffer();
+  if (out.length > maxBytes) {
     out = await sharp(out, { failOn: "none" })
-      .jpeg({ quality: 70, mozjpeg: true })
+      .jpeg({ quality: params.fast ? 62 : 70, mozjpeg: true })
       .toBuffer();
   }
 
@@ -712,6 +740,7 @@ function findCriterionObject(
 function parseAndValidateEvaluations(
   rawText: string,
   criteriaKeys: string[],
+  options?: { fillMissingUpTo?: number },
 ): Record<string, CriterionEvaluation> {
   const parsed = parseJsonObject(rawText);
 
@@ -730,6 +759,26 @@ function parseAndValidateEvaluations(
       eksiklikler: String(item.eksiklikler ?? "").trim(),
       aksiyon_onerisi: String(item.aksiyon_onerisi ?? "").trim(),
     };
+  }
+
+  const fillMissingUpTo = options?.fillMissingUpTo ?? 0;
+  if (
+    missing.length > 0 &&
+    missing.length <= fillMissingUpTo &&
+    Object.keys(result).length > 0
+  ) {
+    for (const criterionKey of missing) {
+      result[criterionKey] = {
+        seviye: 1,
+        mevcut_durum: "",
+        eksiklikler: "",
+        aksiyon_onerisi: "",
+      };
+    }
+    console.warn(
+      `[anthropic] filled ${missing.length} missing criteria without retry: ${missing.join(", ")}`,
+    );
+    return result;
   }
 
   if (missing.length) {
@@ -763,8 +812,12 @@ export async function analyzeCategoryWithAnthropic(
   input: AnalyzeCategoryInput,
 ): Promise<AnalyzeCategoryResult> {
   const client = getAnthropicClient();
-  const modelUsed = getAnthropicModel();
-  const timeoutMs = getTimeoutMs();
+  const fast = Boolean(input.fast);
+  const modelUsed = fast ? getFastAnthropicModel() : getAnthropicModel();
+  const timeoutMs = fast
+    ? Math.min(getTimeoutMs(), 45_000)
+    : getTimeoutMs();
+  const maxRetries = fast ? MAX_FAST_CATEGORY_RETRIES : MAX_CATEGORY_RETRIES;
   const image =
     input.imageBase64 && input.imageMediaType
       ? { data: input.imageBase64, mediaType: input.imageMediaType }
@@ -779,7 +832,9 @@ export async function analyzeCategoryWithAnthropic(
     `Kategori: ${input.categoryLabel}`,
     "Asagidaki gorseli yalnizca bu kategori kriterleriyle degerlendir.",
     input.brandContext ? `Brand Context:\n${input.brandContext}` : "",
-    "Yanitinda yalnizca JSON don.",
+    fast
+      ? "Yanitinda yalnizca kisa JSON don. Her alan en fazla 12 kelime."
+      : "Yanitinda yalnizca JSON don.",
   ].filter(Boolean);
 
   const messages: MessageParam[] = [
@@ -805,9 +860,13 @@ export async function analyzeCategoryWithAnthropic(
 
   try {
     let lastError: unknown;
-    for (let attempt = 0; attempt <= MAX_CATEGORY_RETRIES; attempt += 1) {
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
       try {
-        const maxTokens = categoryMaxTokens(input.criteriaKeys.length, attempt);
+        const maxTokens = categoryMaxTokens(
+          input.criteriaKeys.length,
+          attempt,
+          fast,
+        );
         const response = await withTimeout(
           client.messages.create(
             buildMessageCreateParams({
@@ -840,9 +899,16 @@ export async function analyzeCategoryWithAnthropic(
           );
         }
 
+        // Fast path / last attempt: fill up to 3 missing keys instead of another full vision call.
+        const fillMissingUpTo =
+          fast || attempt >= maxRetries
+            ? Math.min(3, Math.max(1, Math.floor(input.criteriaKeys.length * 0.25)))
+            : 0;
+
         const evaluations = parseAndValidateEvaluations(
           rawText,
           input.criteriaKeys,
+          { fillMissingUpTo },
         );
 
         return {
@@ -853,12 +919,12 @@ export async function analyzeCategoryWithAnthropic(
         };
       } catch (error) {
         lastError = error;
-        if (attempt >= MAX_CATEGORY_RETRIES || !isRetryableAnthropicError(error)) {
+        if (attempt >= maxRetries || !isRetryableAnthropicError(error)) {
           throw error;
         }
-        const delayMs = 1_200 * (attempt + 1);
+        const delayMs = (fast ? 600 : 1_200) * (attempt + 1);
         console.warn(
-          `[anthropic] retry ${attempt + 1}/${MAX_CATEGORY_RETRIES} (${input.categoryId}) after ${delayMs}ms`,
+          `[anthropic] retry ${attempt + 1}/${maxRetries} (${input.categoryId}) after ${delayMs}ms`,
           error instanceof Error ? error.message : error,
         );
         await sleep(delayMs);

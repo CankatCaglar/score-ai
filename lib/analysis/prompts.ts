@@ -21,29 +21,38 @@ function formatCriteriaKeysForPrompt(criteriaKeys: string[]): string {
   return criteriaKeys.map((key) => `- ${key}`).join("\n");
 }
 
-function buildSharedRules(criteriaKeys: string[]): string {
+function buildSharedRules(criteriaKeys: string[], compact = false): string {
   return [
     "KURALLAR:",
     "1) Asla hesaplama yapma, puan toplamı üretme, ortalama alma, yüzde hesaplama yapma.",
     "2) Yalnızca görselde net görülen kanıta dayan. Görünmeyen bilgi için varsayım yapma.",
     "3) Her madde için seviye sadece 0, 1, 2 veya 3 olmalı.",
     "4) JSON dışı hiçbir metin, markdown, açıklama veya not döndürme.",
-    "5) Önce görseldeki yaratıcı metinlerin ORİJİNAL dilini tespit et. aksiyon_onerisi içinde önerdiğin somut yaratıcı metin örnekleri (CTA metni, başlık, değer önerisi, rozet metni) görselin KENDİ dilinde olmalı: Türkçe görsele Türkçe, İngilizce görsele İngilizce metin öner. Açıklama cümlelerin Türkçe kalabilir ama tırnak içindeki önerilen metinler kaynak dilde yazılmalı.",
+    compact
+      ? "5) aksiyon_onerisi içindeki somut metin örnekleri görselin kendi dilinde olsun."
+      : "5) Önce görseldeki yaratıcı metinlerin ORİJİNAL dilini tespit et. aksiyon_onerisi içinde önerdiğin somut yaratıcı metin örnekleri (CTA metni, başlık, değer önerisi, rozet metni) görselin KENDİ dilinde olmalı: Türkçe görsele Türkçe, İngilizce görsele İngilizce metin öner. Açıklama cümlelerin Türkçe kalabilir ama tırnak içindeki önerilen metinler kaynak dilde yazılmalı.",
     "6) Sadece aşağıdaki anahtarları üret; eksik veya ekstra anahtar üretme. listedeki HER anahtar zorunlu.",
     formatCriteriaKeysForPrompt(criteriaKeys),
-    "7) mevcut_durum, eksiklikler ve aksiyon_onerisi alanlarını kısa tut (her biri en fazla 1-2 cümle).",
+    compact
+      ? "7) mevcut_durum, eksiklikler, aksiyon_onerisi: her biri EN FAZLA 12 kelime. Uzun paragraf yazma."
+      : "7) mevcut_durum, eksiklikler ve aksiyon_onerisi alanlarını kısa tut (her biri en fazla 1-2 cümle).",
     "",
     'JSON formatı kesinlikle şu şemada olmalı: { "madde_anahtari": { "seviye": 0, "mevcut_durum": "...", "eksiklikler": "...", "aksiyon_onerisi": "..." } }',
   ].join("\n");
 }
 
-function basePrompt(categoryTitle: string, analysisFocus: string, criteriaKeys: string[]) {
+function basePrompt(
+  categoryTitle: string,
+  analysisFocus: string,
+  criteriaKeys: string[],
+  compact = false,
+) {
   return [
     `Sen kıdemli bir ${categoryTitle} analiz uzmanısın.`,
     "",
     `Görevin: yalnızca "${analysisFocus}" kategorisini değerlendir.`,
     "",
-    buildSharedRules(criteriaKeys),
+    buildSharedRules(criteriaKeys, compact),
   ].join("\n");
 }
 
@@ -100,17 +109,27 @@ function buildBrandSystemPrompt(
   criteriaKeys: string[],
   strategic: boolean,
   hasBrandDna: boolean,
+  compact = false,
 ) {
   const lines = [
     basePrompt(
       "marka stratejisi, marka dili ve görsel kimlik",
       "Brand Intelligence",
       criteriaKeys,
+      compact,
     ),
     "",
     "Brand Intelligence kuralı: Brand DNA varsa 'markaya göre' analiz et; yoksa yalnızca görselden çıkarılan marka sinyallerine göre analiz et. Varsayım yapma.",
     "Kısmi Brand DNA (brand_dna_mode=partial): Mevcut alanları kullan; eksik alanlarda görsel-içi sinyallere düş. Bilgi yoksa ilgili alt boyutta puan tavanını düşür.",
   ];
+
+  if (compact && !hasBrandDna && !strategic) {
+    lines.push(
+      "",
+      "Hızlı görsel-only mod: yalnızca görseldeki marka sinyallerine bak; kısa JSON üret.",
+    );
+    return lines.join("\n");
+  }
 
   if (hasBrandDna) {
     lines.push(
@@ -156,12 +175,13 @@ function buildBrandSystemPrompt(
   return lines.join("\n");
 }
 
-function buildBusinessSystemPrompt(strategic: boolean) {
+function buildBusinessSystemPrompt(strategic: boolean, compact = false) {
   const lines = [
     basePrompt(
       "growth marketing, CRO, performans reklam ve iş hedefi optimizasyonu",
       "Business Intelligence",
       BUSINESS_CRITERIA_KEYS,
+      compact,
     ),
     "",
     "Öncelik: dönüşüm potansiyeli, iş amacı netliği, değer teklifinin açıklığı, karar vermeye hazırlık ve rekabetçi konumlanma.",
@@ -178,10 +198,11 @@ function buildBusinessSystemPrompt(strategic: boolean) {
 
 export function getCategoryPrompts(
   mode: RubricMode = "strategic_brand",
-  options?: { hasBrandDna?: boolean },
+  options?: { hasBrandDna?: boolean; compact?: boolean },
 ): CategoryPromptConfig[] {
   const strategic = mode === "strategic_brand";
   const hasBrandDna = Boolean(options?.hasBrandDna);
+  const compact = Boolean(options?.compact);
   const brandKeys = strategic ? BRAND_CRITERIA_KEYS_STRATEGIC : BRAND_CRITERIA_KEYS_BASE;
 
   return [
@@ -194,6 +215,7 @@ export function getCategoryPrompts(
           "görsel iletişim, tasarım, reklam kreatifi ve UI/UX",
           "Visual Intelligence",
           VISUAL_CRITERIA_KEYS,
+          compact,
         ),
         "",
         "Öncelik: görsel hiyerarşi, kompozisyon dengesi, boş alan, renk/kontrast, tipografi, teknik kalite, dikkat çekicilik ve özgünlük.",
@@ -208,6 +230,7 @@ export function getCategoryPrompts(
           "içerik stratejisi, reklam metni, performans pazarlama ve mesaj mimarisi",
           "Content Intelligence",
           CONTENT_CRITERIA_KEYS,
+          compact,
         ),
         "",
         "Öncelik: başlık gücü, mesaj netliği, okunabilirlik, hikaye akışı, merak tetikleme, CTA gücü, akılda kalıcılık ve paylaşılabilirlik.",
@@ -217,7 +240,12 @@ export function getCategoryPrompts(
       categoryId: "brand_intelligence",
       categoryLabel: "Brand Intelligence",
       criteriaKeys: brandKeys,
-      systemPrompt: buildBrandSystemPrompt(brandKeys, strategic, hasBrandDna),
+      systemPrompt: buildBrandSystemPrompt(
+        brandKeys,
+        strategic,
+        hasBrandDna,
+        compact,
+      ),
     },
     {
       categoryId: "channel_intelligence",
@@ -228,6 +256,7 @@ export function getCategoryPrompts(
           "platform uyumluluğu, mobil UX ve teknik kreatif optimizasyonu",
           "Channel Intelligence",
           CHANNEL_CRITERIA_KEYS,
+          compact,
         ),
         "",
         "Öncelik: platform oran/çözünürlük uyumu ve mobil ekranda okunabilirlik/bilgi korunumu.",
@@ -237,7 +266,7 @@ export function getCategoryPrompts(
       categoryId: "business_intelligence",
       categoryLabel: "Business Intelligence",
       criteriaKeys: BUSINESS_CRITERIA_KEYS,
-      systemPrompt: buildBusinessSystemPrompt(strategic),
+      systemPrompt: buildBusinessSystemPrompt(strategic, compact),
     },
   ];
 }

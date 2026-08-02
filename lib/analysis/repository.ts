@@ -4,6 +4,7 @@ import {
   analyzeCategoryWithAnthropic,
   generateContentTitleWithAnthropic,
   getCategoryAnalysisConcurrency,
+  getFastAnthropicModel,
   isTechnicalAnalysisTitle,
   mapWithConcurrency,
   optimizeImageForVision,
@@ -191,7 +192,8 @@ function sha256(input: string | Buffer) {
   return createHash("sha256").update(input).digest("hex");
 }
 
-function getModelIdForCache() {
+function getModelIdForCache(fast = false) {
+  if (fast) return getFastAnthropicModel();
   return process.env.ANTHROPIC_MODEL?.trim() || "claude-sonnet-5";
 }
 
@@ -646,6 +648,11 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
       analysisSlugForNotify =
         typeof analysisData.slug === "string" ? analysisData.slug : "";
 
+      const isGuestAnalysis =
+        Boolean(analysisData.guestId) || isGuestOwnerEmail(jobData.ownerEmail);
+      // Grader / guest = image-only, no Brand DNA / Benchmark — optimize for ≤30s.
+      const fastPath = isGuestAnalysis;
+
       let imageBase64: string | undefined;
       let imageMediaType:
         | "image/jpeg"
@@ -681,6 +688,7 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
           const optimized = await optimizeImageForVision({
             bytes,
             mimeType: resolvedMediaType,
+            fast: fastPath,
           });
           imageBase64 = optimized.base64;
           imageMediaType = optimized.mediaType;
@@ -704,8 +712,14 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
         throw new Error("Analiz icin gorsel URL bulunamadi.");
       }
 
-      // Always resolve mode from Benchmark only; merge fresh DNA + strategic context.
-      const merged = await loadMergedBrandContext(jobData.ownerEmail);
+      // Guest/grader: skip Brand DNA / Benchmark lookups entirely.
+      const merged = fastPath
+        ? {
+            brandContext: null as string | null,
+            hasStrategicBrand: false,
+            hasBrandDna: false,
+          }
+        : await loadMergedBrandContext(jobData.ownerEmail);
       const hasStrategicBrand = merged.hasStrategicBrand;
       const hasBrandDna = merged.hasBrandDna;
       const brandContext = merged.brandContext ?? undefined;
@@ -722,14 +736,19 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
 
       const rubricMode = resolveRubricMode(hasStrategicBrand);
       const rubricVersion = getRubricVersion(rubricMode);
-      const promptVersion = getPromptVersion(rubricMode, { hasBrandDna });
+      const promptVersion = `${getPromptVersion(rubricMode, { hasBrandDna })}${
+        fastPath ? "+fast" : ""
+      }`;
       const criteriaCount = getRubricCriteriaCount(rubricMode);
-      const categoryPrompts = getCategoryPrompts(rubricMode, { hasBrandDna });
+      const categoryPrompts = getCategoryPrompts(rubricMode, {
+        hasBrandDna,
+        compact: fastPath,
+      });
       const criterionIds = getCriterionIds(rubricMode);
 
       const cacheKey = buildAnalysisCacheKey({
         imageFingerprint: imageFingerprint ?? "unknown-image",
-        modelId: getModelIdForCache(),
+        modelId: getModelIdForCache(fastPath),
         rubricVersion,
         promptVersion,
         platformType:
@@ -772,25 +791,26 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
         !titleCustomized &&
         (isTechnicalAnalysisTitle(nextTitle) || nextTitle === "Yeni Analiz");
 
-      // Overlap title call with category scoring to cut wall-clock time.
-      const titlePromise = shouldGenerateTitle
-        ? generateContentTitleWithAnthropic({
-            imageBase64,
-            imageMediaType,
-            imageUrl,
-            brandContext,
-            platformType:
-              typeof analysisData.platformType === "string"
-                ? analysisData.platformType
-                : "instagram",
-          }).catch((titleError) => {
-            console.error(
-              "[processPendingAnalysisJobs] title generation failed",
-              titleError instanceof Error ? titleError.message : titleError,
-            );
-            return null;
-          })
-        : Promise.resolve(null);
+      // Guest/grader: skip extra title vision call — keep wall-clock under ~30s.
+      const titlePromise =
+        shouldGenerateTitle && !fastPath
+          ? generateContentTitleWithAnthropic({
+              imageBase64,
+              imageMediaType,
+              imageUrl,
+              brandContext,
+              platformType:
+                typeof analysisData.platformType === "string"
+                  ? analysisData.platformType
+                  : "instagram",
+            }).catch((titleError) => {
+              console.error(
+                "[processPendingAnalysisJobs] title generation failed",
+                titleError instanceof Error ? titleError.message : titleError,
+              );
+              return null;
+            })
+          : Promise.resolve(null);
 
       if (cachedEvaluations) {
         criteriaEvaluations = cachedEvaluations;
@@ -817,6 +837,7 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
                 needsBrandContext && brandContext?.trim()
                   ? brandContext
                   : undefined,
+              fast: fastPath,
             });
           },
         );
