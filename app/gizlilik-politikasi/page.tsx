@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function GizlilikPolitikasiPage() {
   return (
-    <main className="min-h-full bg-bg-light px-4 py-12 sm:px-6 lg:px-8">
+    <main className="min-h-full bg-bg-light px-4 pt-12 pb-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-2xl">
         <Link
           href="/"
@@ -27,7 +27,7 @@ export default function GizlilikPolitikasiPage() {
           </Link>
         </p>
 
-        <div className="mt-8 space-y-6 text-sm leading-relaxed text-brand-dark/75">
+        <div className="mt-8 space-y-5 text-sm leading-relaxed text-brand-dark/75">
           <section className="space-y-2">
             <h2 className="text-base font-semibold text-brand-dark">1. Kapsam</h2>
             <p>
@@ -113,6 +113,7 @@ export default function GizlilikPolitikasiPage() {
             </p>
           </section>
         </div>
+        <div className="h-[22rem] sm:h-80" aria-hidden />
       </div>
     </main>
   );

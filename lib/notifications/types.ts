@@ -10,6 +10,7 @@ export type NotificationPreferences = {
 export type AppNotificationType =
   | "analysis_started"
   | "analysis_completed"
+  | "analysis_failed"
   | "reminder_inactive"
   | "reminder_incomplete"
   | "general";

@@ -17,6 +17,10 @@ import {
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { DashboardOverview } from "@/lib/analysis/types";
 import { withReturnTo } from "@/lib/dashboard/return-navigation";
+import {
+  hasShownProductTip,
+  markProductTipShown,
+} from "@/lib/notifications/product-tips";
 
 const BRAND_DARK = "#00272c";
 
@@ -49,14 +53,14 @@ function ChangeBadge({ change }: { change: number }) {
   const positive = change >= 0;
   return (
     <span
-      className={`inline-flex items-center gap-0.5 text-xs font-semibold ${
+      className={`inline-flex items-center gap-0.5 text-xs font-semibold leading-none ${
         positive ? "text-brand-dark" : "text-red-500"
       }`}
     >
       {positive ? (
-        <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
+        <ArrowUpRight className="size-3.5 shrink-0" strokeWidth={2.25} />
       ) : (
-        <ArrowDownRight className="size-3.5" strokeWidth={2.25} />
+        <ArrowDownRight className="size-3.5 shrink-0" strokeWidth={2.25} />
       )}
       {positive ? "+" : ""}
       {change} puan
@@ -121,6 +125,7 @@ export default function DashboardPage() {
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showFirstAnalysisBanner, setShowFirstAnalysisBanner] = useState(false);
   const greeting = getTimeGreeting();
 
   useEffect(() => {
@@ -138,6 +143,12 @@ export default function DashboardPage() {
         }
         const data = (await response.json()) as { overview: DashboardOverview };
         setOverview(data.overview);
+        if (
+          (data.overview.analysisCount ?? 0) === 0 &&
+          !hasShownProductTip("first_analysis_banner")
+        ) {
+          setShowFirstAnalysisBanner(true);
+        }
       } catch (fetchError) {
         if ((fetchError as Error).name === "AbortError") return;
         setError("Dashboard verileri yüklenemedi.");
@@ -148,6 +159,11 @@ export default function DashboardPage() {
     void load();
     return () => controller.abort();
   }, []);
+
+  const dismissFirstAnalysisBanner = () => {
+    markProductTipShown("first_analysis_banner");
+    setShowFirstAnalysisBanner(false);
+  };
 
   const trendData = overview?.trendData ?? [];
   const recentAnalyses = overview?.recentAnalyses ?? [];
@@ -176,6 +192,34 @@ export default function DashboardPage() {
         </Link>
       </div>
 
+      {showFirstAnalysisBanner ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-dark/10 bg-bg-light px-4 py-3.5 shadow-sm sm:px-5">
+          <p className="text-sm text-brand-dark/75">
+            Henüz analiziniz yok.{" "}
+            <span className="font-semibold text-brand-dark">
+              İlk analizinizi başlatın.
+            </span>{" "}
+            Score AI içerik skorunuzu saniyeler içinde çıkarır.
+          </p>
+          <div className="flex items-center gap-2">
+            <Link
+              href={withReturnTo("/dashboard/yeni-analiz", "/dashboard")}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-brand-dark px-3.5 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              Analiz Başlat
+              <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
+            </Link>
+            <button
+              type="button"
+              onClick={dismissFirstAnalysisBanner}
+              className="rounded-lg px-2.5 py-2 text-xs font-medium text-brand-dark/45 transition-colors hover:bg-brand-dark/5 hover:text-brand-dark"
+            >
+              Kapat
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
         <Card className="flex h-full min-h-0 flex-col">
           <div className="flex shrink-0 items-center justify-between">
@@ -192,9 +236,9 @@ export default function DashboardPage() {
             </span>
             <span className="text-2xl font-medium text-brand-dark/35">/100</span>
           </div>
-          <div className="mt-auto pt-3">
+          <div className="mt-auto flex items-center gap-1.5 pt-3">
             <ChangeBadge change={overview?.avgScoreChange ?? 0} />
-            <span className="ml-1 text-xs text-brand-dark/40">bu ay</span>
+            <span className="text-xs leading-none text-brand-dark/40">bu ay</span>
           </div>
         </Card>
 
@@ -203,7 +247,7 @@ export default function DashboardPage() {
             Son 7 Gün
           </h2>
           <div className="relative min-h-[110px] w-full flex-1">
-            <div className="absolute inset-0">
+            <div className="absolute inset-0 outline-none select-none [&_.recharts-wrapper]:outline-none [&_.recharts-surface]:outline-none [&_svg]:outline-none [&_*]:outline-none">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                   data={trendData}
@@ -256,9 +300,9 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="shrink-0 pt-2">
+          <div className="flex shrink-0 items-center gap-1.5 pt-2">
             <ChangeBadge change={overview?.monthChange ?? 0} />
-            <span className="ml-1 text-xs text-brand-dark/40">
+            <span className="text-xs leading-none text-brand-dark/40">
               Geçen 7 güne göre
             </span>
           </div>

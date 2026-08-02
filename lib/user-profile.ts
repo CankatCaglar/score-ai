@@ -11,6 +11,8 @@ export type UserProfile = {
   country: string;
   photoURL: string | null;
   provider: string | null;
+  freeAnalysesRemaining?: number;
+  analysesUsed?: number;
 };
 
 export const PROFILE_SECTORS = [

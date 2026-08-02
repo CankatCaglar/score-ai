@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <main className="min-h-full bg-bg-light px-4 py-12 sm:px-6 lg:px-8">
+    <main className="min-h-full bg-bg-light px-4 pt-12 pb-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-2xl">
         <Link
           href="/"
@@ -118,6 +118,7 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
         </div>
+        <div className="h-[22rem] sm:h-80" aria-hidden />
       </div>
     </main>
   );

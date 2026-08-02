@@ -41,6 +41,8 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isDashboardRoute =
     pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+  const isGraderRoute =
+    pathname === "/grader" || pathname.startsWith("/grader/");
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
   const isAdminDashboardRoute =
     pathname === "/admin-dashboard" || pathname.startsWith("/admin-dashboard/");
@@ -50,6 +52,23 @@ export function proxy(request: NextRequest) {
   const adminSession = verifySessionToken(adminToken);
   const userToken = request.cookies.get(USER_COOKIE_NAME)?.value;
   const userSession = verifyUserSessionToken(userToken);
+
+  if (isGraderRoute) {
+    // Admin her modda test edebilir; login gerekmez.
+    if (adminSession) {
+      return NextResponse.next();
+    }
+
+    if (APP_MODE === "public") {
+      return NextResponse.next();
+    }
+
+    // waitlist / early_access: hook pasif — landing + açıklama.
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.searchParams.set("access", "grader_closed");
+    return NextResponse.redirect(url);
+  }
 
   if (isAdminDashboardRoute) {
     if (!adminSession) {
@@ -152,6 +171,8 @@ export const config = {
     "/admin-dashboard/:path*",
     "/dashboard",
     "/dashboard/:path*",
+    "/grader",
+    "/grader/:path*",
     "/giris",
     "/kayit",
     "/sifremi-unuttum",

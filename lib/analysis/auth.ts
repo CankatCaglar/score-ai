@@ -59,6 +59,26 @@ export function getDashboardUserEmailFromCookieHeader(
   return getPublicModeFallbackEmail();
 }
 
+/**
+ * Grader gibi gerçek oturum gerektiren akışlarda kullanılır.
+ * public fallback e-postasını döndürmez; yalnızca doğrulanmış kullanıcı/admin.
+ */
+export function getAuthenticatedDashboardUserEmailFromCookieHeader(
+  cookieHeader: string | null,
+): string | null {
+  const userToken = getCookieValue(cookieHeader, USER_COOKIE_NAME);
+  const userSession = verifyUserSessionToken(userToken);
+  if (userSession?.email && userSession.emailVerified) {
+    return normalizeEmail(userSession.email);
+  }
+
+  const adminToken = getCookieValue(cookieHeader, ADMIN_COOKIE_NAME);
+  const adminSession = verifySessionToken(adminToken);
+  if (adminSession?.sub) return normalizeEmail(adminSession.sub);
+
+  return null;
+}
+
 export async function getCurrentDashboardUserEmail(): Promise<string | null> {
   const cookieStore = await cookies();
   const email = getDashboardUserEmailFromCookieHeader(

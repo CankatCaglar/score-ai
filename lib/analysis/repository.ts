@@ -50,6 +50,7 @@ import {
   getNotificationPreferences,
 } from "@/lib/notifications/repository";
 import { canSendAnalysisResultEmail } from "@/lib/notifications/types";
+import { isGuestOwnerEmail } from "@/lib/grader-auth";
 
 async function loadMergedBrandContext(ownerEmail: string): Promise<{
   brandContext: string | null;
@@ -109,6 +110,7 @@ const COLLECTIONS = {
 
 type CreateAnalysisJobInput = {
   ownerEmail: string;
+  guestId?: string;
   title: string;
   platformType: Platform;
   sourceType: "url" | "upload";
@@ -406,6 +408,14 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
     modelUsed:
       typeof data.modelUsed === "string" ? String(data.modelUsed) : undefined,
     ownerEmail: String(data.ownerEmail ?? ""),
+    guestId:
+      typeof data.guestId === "string" && data.guestId.trim()
+        ? String(data.guestId).trim()
+        : undefined,
+    claimedAtMs:
+      typeof data.claimedAtMs === "number" && Number.isFinite(data.claimedAtMs)
+        ? data.claimedAtMs
+        : toMillis(data.claimedAt) || undefined,
     sourceUrl:
       typeof data.sourceUrl === "string" ? String(data.sourceUrl) : undefined,
     mediaUrl:
@@ -458,6 +468,8 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
 }
 
 async function ensureUserDoc(ownerEmail: string) {
+  if (isGuestOwnerEmail(ownerEmail)) return;
+
   const db = getAdminDb();
   const userId = Buffer.from(ownerEmail).toString("base64url");
   const ref = db.collection(COLLECTIONS.users).doc(userId);
@@ -482,6 +494,10 @@ export async function createAnalysisJob(
   const suffix = Date.now().toString(36).slice(-5);
   const slug = `${slugRoot}-${suffix}`;
   const now = FieldValue.serverTimestamp();
+  const guestId =
+    typeof input.guestId === "string" && input.guestId.trim()
+      ? input.guestId.trim()
+      : null;
 
   await ensureUserDoc(input.ownerEmail);
 
@@ -500,6 +516,7 @@ export async function createAnalysisJob(
   await contentRef.set({
     id: contentRef.id,
     ownerEmail: input.ownerEmail,
+    guestId,
     sourceType: input.sourceType,
     sourceUrl: input.sourceUrl ?? null,
     mediaUrl: input.mediaUrl ?? null,
@@ -517,6 +534,7 @@ export async function createAnalysisJob(
   await analysisRef.set({
     id: analysisRef.id,
     ownerEmail: input.ownerEmail,
+    guestId,
     slug,
     title: normalizedTitle,
     platformType: input.platformType,
@@ -559,6 +577,7 @@ export async function createAnalysisJob(
   await jobRef.set({
     id: jobRef.id,
     ownerEmail: input.ownerEmail,
+    guestId,
     analysisId: analysisRef.id,
     contentItemId: contentRef.id,
     status: "pending",
@@ -610,6 +629,9 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
       { merge: true },
     );
 
+    let analysisTitleForNotify = "Analiz";
+    let analysisSlugForNotify = "";
+
     try {
       const [analysisDoc, contentDoc] = await Promise.all([
         analysisRef.get(),
@@ -617,6 +639,12 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
       ]);
       const analysisData = (analysisDoc.data() ?? {}) as Record<string, unknown>;
       const contentData = (contentDoc.data() ?? {}) as Record<string, unknown>;
+      analysisTitleForNotify =
+        typeof analysisData.title === "string" && analysisData.title.trim()
+          ? analysisData.title.trim()
+          : "Analiz";
+      analysisSlugForNotify =
+        typeof analysisData.slug === "string" ? analysisData.slug : "";
 
       let imageBase64: string | undefined;
       let imageMediaType:
@@ -926,7 +954,7 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
       try {
         const ownerEmail =
           typeof jobData.ownerEmail === "string" ? jobData.ownerEmail.trim() : "";
-        if (ownerEmail) {
+        if (ownerEmail && !isGuestOwnerEmail(ownerEmail)) {
           const resultSlug = String(analysisData.slug ?? jobData.analysisId);
           const resultHref = `/dashboard/analiz-sonucu?slug=${encodeURIComponent(resultSlug)}`;
           const prefs = await getNotificationPreferences(ownerEmail);
@@ -993,6 +1021,23 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
           { merge: true },
         ),
       ]);
+
+      try {
+        await createAppNotification({
+          ownerEmail: String(jobData.ownerEmail ?? ""),
+          type: "analysis_failed",
+          title: "Analiz başarısız oldu",
+          body: `"${analysisTitleForNotify}" tamamlanamadı. Lütfen tekrar deneyin.`,
+          href: analysisSlugForNotify
+            ? `/dashboard/analiz-sonucu?slug=${encodeURIComponent(analysisSlugForNotify)}`
+            : "/dashboard/analizler",
+        });
+      } catch (notifyError) {
+        console.warn(
+          "[analysis-failed-notify] unexpected error",
+          notifyError instanceof Error ? notifyError.message : notifyError,
+        );
+      }
     }
   }
 
@@ -1036,6 +1081,22 @@ export async function getAnalysisBySlug(
   return mapAnalysisDoc(doc.id, doc.data() as AnalysisDoc);
 }
 
+export async function getAnalysisBySlugForGuest(
+  guestId: string,
+  slug: string,
+): Promise<Analysis | null> {
+  const db = getAdminDb();
+  const snapshot = await db
+    .collection(COLLECTIONS.analyses)
+    .where("guestId", "==", guestId.trim())
+    .where("slug", "==", slug.trim())
+    .limit(1)
+    .get();
+  if (snapshot.empty) return null;
+  const doc = snapshot.docs[0]!;
+  return mapAnalysisDoc(doc.id, doc.data() as AnalysisDoc);
+}
+
 export async function getAnalysisById(
   ownerEmail: string,
   analysisId: string,
@@ -1046,6 +1107,115 @@ export async function getAnalysisById(
   const analysis = mapAnalysisDoc(doc.id, doc.data() as AnalysisDoc);
   if (analysis.ownerEmail !== ownerEmail) return null;
   return analysis;
+}
+
+export async function countAnalysesByGuestId(guestId: string): Promise<number> {
+  const db = getAdminDb();
+  const snapshot = await db
+    .collection(COLLECTIONS.analyses)
+    .where("guestId", "==", guestId.trim())
+    .limit(5)
+    .get();
+  return snapshot.size;
+}
+
+export async function getAnalysisByIdForGuest(
+  guestId: string,
+  analysisId: string,
+): Promise<Analysis | null> {
+  const db = getAdminDb();
+  const doc = await db.collection(COLLECTIONS.analyses).doc(analysisId).get();
+  if (!doc.exists) return null;
+  const analysis = mapAnalysisDoc(doc.id, doc.data() as AnalysisDoc);
+  if (analysis.guestId !== guestId.trim()) return null;
+  return analysis;
+}
+
+export async function listAnalysesByGuestId(guestId: string): Promise<Analysis[]> {
+  const db = getAdminDb();
+  const snapshot = await db
+    .collection(COLLECTIONS.analyses)
+    .where("guestId", "==", guestId.trim())
+    .limit(20)
+    .get();
+  return snapshot.docs.map((doc) =>
+    mapAnalysisDoc(doc.id, doc.data() as AnalysisDoc),
+  );
+}
+
+export async function transferGuestAnalysesToUser(input: {
+  guestId: string;
+  ownerEmail: string;
+}): Promise<{ transferred: number; primarySlug: string | null; primaryAnalysisId: string | null }> {
+  const db = getAdminDb();
+  const guestId = input.guestId.trim();
+  const ownerEmail = input.ownerEmail.trim().toLowerCase();
+  const now = FieldValue.serverTimestamp();
+  const claimedAtMs = Date.now();
+
+  const [analysesSnap, jobsSnap, contentSnap] = await Promise.all([
+    db.collection(COLLECTIONS.analyses).where("guestId", "==", guestId).get(),
+    db.collection(COLLECTIONS.jobs).where("guestId", "==", guestId).get(),
+    db.collection(COLLECTIONS.contentItems).where("guestId", "==", guestId).get(),
+  ]);
+
+  const batch = db.batch();
+  let ops = 0;
+
+  for (const doc of analysesSnap.docs) {
+    batch.set(
+      doc.ref,
+      {
+        ownerEmail,
+        guestId: null,
+        claimedAt: now,
+        claimedAtMs,
+        updatedAt: now,
+      },
+      { merge: true },
+    );
+    ops += 1;
+  }
+  for (const doc of jobsSnap.docs) {
+    batch.set(
+      doc.ref,
+      {
+        ownerEmail,
+        guestId: null,
+        updatedAt: now,
+      },
+      { merge: true },
+    );
+    ops += 1;
+  }
+  for (const doc of contentSnap.docs) {
+    batch.set(
+      doc.ref,
+      {
+        ownerEmail,
+        guestId: null,
+        updatedAt: now,
+      },
+      { merge: true },
+    );
+    ops += 1;
+  }
+
+  if (ops > 0) {
+    await batch.commit();
+  }
+
+  const mapped = analysesSnap.docs.map((doc) =>
+    mapAnalysisDoc(doc.id, doc.data() as AnalysisDoc),
+  );
+  mapped.sort((a, b) => b.updatedAtMs - a.updatedAtMs);
+  const primary = mapped[0] ?? null;
+
+  return {
+    transferred: analysesSnap.size,
+    primarySlug: primary?.slug ?? null,
+    primaryAnalysisId: primary?.id ?? null,
+  };
 }
 
 function average(values: number[]): number {
@@ -1239,6 +1409,7 @@ export async function getDashboardOverview(
     avgScoreChange,
     monthChange,
     aiInsight,
+    analysisCount: analyses.length,
     trendData,
     recentAnalyses,
     topCategories,

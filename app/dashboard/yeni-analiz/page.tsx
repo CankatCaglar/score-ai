@@ -120,6 +120,9 @@ export default function YeniAnalizPage() {
             "Analiz baslatildi fakat isleme sirasinda hata olustu. Lutfen farkli bir gorsel deneyin.",
         );
       }
+
+      requestNotificationsRefresh();
+
       if (response.status === 202 || data.jobStatus === "pending" || data.jobStatus === "processing") {
         if (data.slug) {
           router.push(`/dashboard/analizler/${data.slug}`);
@@ -128,7 +131,6 @@ export default function YeniAnalizPage() {
         }
         throw new Error("Analiz isleme alindi fakat yonlendirme verisi alinamadi.");
       }
-      requestNotificationsRefresh();
       const target = data.analysisId
         ? `/dashboard/analiz-sonucu?id=${data.analysisId}`
         : data.slug

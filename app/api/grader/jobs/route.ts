@@ -1,0 +1,230 @@
+import { NextResponse } from "next/server";
+import { getAuthenticatedDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
+import {
+  assertCanCreateAnalysis,
+  consumeFreeAnalysis,
+} from "@/lib/analysis/credits";
+import { runAnalysisJobSubmission } from "@/lib/analysis/submit-job";
+import { listAnalysesByGuestId } from "@/lib/analysis/repository";
+import { assertGraderApiAccess } from "@/lib/grader/access";
+import {
+  GRADER_GUEST_COOKIE_NAME,
+  GRADER_GUEST_TTL_SECONDS,
+  GRADER_LOCK_COOKIE_NAME,
+  GRADER_LOCK_TTL_SECONDS,
+  createGraderGuestId,
+  createGraderGuestToken,
+  getGraderGuestIdFromCookieHeader,
+  getGraderLockSubjectFromCookieHeader,
+  createGraderLockToken,
+  guestOwnerEmail,
+} from "@/lib/grader-auth";
+
+const ipHits = new Map<string, { count: number; resetAt: number }>();
+const IP_WINDOW_MS = 60 * 60 * 1000;
+const IP_MAX_HITS = 8;
+
+function clientIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
+  return request.headers.get("x-real-ip")?.trim() || "unknown";
+}
+
+function allowIp(ip: string): boolean {
+  const now = Date.now();
+  const current = ipHits.get(ip);
+  if (!current || current.resetAt <= now) {
+    ipHits.set(ip, { count: 1, resetAt: now + IP_WINDOW_MS });
+    return true;
+  }
+  if (current.count >= IP_MAX_HITS) return false;
+  current.count += 1;
+  return true;
+}
+
+export async function POST(request: Request) {
+  const cookieHeader = request.headers.get("cookie");
+  if (!assertGraderApiAccess(cookieHeader)) {
+    return NextResponse.json({ error: "GRADER_CLOSED" }, { status: 403 });
+  }
+
+  if (!allowIp(clientIp(request))) {
+    return NextResponse.json(
+      {
+        error: "RATE_LIMITED",
+        message: "Çok fazla istek. Lütfen daha sonra tekrar deneyin.",
+      },
+      { status: 429 },
+    );
+  }
+
+  const loggedInEmail =
+    getAuthenticatedDashboardUserEmailFromCookieHeader(cookieHeader);
+  const graderLockSubject = getGraderLockSubjectFromCookieHeader(cookieHeader);
+  const formData = await request.formData();
+
+  if (loggedInEmail) {
+    try {
+      await assertCanCreateAnalysis(loggedInEmail);
+    } catch (error) {
+      if (error instanceof Error && error.name === "NO_FREE_ANALYSES") {
+        return NextResponse.json(
+          {
+            error: "NO_FREE_ANALYSES",
+            message:
+              "Ücretsiz analiz hakkınızı kullandınız. Dashboard'dan planınızı kontrol edin.",
+          },
+          { status: 402 },
+        );
+      }
+      throw error;
+    }
+
+    const result = await runAnalysisJobSubmission({
+      ownerEmail: loggedInEmail,
+      formData,
+    });
+
+    if (!result.ok) {
+      return NextResponse.json(
+        { error: result.error, message: result.message },
+        { status: result.status },
+      );
+    }
+
+    await consumeFreeAnalysis(loggedInEmail);
+
+    const response = NextResponse.json(
+      {
+        ok: true,
+        mode: "authenticated",
+        jobId: result.jobId,
+        analysisId: result.analysisId,
+        slug: result.slug,
+        jobStatus: result.jobStatus,
+      },
+      { status: result.status },
+    );
+
+    response.cookies.set(
+      GRADER_LOCK_COOKIE_NAME,
+      createGraderLockToken(loggedInEmail),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: GRADER_LOCK_TTL_SECONDS,
+      },
+    );
+    response.cookies.delete(GRADER_GUEST_COOKIE_NAME);
+    return response;
+  }
+
+  const existingGuestId = getGraderGuestIdFromCookieHeader(cookieHeader);
+  if (graderLockSubject) {
+    const lockedExisting = existingGuestId
+      ? await listAnalysesByGuestId(existingGuestId)
+      : [];
+    const lockedPrimary =
+      lockedExisting.find((item) => item.jobStatus === "completed") ??
+      lockedExisting[0];
+    return NextResponse.json(
+      {
+        error: "FREE_ALREADY_USED",
+        message:
+          "Ücretsiz analiz hakkınız bu tarayıcıda kullanıldı. Devam etmek için hesabınıza giriş yapın.",
+        analysisId: lockedPrimary?.id,
+        slug: lockedPrimary?.slug,
+      },
+      { status: 402 },
+    );
+  }
+
+  let guestId = existingGuestId;
+  let issueGuestCookie = false;
+  if (!guestId) {
+    guestId = createGraderGuestId();
+    issueGuestCookie = true;
+  }
+
+  const existing = await listAnalysesByGuestId(guestId);
+  const primary =
+    existing.find((item) => item.jobStatus === "completed") ?? existing[0];
+
+  if (existing.length >= 1) {
+    const response = NextResponse.json(
+      {
+        error: "GUEST_LIMIT",
+        message:
+          "Ücretsiz analiz hakkınızı kullandınız. Sonucu hesabınıza aktarmak için kaydolun veya giriş yapın.",
+        analysisId: primary?.id,
+        slug: primary?.slug,
+      },
+      { status: 402 },
+    );
+    response.cookies.set(
+      GRADER_LOCK_COOKIE_NAME,
+      createGraderLockToken(`guest:${guestId}`),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: GRADER_LOCK_TTL_SECONDS,
+      },
+    );
+    return response;
+  }
+
+  const ownerEmail = guestOwnerEmail(guestId);
+  const result = await runAnalysisJobSubmission({
+    ownerEmail,
+    formData,
+    guestId,
+  });
+
+  if (!result.ok) {
+    return NextResponse.json(
+      { error: result.error, message: result.message },
+      { status: result.status },
+    );
+  }
+
+  const response = NextResponse.json(
+    {
+      ok: true,
+      mode: "guest",
+      jobId: result.jobId,
+      analysisId: result.analysisId,
+      slug: result.slug,
+      jobStatus: result.jobStatus,
+    },
+    { status: result.status },
+  );
+
+  // İlk ücretsiz hakkı tüketildi: geri gelip yeni analiz açılamasın.
+  response.cookies.set(
+    GRADER_LOCK_COOKIE_NAME,
+    createGraderLockToken(`guest:${guestId}`),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: GRADER_LOCK_TTL_SECONDS,
+    },
+  );
+
+  if (issueGuestCookie) {
+    response.cookies.set(GRADER_GUEST_COOKIE_NAME, createGraderGuestToken(guestId), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: GRADER_GUEST_TTL_SECONDS,
+    });
+  }
+
+  return response;
+}

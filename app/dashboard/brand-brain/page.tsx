@@ -382,6 +382,7 @@ export default function BrandBrainPage() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextSave = useRef(true);
   const hydrated = useRef(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const isOtherSector = sectorMain === "Diğer";
   const presetAudienceSet = useMemo(
@@ -507,6 +508,7 @@ export default function BrandBrainPage() {
       return;
     }
     if (saveTimer.current) clearTimeout(saveTimer.current);
+    setHasUnsavedChanges(true);
     saveTimer.current = setTimeout(() => {
       void (async () => {
         setSaving(true);
@@ -531,6 +533,7 @@ export default function BrandBrainPage() {
           const data = (await res.json()) as { profile: BrandDnaPublicProfile };
           skipNextSave.current = true;
           setProfile(data.profile);
+          setHasUnsavedChanges(false);
         } catch {
           toast.error("Brand DNA kaydedilemedi");
         } finally {
@@ -553,6 +556,49 @@ export default function BrandBrainPage() {
     isOtherSector,
     keywords,
   ]);
+
+  useEffect(() => {
+    const shouldWarn = hasUnsavedChanges || saving;
+    if (!shouldWarn) return;
+
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    const onDocumentClick = (event: MouseEvent) => {
+      const target = event.target as Element | null;
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#")) return;
+      try {
+        const url = new URL(href, window.location.origin);
+        if (url.origin !== window.location.origin) return;
+        if (url.pathname.startsWith("/dashboard/brand-brain")) return;
+      } catch {
+        return;
+      }
+
+      const leave = window.confirm(
+        "Değişiklikler kaydedilmedi. Sayfadan ayrılmak istiyor musunuz?",
+      );
+      if (!leave) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onDocumentClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onDocumentClick, true);
+    };
+  }, [hasUnsavedChanges, saving]);
 
   const toggleMulti = (
     value: string,

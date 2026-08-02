@@ -12,7 +12,7 @@ type Locale = "tr" | "en";
 
 const COPY = {
   tr: {
-    body: "Web sitemizi çalıştırmak, hizmet kullanımını analiz etmek, tercihlerinizi yönetmek ve deneyimi kişiselleştirmek için çerezler kullanıyoruz. Çerezleri kabul ederek ilgili içerik, sosyal özellikler ve geliştirilmiş bir gezinme deneyimi elde edersiniz. Tercihlerinizi yönetmek için “Çerez Ayarları”na tıklayın. Zorunlu çerezler temel işlevler için gereklidir ve reddedilemez. Daha fazla bilgi için",
+    body: "Web sitemizi çalıştırmak, hizmet kullanımını analiz etmek, tercihlerinizi yönetmek ve deneyimi kişiselleştirmek için çerezler kullanıyoruz. Çerezleri kabul ederek ilgili içerik, sosyal özellikler ve geliştirilmiş bir gezinme deneyimi elde edersiniz. Tercihlerinizi yönetmek için “Çerez Ayarları”na tıklayın. Daha fazla bilgi için",
     policy: "Gizlilik Politikası",
     policyHref: "/gizlilik-politikasi",
     allowAll: "Tüm çerezlere izin ver",
@@ -21,13 +21,10 @@ const COPY = {
     save: "Tercihleri kaydet",
     back: "Geri",
     settingsTitle: "Çerez tercihleri",
-    necessaryTitle: "Zorunlu",
-    necessaryDesc: "Sitenin temel işlevleri için gereklidir. Her zaman aktiftir.",
     analyticsTitle: "Analitik",
     analyticsDesc: "Trafiği ve kullanım davranışını anlamamıza yardımcı olur.",
     marketingTitle: "Pazarlama",
     marketingDesc: "İlgili içerik ve reklam deneyimini kişiselleştirmek için kullanılır.",
-    alwaysOn: "Her zaman açık",
     dialogLabel: "Çerez onayı",
   },
   en: {
@@ -40,13 +37,10 @@ const COPY = {
     save: "Save preferences",
     back: "Back",
     settingsTitle: "Cookie preferences",
-    necessaryTitle: "Necessary",
-    necessaryDesc: "Required for core site functionality. Always active.",
     analyticsTitle: "Analytics",
     analyticsDesc: "Helps us understand traffic and how the product is used.",
     marketingTitle: "Marketing",
     marketingDesc: "Used to personalize relevant content and ad experiences.",
-    alwaysOn: "Always on",
     dialogLabel: "Cookie consent",
   },
 } as const;
@@ -146,12 +140,12 @@ export function CookieConsentBanner() {
       role="dialog"
       aria-label={copy.dialogLabel}
       aria-live="polite"
-      className="fixed inset-x-4 bottom-20 z-70 sm:bottom-6 sm:left-1/2 sm:right-auto sm:w-[min(100vw-3rem,34rem)] sm:-translate-x-1/2"
+      className="fixed bottom-4 left-1/2 z-70 w-[min(100vw-1.5rem,46rem)] -translate-x-1/2 sm:bottom-6 sm:w-[min(100vw-3rem,48rem)]"
     >
-      <div className="rounded-2xl border border-brand-dark/10 bg-bg-light/95 p-5 shadow-[0_16px_48px_rgba(0,39,44,0.16)] backdrop-blur-md sm:p-6 [&_a]:cursor-pointer [&_button]:cursor-pointer">
+      <div className="rounded-2xl border border-brand-dark/10 bg-bg-light/95 px-5 py-4 shadow-[0_16px_48px_rgba(0,39,44,0.16)] backdrop-blur-md sm:px-7 sm:py-5 [&_a]:cursor-pointer [&_button]:cursor-pointer">
         {!showSettings ? (
           <>
-            <p className="text-sm leading-relaxed text-brand-dark/70">
+            <p className="text-[13px] leading-relaxed text-brand-dark/70 sm:text-sm">
               {copy.body}{" "}
               <Link
                 href={copy.policyHref}
@@ -162,7 +156,7 @@ export function CookieConsentBanner() {
               .
             </p>
 
-            <div className="mt-5 flex flex-wrap items-center gap-3">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5 sm:mt-5 sm:gap-3">
               <button
                 type="button"
                 onClick={() => persist({ analytics: true, marketing: true })}
@@ -180,7 +174,7 @@ export function CookieConsentBanner() {
               <button
                 type="button"
                 onClick={() => setShowSettings(true)}
-                className="cursor-pointer text-sm font-medium text-brand-dark underline decoration-brand-dark/30 underline-offset-2 transition hover:decoration-brand-dark"
+                className="cursor-pointer px-1 text-sm font-medium text-brand-dark underline decoration-brand-dark/30 underline-offset-2 transition hover:decoration-brand-dark"
               >
                 {copy.settings}
               </button>
@@ -195,26 +189,14 @@ export function CookieConsentBanner() {
               <button
                 type="button"
                 onClick={() => setShowSettings(false)}
-                className="text-sm font-medium text-brand-dark/55 transition hover:text-brand-dark"
+                className="cursor-pointer text-sm font-medium text-brand-dark/55 transition hover:text-brand-dark"
               >
                 {copy.back}
               </button>
             </div>
 
-            <div className="mt-4 space-y-3">
-              <div className="flex items-start justify-between gap-4 rounded-xl border border-brand-dark/8 bg-bg-offwhite px-3.5 py-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-brand-dark">{copy.necessaryTitle}</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-brand-dark/55">
-                    {copy.necessaryDesc}
-                  </p>
-                </div>
-                <span className="shrink-0 pt-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-dark/40">
-                  {copy.alwaysOn}
-                </span>
-              </div>
-
-              <div className="flex items-start justify-between gap-4 rounded-xl border border-brand-dark/8 bg-white px-3.5 py-3">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="flex items-start justify-between gap-3 rounded-xl border border-brand-dark/8 bg-white px-3.5 py-3 sm:flex-col sm:gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-brand-dark">{copy.analyticsTitle}</p>
                   <p className="mt-0.5 text-xs leading-relaxed text-brand-dark/55">
@@ -228,7 +210,7 @@ export function CookieConsentBanner() {
                 />
               </div>
 
-              <div className="flex items-start justify-between gap-4 rounded-xl border border-brand-dark/8 bg-white px-3.5 py-3">
+              <div className="flex items-start justify-between gap-3 rounded-xl border border-brand-dark/8 bg-white px-3.5 py-3 sm:flex-col sm:gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-brand-dark">{copy.marketingTitle}</p>
                   <p className="mt-0.5 text-xs leading-relaxed text-brand-dark/55">
@@ -243,18 +225,18 @@ export function CookieConsentBanner() {
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap items-center gap-3">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5 sm:mt-5 sm:gap-3">
               <button
                 type="button"
                 onClick={() => persist({ analytics, marketing })}
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-brand-dark px-4 text-sm font-semibold text-white transition hover:opacity-90"
+                className="inline-flex h-10 cursor-pointer items-center justify-center rounded-xl bg-brand-dark px-4 text-sm font-semibold text-white transition hover:opacity-90"
               >
                 {copy.save}
               </button>
               <button
                 type="button"
                 onClick={() => persist({ analytics: true, marketing: true })}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-brand-dark/15 bg-white px-4 text-sm font-semibold text-brand-dark transition hover:bg-brand-dark/5"
+                className="inline-flex h-10 cursor-pointer items-center justify-center rounded-xl border border-brand-dark/15 bg-white px-4 text-sm font-semibold text-brand-dark transition hover:bg-brand-dark/5"
               >
                 {copy.allowAll}
               </button>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Suspense, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import {
   BarChart3,
   Brain,
@@ -25,6 +25,7 @@ import { useClickOutside } from "@/hooks/useClickOutside";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { DashboardBackProvider } from "@/components/dashboard/DashboardBackContext";
 import { DashboardHeaderBack } from "@/components/dashboard/DashboardHeaderBack";
+import { flushProductTipQueue } from "@/lib/notifications/product-tips";
 
 export type MembershipPlan = "normal" | "pro";
 
@@ -38,6 +39,46 @@ export type DashboardUser = {
 
 function planLabel(plan: MembershipPlan = "normal") {
   return plan === "pro" ? "Pro" : "Normal";
+}
+
+function ProfileAvatar({
+  picture,
+  initials,
+  sizeClass,
+  fallbackClassName,
+}: {
+  picture?: string;
+  initials: string;
+  sizeClass: string;
+  fallbackClassName: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const showImage = Boolean(picture) && !failed;
+
+  useEffect(() => {
+    setFailed(false);
+  }, [picture]);
+
+  if (!showImage) {
+    return (
+      <div
+        className={`flex items-center justify-center rounded-full ${sizeClass} ${fallbackClassName}`}
+      >
+        {initials}
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={picture}
+      alt=""
+      referrerPolicy="no-referrer"
+      className={`${sizeClass} rounded-full object-cover`}
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 type NavItem = {
@@ -110,18 +151,12 @@ function ProfilePopup({
         <div className="px-4 pt-4 pb-3">
           <div className="flex items-start gap-3">
             <div className="relative shrink-0">
-              {user.picture ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={user.picture}
-                  alt=""
-                  className="size-12 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex size-12 items-center justify-center rounded-full bg-brand-dark/10 text-sm font-semibold text-brand-dark">
-                  {user.initials}
-                </div>
-              )}
+              <ProfileAvatar
+                picture={user.picture}
+                initials={user.initials}
+                sizeClass="size-12 text-sm font-semibold"
+                fallbackClassName="bg-brand-dark/10 text-brand-dark"
+              />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-brand-dark">{user.name}</p>
@@ -265,18 +300,12 @@ function SidebarContent({
           className="flex w-full cursor-pointer items-center gap-3 rounded-xl bg-white/5 px-3 py-3 transition-colors hover:bg-white/10"
         >
           <div className="relative shrink-0">
-            {user.picture ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={user.picture}
-                alt=""
-                className="size-9 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex size-9 items-center justify-center rounded-full bg-white/15 text-xs font-semibold">
-                {user.initials}
-              </div>
-            )}
+            <ProfileAvatar
+              picture={user.picture}
+              initials={user.initials}
+              sizeClass="size-9 text-xs font-semibold"
+              fallbackClassName="bg-white/15 text-white"
+            />
           </div>
           <div className="min-w-0 flex-1 text-left">
             <p className="truncate text-sm font-medium text-white/90">
@@ -308,6 +337,17 @@ export function DashboardShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const wasOnResultRef = useRef(false);
+
+  useEffect(() => {
+    const onResult = pathname.startsWith("/dashboard/analiz-sonucu");
+    if (wasOnResultRef.current && !onResult) {
+      // After leaving result page: show queued tips one-by-one
+      // (completed toast is already gone / no longer competing).
+      flushProductTipQueue({ delayMs: 500 });
+    }
+    wasOnResultRef.current = onResult;
+  }, [pathname]);
 
   const requestLogout = () => {
     setMobileOpen(false);

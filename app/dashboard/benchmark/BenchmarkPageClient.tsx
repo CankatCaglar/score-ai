@@ -35,6 +35,8 @@ import {
 } from "@/lib/brand-intelligence/types";
 import { getCatalogSectorPostingAverage } from "@/lib/benchmark/sector-posting";
 import { withReturnTo } from "@/lib/dashboard/return-navigation";
+import { tipNoCompetitorsOnAnalyze } from "@/lib/notifications/product-tips";
+import { requestNotificationsRefresh } from "@/lib/notifications/toast-analysis";
 
 type PublicProfile = BrandIntelligenceProfile & {
   completion: BrandIntelligenceCompletion;
@@ -268,6 +270,7 @@ export default function BenchmarkPageClient() {
     };
     applyProfile(data.profile);
     setIntegrations(data.integrations);
+    return data.profile;
   };
 
   useEffect(() => {
@@ -291,6 +294,9 @@ export default function BenchmarkPageClient() {
         setWebsiteUrl(data.profile.brandAccount.websiteUrl ?? "");
         lastSavedPromise.current = data.profile.brandPromise;
         setIntegrations(data.integrations);
+        if ((data.profile.competitors?.length ?? 0) === 0) {
+          tipNoCompetitorsOnAnalyze();
+        }
       } catch (error) {
         if ((error as Error).name === "AbortError" || cancelled) return;
         toast.error("Benchmark verileri yüklenemedi");
@@ -405,10 +411,20 @@ export default function BenchmarkPageClient() {
   useEffect(() => {
     const hasPending = profile.competitors.some((c) => c.status === "pending");
     if (!hasPending) return;
+    const knownFailedIds = new Set(
+      profile.competitors.filter((c) => c.status === "failed").map((c) => c.id),
+    );
     const timer = window.setInterval(() => {
       void (async () => {
         try {
-          await reloadProfile();
+          const next = await reloadProfile();
+          const newlyFailed = next.competitors.some(
+            (c) => c.status === "failed" && !knownFailedIds.has(c.id),
+          );
+          for (const c of next.competitors) {
+            if (c.status === "failed") knownFailedIds.add(c.id);
+          }
+          if (newlyFailed) requestNotificationsRefresh();
         } catch {
           // ignore poll errors
         }

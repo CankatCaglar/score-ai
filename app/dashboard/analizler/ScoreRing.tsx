@@ -4,15 +4,20 @@ export function ScoreRing({
   score,
   size = 44,
   stroke = 4,
+  color: colorOverride,
+  trackColor = "#00272c14",
 }: {
   score: number;
   size?: number;
   stroke?: number;
+  color?: string;
+  /** Boş halka rengi — koyu arka planda daha açık bir ton kullanın. */
+  trackColor?: string;
 }) {
   const radius = (size - stroke) / 2;
   const circ = 2 * Math.PI * radius;
   const offset = circ - (score / 100) * circ;
-  const color = scoreColor(score);
+  const color = colorOverride ?? scoreColor(score);
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
@@ -21,7 +26,7 @@ export function ScoreRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#00272c14"
+          stroke={trackColor}
           strokeWidth={stroke}
         />
         <circle

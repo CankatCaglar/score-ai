@@ -285,6 +285,7 @@ function ProfilTab() {
   const [country, setCountry] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFailed, setPhotoFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -333,6 +334,10 @@ function ProfilTab() {
     : "SC";
 
   const displayPhoto = photoPreview || profile?.photoURL || null;
+
+  useEffect(() => {
+    setPhotoFailed(false);
+  }, [displayPhoto]);
 
   const handlePhotoPick = () => {
     fileInputRef.current?.click();
@@ -425,12 +430,14 @@ function ProfilTab() {
 
       <div className="flex items-center gap-4">
         <div className="relative shrink-0">
-          {displayPhoto ? (
+          {displayPhoto && !photoFailed ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={displayPhoto}
               alt=""
+              referrerPolicy="no-referrer"
               className="size-16 rounded-full object-cover"
+              onError={() => setPhotoFailed(true)}
             />
           ) : (
             <div className="flex size-16 items-center justify-center rounded-full bg-brand-dark/10 text-base font-semibold text-brand-dark">

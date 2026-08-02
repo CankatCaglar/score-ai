@@ -17,6 +17,16 @@ import {
   splitDisplayName,
   userDocIdFromEmail,
 } from "@/lib/user-profile";
+import { claimGuestAnalysesForUser } from "@/lib/grader/claim";
+import {
+  ensureUserCreditsDefaults,
+  getAnalysisCredits,
+} from "@/lib/analysis/credits";
+import {
+  GRADER_LOCK_COOKIE_NAME,
+  GRADER_LOCK_TTL_SECONDS,
+  createGraderLockToken,
+} from "@/lib/grader-auth";
 
 function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
@@ -60,6 +70,8 @@ async function upsertUserDoc(input: {
       photoURL: input.photoURL ?? null,
       emailVerified: input.emailVerified,
       provider: input.provider ?? null,
+      freeAnalysesRemaining: 1,
+      analysesUsed: 0,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
@@ -107,6 +119,12 @@ export async function createUserSession(
   ok: boolean;
   error?: string;
   session?: UserSession;
+  claim?: {
+    claimed: boolean;
+    transferred: number;
+    primarySlug: string | null;
+    primaryAnalysisId: string | null;
+  };
 }> {
   if (!idToken?.trim()) {
     return { ok: false, error: "MISSING_TOKEN" };
@@ -157,6 +175,32 @@ export async function createUserSession(
       maxAge: ttlSeconds,
     });
 
+    await ensureUserCreditsDefaults(email);
+    const credits = await getAnalysisCredits(email);
+    if (credits.freeAnalysesRemaining <= 0) {
+      cookieStore.set(GRADER_LOCK_COOKIE_NAME, createGraderLockToken(email), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: GRADER_LOCK_TTL_SECONDS,
+      });
+    }
+
+    let claim:
+      | {
+          claimed: boolean;
+          transferred: number;
+          primarySlug: string | null;
+          primaryAnalysisId: string | null;
+        }
+      | undefined;
+    try {
+      claim = await claimGuestAnalysesForUser(email);
+    } catch (claimError) {
+      console.error("[createUserSession] claim guest analyses", claimError);
+    }
+
     return {
       ok: true,
       session: {
@@ -167,6 +211,7 @@ export async function createUserSession(
         picture: profile.photoURL ?? undefined,
         provider: provider ?? undefined,
       },
+      claim,
     };
   } catch (error) {
     console.error("[createUserSession]", error);

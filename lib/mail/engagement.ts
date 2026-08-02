@@ -17,7 +17,7 @@ const USERS_COLLECTION = "users";
 const ANALYSES_COLLECTION = "analyses";
 
 const INACTIVE_DAYS = 3;
-const INCOMPLETE_STALE_HOURS = 1;
+const INCOMPLETE_STALE_DAYS = 1;
 const EMAIL_COOLDOWN_DAYS = 7;
 const MAX_INCOMPLETE_SCAN = 80;
 const MAX_INACTIVE_SCAN = 80;
@@ -31,10 +31,6 @@ type EngagementResult = {
 
 function daysAgo(days: number): Date {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-}
-
-function hoursAgo(hours: number): Date {
-  return new Date(Date.now() - hours * 60 * 60 * 1000);
 }
 
 function toDate(value: unknown): Date | null {
@@ -84,7 +80,7 @@ async function sendIncompleteMails(
   result: EngagementResult,
 ): Promise<void> {
   const db = getAdminDb();
-  const incompleteCutoff = hoursAgo(INCOMPLETE_STALE_HOURS);
+  const incompleteCutoff = daysAgo(INCOMPLETE_STALE_DAYS);
   const seenOwners = new Set<string>();
 
   for (const status of ["pending", "processing"] as const) {

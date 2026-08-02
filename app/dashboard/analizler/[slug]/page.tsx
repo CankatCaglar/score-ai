@@ -136,40 +136,48 @@ function ExpandableSuggestionsList({
   const remaining = Math.max(0, suggestions.length - previewCount);
 
   return (
-    <div className="mt-4 space-y-2">
-      {visibleSuggestions.map((s, index) =>
-        variant === "overview" ? (
-          <div
-            key={`${s.id ?? s.text}-${index}`}
-            className="flex items-center gap-2.5 rounded-xl bg-bg-offwhite px-3 py-2"
-          >
-            <span className="min-w-0 flex-1 text-[11px] leading-snug text-brand-dark/75">
-              {s.text}
-            </span>
-            <span className="shrink-0 rounded-full bg-brand-neon/40 px-2 py-0.5 text-[10px] font-semibold text-brand-dark">
-              +{formatGain(s.gain)} puan potansiyeli
-            </span>
-          </div>
-        ) : (
-          <div
-            key={`${s.id ?? s.text}-${index}`}
-            className="flex flex-wrap items-center gap-3.5 rounded-xl border border-brand-dark/8 px-3.5 py-3"
-          >
-            <span className="min-w-0 flex-1 text-xs leading-snug text-brand-dark/80">
-              {s.text}
-            </span>
-            <span className="rounded-full bg-brand-neon/40 px-2 py-0.5 text-[11px] font-semibold text-brand-dark">
-              +{formatGain(s.gain)} puan potansiyeli
-            </span>
-          </div>
-        ),
-      )}
+    <div
+      className={
+        variant === "overview"
+          ? "mt-4 flex flex-1 flex-col gap-2"
+          : "mt-4 space-y-2"
+      }
+    >
+      <div className="space-y-2">
+        {visibleSuggestions.map((s, index) =>
+          variant === "overview" ? (
+            <div
+              key={`${s.id ?? s.text}-${index}`}
+              className="flex items-center gap-2.5 rounded-xl bg-bg-offwhite px-3 py-2"
+            >
+              <span className="min-w-0 flex-1 text-[11px] leading-snug text-brand-dark/75">
+                {s.text}
+              </span>
+              <span className="shrink-0 rounded-full bg-brand-neon/40 px-2 py-0.5 text-[10px] font-semibold text-brand-dark">
+                +{formatGain(s.gain)} puan potansiyeli
+              </span>
+            </div>
+          ) : (
+            <div
+              key={`${s.id ?? s.text}-${index}`}
+              className="flex flex-wrap items-center gap-3.5 rounded-xl border border-brand-dark/8 px-3.5 py-3"
+            >
+              <span className="min-w-0 flex-1 text-xs leading-snug text-brand-dark/80">
+                {s.text}
+              </span>
+              <span className="rounded-full bg-brand-neon/40 px-2 py-0.5 text-[11px] font-semibold text-brand-dark">
+                +{formatGain(s.gain)} puan potansiyeli
+              </span>
+            </div>
+          ),
+        )}
+      </div>
       {hasMore &&
         (variant === "overview" ? (
           <button
             type="button"
             onClick={onGoToSuggestions}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-brand-dark/10 py-2.5 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5"
+            className="mt-auto flex w-full items-center justify-center gap-1.5 rounded-xl border border-brand-dark/10 py-2.5 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5"
           >
             <ArrowUpRight className="size-4" strokeWidth={2} />
             Daha fazlası için Score AI Önerileri
@@ -325,6 +333,16 @@ export default function AnalizDetayPage() {
     });
   };
 
+  const openComparisonTab = () => {
+    setTab("Karşılaştırma");
+    window.requestAnimationFrame(() => {
+      suggestionsSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
+
   return (
     <div className="px-4 pb-10 pt-1 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
@@ -466,7 +484,11 @@ export default function AnalizDetayPage() {
 
       <div className="mt-6">
         {tab === "Genel Bakış" && (
-          <OverviewTab analysis={analysis} onGoToSuggestions={openSuggestionsTab} />
+          <OverviewTab
+            analysis={analysis}
+            onGoToSuggestions={openSuggestionsTab}
+            onGoToComparison={openComparisonTab}
+          />
         )}
         {tab === "Score AI Önerileri" && (
           <SuggestionsTab analysis={analysis} initialExpanded={expandSuggestionsTab} />
@@ -481,9 +503,11 @@ export default function AnalizDetayPage() {
 function OverviewTab({
   analysis,
   onGoToSuggestions,
+  onGoToComparison,
 }: {
   analysis: Analysis;
   onGoToSuggestions: () => void;
+  onGoToComparison: () => void;
 }) {
   return (
     <div className="space-y-6">
@@ -613,8 +637,8 @@ function OverviewTab({
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+        <Card className="flex flex-col">
           <h2 className="text-base font-semibold text-brand-dark">Score AI Önerileri</h2>
           <ExpandableSuggestionsList
             suggestions={analysis.suggestions}
@@ -623,11 +647,11 @@ function OverviewTab({
           />
         </Card>
 
-        <Card>
+        <Card className="flex flex-col">
           <h2 className="text-base font-semibold text-brand-dark">
-            Benzer İçeriklerle Karşılaştırma
+            Benchmark Karşılaştırması
           </h2>
-          <Comparison analysis={analysis} />
+          <Comparison analysis={analysis} onGoToComparison={onGoToComparison} />
         </Card>
       </div>
     </div>
@@ -667,49 +691,73 @@ function ScoreDistribution({ score }: { score: number }) {
   );
 }
 
-function Comparison({ analysis }: { analysis: Analysis }) {
-  const diff = analysis.score - analysis.sectorAverage;
+function Comparison({
+  analysis,
+  onGoToComparison,
+}: {
+  analysis: Analysis;
+  onGoToComparison: () => void;
+}) {
+  const summary = summarizeBenchmarkCommentary(analysis);
+  const previewLines = (
+    summary.gaps.length > 0
+      ? summary.gaps.map((item) => ({
+          key: item.id,
+          label: item.label,
+          text: item.gap || item.status,
+        }))
+      : summary.strengths.map((item) => ({
+          key: item.id,
+          label: item.label,
+          text: item.status,
+        }))
+  )
+    .filter((item) => item.text.trim().length > 0)
+    .slice(0, 3);
+
+  const fallbackLines = [
+    {
+      key: "promise",
+      label: "Marka vaadi",
+      text: "İçeriğinizin vaat ve konumlandırmayla ne kadar örtüştüğünü görün.",
+    },
+    {
+      key: "competitors",
+      label: "Rakip ayrışması",
+      text: "Rakiplerinize göre nerede öne çıktığınızı ve nerede geride kaldığınızı görün.",
+    },
+    {
+      key: "trust",
+      label: "Güven kanıtları",
+      text: "Güven sinyalleri ve marka tutarlılığına göre eksik alanları netleştirin.",
+    },
+  ];
+
+  const lines = previewLines.length > 0 ? previewLines : fallbackLines;
+
   return (
-    <div className="mt-4 space-y-4">
-      <div>
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-brand-dark/60">Sektör Ortalaması</span>
-          <span className="font-semibold text-brand-dark">
-            {analysis.sectorAverage}
-            <span className="text-brand-dark/30">/100</span>
-          </span>
-        </div>
-        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-brand-dark/8">
+    <div className="mt-4 flex flex-1 flex-col gap-2">
+      <div className="space-y-2">
+        {lines.map((item) => (
           <div
-            className="h-full rounded-full bg-brand-dark/30"
-            style={{ width: `${analysis.sectorAverage}%` }}
-          />
-        </div>
+            key={item.key}
+            className="rounded-xl bg-bg-offwhite px-3 py-2"
+          >
+            <p className="text-[11px] leading-snug text-brand-dark/75">
+              <span className="font-semibold text-brand-dark">{item.label}:</span>{" "}
+              <span className="line-clamp-2">{item.text}</span>
+            </p>
+          </div>
+        ))}
       </div>
-      <div>
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-brand-dark/60">Sizin Skorunuz</span>
-          <span className="font-semibold text-brand-dark">
-            {analysis.score}
-            <span className="text-brand-dark/30">/100</span>
-          </span>
-        </div>
-        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-brand-dark/8">
-          <div
-            className="h-full rounded-full bg-brand-dark"
-            style={{ width: `${analysis.score}%` }}
-          />
-        </div>
-      </div>
-      <p
-        className={`inline-flex items-center gap-0.5 text-xs font-semibold ${
-          diff >= 0 ? "text-brand-dark" : "text-red-500"
-        }`}
+      <button
+        type="button"
+        onClick={onGoToComparison}
+        className="mt-auto flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-brand-dark/10 py-2.5 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5"
       >
-        <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
-        Sektör ortalamasının {diff >= 0 ? "+" : ""}
-        {diff} puan {diff >= 0 ? "üzerindesiniz" : "altındasınız"}.
-      </p>
+        <ArrowUpRight className="size-4" strokeWidth={2} />
+        Daha fazlası için Benchmark
+      </button>
     </div>
   );
 }

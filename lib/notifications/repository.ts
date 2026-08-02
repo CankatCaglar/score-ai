@@ -101,7 +101,9 @@ export async function createAppNotification(input: {
   if (!input.force) {
     const prefs = await getNotificationPreferences(email);
     const isAnalysis =
-      input.type === "analysis_started" || input.type === "analysis_completed";
+      input.type === "analysis_started" ||
+      input.type === "analysis_completed" ||
+      input.type === "analysis_failed";
     const isReminder =
       input.type === "reminder_inactive" ||
       input.type === "reminder_incomplete";

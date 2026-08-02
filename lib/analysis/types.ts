@@ -58,6 +58,8 @@ export type Analysis = {
   promptVersion?: string;
   modelUsed?: string;
   ownerEmail: string;
+  guestId?: string;
+  claimedAtMs?: number;
   sourceUrl?: string;
   mediaUrl?: string;
   potentialImageStatus?: "idle" | "processing" | "completed" | "failed";
@@ -103,6 +105,7 @@ export type ContentSourceType = "url" | "upload";
 export type ContentItem = {
   id: string;
   ownerEmail: string;
+  guestId?: string;
   sourceType: ContentSourceType;
   sourceUrl?: string;
   mediaUrl?: string;
@@ -116,6 +119,7 @@ export type ContentItem = {
 export type AnalysisJob = {
   id: string;
   ownerEmail: string;
+  guestId?: string;
   analysisId: string;
   contentItemId: string;
   status: JobStatus;
@@ -145,6 +149,7 @@ export type DashboardOverview = {
   avgScoreChange: number;
   monthChange: number;
   aiInsight: string;
+  analysisCount: number;
   trendData: Array<{ date: string; score: number }>;
   recentAnalyses: Analysis[];
   topCategories: Array<{ label: string; value: number }>;

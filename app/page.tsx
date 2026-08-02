@@ -119,6 +119,7 @@ const WAITLIST_COPY: Record<
     accessInviteRequired: string;
     accessInviteInvalid: string;
     accessInviteExpired: string;
+    accessGraderClosed: string;
   }
 > = {
   tr: {
@@ -136,6 +137,8 @@ const WAITLIST_COPY: Record<
     accessInviteRequired: "Bu ekran erken erişimde. Giriş için davet linki gerekiyor.",
     accessInviteInvalid: "Davet linki geçersiz veya daha önce kullanılmış.",
     accessInviteExpired: "Davet linkinin süresi dolmuş.",
+    accessGraderClosed:
+      "Ücretsiz analiz aracı henüz açık değil. Erken erişim için waitlist'e katılın.",
   },
   en: {
     emailPlaceholder: "Enter your email address",
@@ -152,6 +155,8 @@ const WAITLIST_COPY: Record<
     accessInviteRequired: "This area is in early access. An invite link is required.",
     accessInviteInvalid: "Invite link is invalid or already used.",
     accessInviteExpired: "Invite link has expired.",
+    accessGraderClosed:
+      "The free grader is not open yet. Join the waitlist for early access.",
   },
 };
 
@@ -427,9 +432,13 @@ export default function LandingPage() {
     } else if (accessStatus === "invite_expired") {
       toast.error(localeCopy.accessInviteExpired);
       accessToastShownRef.current = true;
+    } else if (accessStatus === "grader_closed") {
+      toast.info(localeCopy.accessGraderClosed);
+      accessToastShownRef.current = true;
     }
   }, [
     localeReady,
+    localeCopy.accessGraderClosed,
     localeCopy.accessInviteExpired,
     localeCopy.accessInviteInvalid,
     localeCopy.accessInviteRequired,

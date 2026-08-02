@@ -22,6 +22,7 @@ import {
   extractInstagramHandle,
   normalizeIncomingSourceUrl,
 } from "@/lib/instagram/resolve";
+import { createAppNotification } from "@/lib/notifications/repository";
 
 function buildCompetitorSummary(
   input: string,
@@ -158,6 +159,22 @@ export async function processCompetitorFetch(
       summary: null,
       errorMessage: message,
     });
+
+    try {
+      const label = competitor.input?.trim() || "Rakip";
+      await createAppNotification({
+        ownerEmail,
+        type: "general",
+        title: "Rakip çekimi başarısız",
+        body: `"${label}" verileri alınamadı. Lütfen tekrar deneyin.`,
+        href: "/dashboard/benchmark",
+      });
+    } catch (notifyError) {
+      console.warn(
+        "[competitor-fetch-notify] unexpected error",
+        notifyError instanceof Error ? notifyError.message : notifyError,
+      );
+    }
   }
 }
 

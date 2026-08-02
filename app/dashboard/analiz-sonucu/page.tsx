@@ -24,6 +24,7 @@ import { summarizeAiCommentary } from "@/lib/analysis/insight-summary";
 import type { Analysis } from "@/lib/analysis/types";
 import { useRegisterDashboardBack } from "@/components/dashboard/DashboardBackContext";
 import { withReturnTo } from "@/lib/dashboard/return-navigation";
+import { queuePostAnalysisProductTips } from "@/lib/notifications/product-tips";
 import { requestNotificationsRefresh } from "@/lib/notifications/toast-analysis";
 
 const CANVA_MAGIC_LAYERS_URL = "https://www.canva.com/?highlight=magicLayers";
@@ -312,6 +313,16 @@ function AnalizSonucuPageContent() {
     }, 120);
     return () => window.clearTimeout(timer);
   }, [focusSonuc, loading, isCompleted, payload?.analysis?.potentialImageUrl]);
+
+  // Queue product tips while on result; flush only after leaving this page
+  // so they never stack on top of the "analiz tamamlandı" toast.
+  useEffect(() => {
+    if (loading || !isCompleted || !payload?.analysis?.id) return;
+    void queuePostAnalysisProductTips({
+      analysisId: payload.analysis.id,
+      score: payload.analysis.score,
+    });
+  }, [loading, isCompleted, payload?.analysis?.id, payload?.analysis?.score]);
 
   const openInCanva = () => {
     setCanvaError(null);

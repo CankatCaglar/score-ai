@@ -6,6 +6,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Bell, CheckCheck, Trash2, X } from "lucide-react";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import type { AppNotification } from "@/lib/notifications/types";
+import { toast } from "sonner";
+import {
+  flushProductTipQueue,
+  queuePostAnalysisProductTips,
+} from "@/lib/notifications/product-tips";
 import {
   NOTIFICATIONS_REFRESH_EVENT,
   toastAnalysisCompleted,
@@ -66,16 +71,47 @@ export function NotificationBell() {
       for (const item of items) {
         if (knownIdsRef.current.has(item.id)) continue;
         knownIdsRef.current.add(item.id);
-        if (item.type !== "analysis_completed" || item.read) continue;
-        toastAnalysisCompleted({
-          id: item.id,
-          title: item.title,
-          body: item.body,
-          href: item.href,
-          onOpen: (href) => {
-            router.push(href);
-          },
-        });
+        if (item.read) continue;
+        if (item.type === "analysis_completed") {
+          const shown = toastAnalysisCompleted({
+            id: item.id,
+            title: item.title,
+            body: item.body,
+            href: item.href,
+            onOpen: (href) => {
+              router.push(href);
+            },
+          });
+          const scoreMatch = item.body.match(/Skor:\s*(\d+)/i);
+          const score = scoreMatch ? Number(scoreMatch[1]) : 100;
+          void queuePostAnalysisProductTips({
+            analysisId: item.id,
+            score: Number.isFinite(score) ? score : 100,
+          }).then(() => {
+            const onResult =
+              typeof window !== "undefined" &&
+              window.location.pathname.startsWith("/dashboard/analiz-sonucu");
+            // On result page: tips flush after leaving. Elsewhere: after completed toast.
+            if (!onResult && shown) {
+              flushProductTipQueue({ delayMs: 5200 });
+            }
+          });
+          continue;
+        }
+        if (item.type === "analysis_failed") {
+          toast.error(item.title, {
+            description: item.body,
+            duration: 4500,
+            ...(item.href
+              ? {
+                  action: {
+                    label: "Aç",
+                    onClick: () => router.push(item.href!),
+                  },
+                }
+              : {}),
+          });
+        }
       }
     } catch {
       // keep previous
