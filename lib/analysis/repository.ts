@@ -639,6 +639,7 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
       analysisId?: string;
       contentItemId?: string;
       status?: JobStatus;
+      contactEmail?: string;
     };
     if (!jobData.ownerEmail || !jobData.analysisId || !jobData.contentItemId) continue;
 
