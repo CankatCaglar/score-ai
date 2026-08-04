@@ -33,6 +33,9 @@ import {
   clearGraderWait,
   clearGraderWaitPreview,
   formatGain,
+  localizeCategoryLabel,
+  localizeCriterionLabel,
+  localizeSuggestionText,
   readGraderWaitPreview,
   readGraderWaitStart,
   type GraderResult,
@@ -98,37 +101,46 @@ function estimatePotentialCategories(
 
 function CategoryBars({
   categories,
+  locale,
   variant = "default",
 }: {
   categories: Array<{ id?: string; label: string; value: number }>;
+  locale: GraderLocale;
   variant?: "default" | "neon";
 }) {
   const isNeon = variant === "neon";
+  const upperLocale = locale === "tr" ? "tr-TR" : "en-US";
   return (
     <div className="space-y-2.5">
-      {categories.map((cat) => (
-        <div key={cat.id || cat.label}>
-          <div className="mb-1 flex justify-between gap-2 text-[10px] tracking-wide">
-            <span lang="en" className="truncate font-medium text-brand-dark/55">
-              {cat.label.toLocaleUpperCase("en-US")}
-            </span>
-            <span className="shrink-0 font-semibold text-brand-dark">
-              {cat.value}/100
-            </span>
+      {categories.map((cat) => {
+        const label = localizeCategoryLabel(cat.id || cat.label, locale);
+        return (
+          <div key={cat.id || cat.label}>
+            <div className="mb-1 flex justify-between gap-2 text-[10px] tracking-wide">
+              <span
+                lang={locale}
+                className="truncate font-medium text-brand-dark/55"
+              >
+                {label.toLocaleUpperCase(upperLocale)}
+              </span>
+              <span className="shrink-0 font-semibold text-brand-dark">
+                {cat.value}/100
+              </span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-brand-dark/8">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${Math.min(100, Math.max(0, cat.value))}%`,
+                  backgroundColor: isNeon
+                    ? "var(--color-brand-dark)"
+                    : scoreColor(cat.value),
+                }}
+              />
+            </div>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-brand-dark/8">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${Math.min(100, Math.max(0, cat.value))}%`,
-                backgroundColor: isNeon
-                  ? "var(--color-brand-dark)"
-                  : scoreColor(cat.value),
-              }}
-            />
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -262,7 +274,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
         const scored = micro.find((item) => item.id === criterion.id);
         return {
           id: criterion.id,
-          label: scored?.label || criterion.label,
+          label: criterion.label,
           value: scored?.value ?? null,
           number: criterionNumber,
         };
@@ -491,7 +503,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
             className={`${GRADER_SHELL_PAD} flex items-center justify-between py-3.5 sm:py-4`}
           >
             <Link
-              href="/grader"
+              href="/analyzer"
               className="transition-opacity hover:opacity-85"
               aria-label="Content Analyzer by Score AI"
             >
@@ -512,7 +524,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
             className={`${GRADER_SHELL_PAD} flex items-center justify-between py-3.5 sm:py-4`}
           >
             <Link
-              href="/grader"
+              href="/analyzer"
               className="transition-opacity hover:opacity-85"
               aria-label="Content Analyzer by Score AI"
             >
@@ -526,10 +538,10 @@ export function GraderReportClient({ slug }: { slug: string }) {
             {error || t.genericSubmitError}
           </p>
           <Link
-            href="/grader"
+            href="/analyzer"
             className="mt-6 inline-flex items-center gap-2 rounded-md bg-brand-dark px-5 py-2.5 text-sm font-semibold text-white"
           >
-            Score Grader
+            Content Analyzer
             <ArrowRight className="size-4" strokeWidth={2} />
           </Link>
         </main>
@@ -544,7 +556,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
           className={`${GRADER_SHELL_PAD} flex items-center justify-between py-3.5 sm:py-4`}
         >
           <Link
-            href="/grader"
+            href="/analyzer"
             className="transition-opacity hover:opacity-85"
             aria-label="Content Analyzer by Score AI"
           >
@@ -612,11 +624,14 @@ export function GraderReportClient({ slug }: { slug: string }) {
             </div>
 
             <div className="mt-4 w-full">
-              <CategoryBars categories={result.categories.slice(0, 5)} />
+              <CategoryBars
+                categories={result.categories.slice(0, 5)}
+                locale={locale}
+              />
             </div>
           </ReportCard>
 
-          <div className="flex flex-col items-center justify-center gap-2.5 self-center py-2 md:min-w-[5.5rem] md:px-3">
+          <div className="flex flex-col items-center justify-center gap-2.5 self-center py-2 md:min-w-[7.5rem] md:max-w-[9.5rem] md:px-3">
             <div className="flex size-10 items-center justify-center rounded-full bg-brand-neon shadow-sm sm:size-11">
               <ArrowRight
                 className="size-4 rotate-90 text-brand-dark md:rotate-0 sm:size-5"
@@ -626,7 +641,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
             <span className="text-2xl font-bold leading-none tracking-tight text-brand-dark sm:text-3xl">
               +{formatGain(netGain)}
             </span>
-            <span className="text-sm font-semibold text-brand-dark">
+            <span className="text-center text-xs font-semibold leading-snug text-brand-dark sm:text-sm">
               {t.potentialShort}
             </span>
           </div>
@@ -646,14 +661,21 @@ export function GraderReportClient({ slug }: { slug: string }) {
             </div>
 
             <div className="mt-4 w-full shrink-0">
-              <CategoryBars categories={potentialCategories} variant="neon" />
+              <CategoryBars
+                categories={potentialCategories}
+                locale={locale}
+                variant="neon"
+              />
             </div>
           </ReportCard>
         </div>
 
         <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {result.categories.map((cat) => {
-            const Icon = categoryIcons[cat.label] ?? ImageIcon;
+            const Icon =
+              categoryIcons[cat.id || ""] ??
+              categoryIcons[cat.label] ??
+              ImageIcon;
             return (
               <ReportCard
                 key={cat.id || cat.label}
@@ -666,7 +688,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
                   />
                 </div>
                 <p className="mt-3 text-xs font-medium text-brand-dark/70">
-                  {cat.label}
+                  {localizeCategoryLabel(cat.id || cat.label, locale)}
                 </p>
                 <p className="mt-1 text-xl font-bold text-brand-dark">
                   {cat.value}
@@ -690,7 +712,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
                 className="flex min-h-14 items-center gap-4 rounded-xl border border-brand-dark/10 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-dark/15 hover:shadow-[0_12px_28px_-18px_rgba(0,39,44,0.28)] sm:min-h-15"
               >
                 <span className="min-w-0 flex-1 text-[13px] font-medium leading-snug text-brand-dark">
-                  {s.text}
+                  {localizeSuggestionText(s.text, locale, s.criterionId)}
                 </span>
                 <span className="shrink-0 rounded-full bg-brand-neon/45 px-2.5 py-1 text-[11px] font-semibold text-brand-dark">
                   +{formatGain(s.gain)} {t.gainPotentialLabel}
@@ -727,7 +749,10 @@ export function GraderReportClient({ slug }: { slug: string }) {
           </div>
 
           {criteriaGroups.map((group) => {
-            const Icon = categoryIcons[group.category] ?? ImageIcon;
+            const Icon =
+              categoryIcons[group.id] ??
+              categoryIcons[group.category] ??
+              ImageIcon;
             return (
               <ReportCard key={group.id}>
                 <div className="flex items-center justify-between gap-3">
@@ -737,7 +762,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
                       strokeWidth={1.75}
                     />
                     <h3 className="text-[15px] font-semibold text-brand-dark">
-                      {group.category}
+                      {localizeCategoryLabel(group.id || group.category, locale)}
                     </h3>
                   </div>
                   <span className="text-sm font-semibold tabular-nums text-brand-dark">
@@ -757,7 +782,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
                           {item.number}
                         </span>
                         <span className="min-w-0 flex-1 truncate pr-4 text-[13px] font-medium text-brand-dark">
-                          {item.label}
+                          {localizeCriterionLabel(item.id, locale)}
                         </span>
                         {typeof item.value === "number" ? (
                           <span

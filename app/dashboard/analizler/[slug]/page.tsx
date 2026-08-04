@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
   BadgeCheck,
@@ -27,9 +27,21 @@ import { SocialShareMenu } from "@/components/dashboard/SocialShareMenu";
 import { BenchmarkInsightCard } from "@/components/analysis/BenchmarkInsightCard";
 import { summarizeBenchmarkCommentary } from "@/lib/analysis/insight-summary";
 import { withReturnTo } from "@/lib/dashboard/return-navigation";
+import {
+  localizeCategoryLabel,
+  localizeCriterionLabel,
+  localizeSuggestionText,
+} from "@/lib/analysis/locale-labels";
+import {
+  getMainCategoryDefinitions,
+  rubricModeFromVersion,
+  RUBRIC_VERSION_BASE,
+} from "@/lib/analysis/rubric";
+import { scoreColor } from "@/lib/analysis/ui";
 
 const tabs = [
   "Genel Bakış",
+  "Mikro Kriterler",
   "Score AI Önerileri",
   "Karşılaştırma",
   "İçgörüler",
@@ -37,6 +49,11 @@ const tabs = [
 type Tab = (typeof tabs)[number];
 
 const categoryIcons: Record<string, typeof ImageIcon> = {
+  visual_intelligence: ImageIcon,
+  content_intelligence: MessageSquare,
+  brand_intelligence: BadgeCheck,
+  channel_intelligence: Bot,
+  business_intelligence: ArrowUpRight,
   "Visual Intelligence": ImageIcon,
   "Content Intelligence": MessageSquare,
   "Brand Intelligence": BadgeCheck,
@@ -151,7 +168,7 @@ function ExpandableSuggestionsList({
               className="flex items-center gap-2.5 rounded-xl bg-bg-offwhite px-3 py-2"
             >
               <span className="min-w-0 flex-1 text-[11px] leading-snug text-brand-dark/75">
-                {s.text}
+                {localizeSuggestionText(s.text, "tr", s.criterionId)}
               </span>
               <span className="shrink-0 rounded-full bg-brand-neon/40 px-2 py-0.5 text-[10px] font-semibold text-brand-dark">
                 +{formatGain(s.gain)} puan potansiyeli
@@ -163,7 +180,7 @@ function ExpandableSuggestionsList({
               className="flex flex-wrap items-center gap-3.5 rounded-xl border border-brand-dark/8 px-3.5 py-3"
             >
               <span className="min-w-0 flex-1 text-xs leading-snug text-brand-dark/80">
-                {s.text}
+                {localizeSuggestionText(s.text, "tr", s.criterionId)}
               </span>
               <span className="rounded-full bg-brand-neon/40 px-2 py-0.5 text-[11px] font-semibold text-brand-dark">
                 +{formatGain(s.gain)} puan potansiyeli
@@ -490,6 +507,7 @@ export default function AnalizDetayPage() {
             onGoToComparison={openComparisonTab}
           />
         )}
+        {tab === "Mikro Kriterler" && <MicroCriteriaTab analysis={analysis} />}
         {tab === "Score AI Önerileri" && (
           <SuggestionsTab analysis={analysis} initialExpanded={expandSuggestionsTab} />
         )}
@@ -499,6 +517,110 @@ export default function AnalizDetayPage() {
     </div>
   );
 } 
+
+function MicroCriteriaTab({ analysis }: { analysis: Analysis }) {
+  const groups = useMemo(() => {
+    const mode = rubricModeFromVersion(
+      analysis.rubricVersion || RUBRIC_VERSION_BASE,
+    );
+    const micro = analysis.microCriteria ?? [];
+    let criterionNumber = 0;
+    return getMainCategoryDefinitions(mode).map((category) => {
+      const average =
+        analysis.categories.find((cat) => cat.id === category.id)?.value ?? 0;
+      const items = category.criteria.map((criterion) => {
+        criterionNumber += 1;
+        const scored = micro.find((item) => item.id === criterion.id);
+        return {
+          id: criterion.id,
+          value: scored?.value ?? null,
+          number: criterionNumber,
+        };
+      });
+      return {
+        id: category.id,
+        average,
+        items,
+      };
+    });
+  }, [analysis]);
+
+  const criteriaCount =
+    analysis.criteriaCount ||
+    groups.reduce((sum, group) => sum + group.items.length, 0);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold text-brand-dark sm:text-lg">
+          Mikro Kriterler
+          {criteriaCount ? (
+            <span className="ml-2 text-sm font-medium text-brand-dark/40">
+              ({criteriaCount})
+            </span>
+          ) : null}
+        </h2>
+        <p className="mt-1 text-sm text-brand-dark/55">
+          Kategorilere göre objektif değerlendirme
+        </p>
+      </div>
+
+      {groups.map((group) => {
+        const Icon = categoryIcons[group.id] ?? ImageIcon;
+        return (
+          <Card key={group.id}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <Icon
+                  className="size-4.5 shrink-0 text-brand-dark"
+                  strokeWidth={1.75}
+                />
+                <h3 className="text-[15px] font-semibold text-brand-dark">
+                  {localizeCategoryLabel(group.id, "tr")}
+                </h3>
+              </div>
+              <span className="text-sm font-semibold tabular-nums text-brand-dark">
+                {group.average}
+                <span className="font-medium text-brand-dark/30">/100</span>
+              </span>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-x-12 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
+              {group.items.map((item) => {
+                const color =
+                  typeof item.value === "number"
+                    ? scoreColor(item.value)
+                    : undefined;
+                return (
+                  <div
+                    key={item.id}
+                    className="grid w-fit max-w-full grid-cols-[1.25rem_minmax(0,10.5rem)_2rem] items-center gap-x-1.5"
+                  >
+                    <span className="text-[11px] font-medium tabular-nums text-brand-dark/60">
+                      {item.number}
+                    </span>
+                    <span className="truncate text-[13px] font-medium text-brand-dark">
+                      {localizeCriterionLabel(item.id, "tr")}
+                    </span>
+                    {typeof item.value === "number" ? (
+                      <span
+                        className="text-right text-[13px] font-bold tabular-nums"
+                        style={color ? { color } : undefined}
+                      >
+                        {item.value}
+                      </span>
+                    ) : (
+                      <span />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
 
 function OverviewTab({
   analysis,
@@ -585,13 +707,18 @@ function OverviewTab({
         </h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {analysis.categories.map((cat) => {
-            const Icon = categoryIcons[cat.label] ?? ImageIcon;
+            const Icon =
+              categoryIcons[cat.id || ""] ??
+              categoryIcons[cat.label] ??
+              ImageIcon;
             return (
-              <Card key={cat.label} className="p-4!">
+              <Card key={cat.id || cat.label} className="p-4!">
                 <div className="flex size-9 items-center justify-center rounded-lg bg-brand-neon/90">
                   <Icon className="size-[18px] text-brand-dark" strokeWidth={1.75} />
                 </div>
-                <p className="mt-3 text-xs text-brand-dark/55">{cat.label}</p>
+                <p className="mt-3 text-xs text-brand-dark/55">
+                  {localizeCategoryLabel(cat.id || cat.label, "tr")}
+                </p>
                 <p className="mt-1 text-xl font-bold text-brand-dark">
                   {cat.value}
                   <span className="text-sm font-medium text-brand-dark/30">

@@ -42,7 +42,10 @@ export function proxy(request: NextRequest) {
   const isDashboardRoute =
     pathname === "/dashboard" || pathname.startsWith("/dashboard/");
   const isGraderRoute =
-    pathname === "/grader" || pathname.startsWith("/grader/");
+    pathname === "/analyzer" ||
+    pathname.startsWith("/analyzer/") ||
+    pathname === "/grader" ||
+    pathname.startsWith("/grader/");
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
   const isAdminDashboardRoute =
     pathname === "/admin-dashboard" || pathname.startsWith("/admin-dashboard/");
@@ -171,6 +174,8 @@ export const config = {
     "/admin-dashboard/:path*",
     "/dashboard",
     "/dashboard/:path*",
+    "/analyzer",
+    "/analyzer/:path*",
     "/grader",
     "/grader/:path*",
     "/giris",

@@ -7,7 +7,7 @@ const graderSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Score Grader | Ücretsiz İçerik Analizi",
+  title: "Content Analyzer | Ücretsiz İçerik Analizi",
   description:
     "İçeriğini yükle. Score analiz etsin, geliştirme alanlarını açıklasın ve yayına hazır hâle getirsin.",
 };

@@ -9,7 +9,18 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import type { Analysis } from "@/lib/analysis/types";
+import {
+  localizeCategoryLabel,
+  localizeCriterionLabel,
+  localizeSuggestionText,
+} from "@/lib/analysis/locale-labels";
 import type { GraderCopy, GraderLocale } from "./copy";
+
+export {
+  localizeCategoryLabel,
+  localizeCriterionLabel,
+  localizeSuggestionText,
+};
 
 /** Content Analyzer wordmark — matches grader product logo. */
 export function ContentAnalyzerLogo({
@@ -122,7 +133,7 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-/** Persist local preview so it survives /grader → /grader/[slug] navigation. */
+/** Persist local preview so it survives /analyzer → /analyzer/[slug] navigation. */
 export async function markGraderWaitPreview(file: File): Promise<void> {
   try {
     const dataUrl = await fileToDataUrl(file);
@@ -132,7 +143,7 @@ export async function markGraderWaitPreview(file: File): Promise<void> {
   }
 }
 
-/** Call when user clicks analyze — keeps progress across /grader → /grader/[slug]. */
+/** Call when user clicks analyze — keeps progress across /analyzer → /analyzer/[slug]. */
 export function markGraderWaitPending(): number {
   const startedAt = Date.now();
   writeSessionItem(WAIT_PENDING_KEY, String(startedAt));
@@ -190,6 +201,11 @@ export function clearGraderWaitPreview(slug: string) {
 }
 
 export const categoryIcons: Record<string, typeof ImageIcon> = {
+  visual_intelligence: ImageIcon,
+  content_intelligence: MessageSquare,
+  brand_intelligence: BadgeCheck,
+  channel_intelligence: Bot,
+  business_intelligence: ArrowUpRight,
   "Visual Intelligence": ImageIcon,
   "Content Intelligence": MessageSquare,
   "Brand Intelligence": BadgeCheck,

@@ -40,6 +40,27 @@ function isValidEmail(value: string): boolean {
   return isValidGraderContactEmail(value);
 }
 
+function renderMoreInfoText(text: string, bold?: string[]) {
+  if (!bold?.length) return text;
+
+  const pattern = new RegExp(
+    `(${bold.map((phrase) => phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`,
+    "g",
+  );
+  const parts = text.split(pattern);
+  const boldSet = new Set(bold);
+
+  return parts.map((part, index) =>
+    boldSet.has(part) ? (
+      <strong key={`${part}-${index}`} className="font-semibold text-brand-dark">
+        {part}
+      </strong>
+    ) : (
+      <span key={`${part}-${index}`}>{part}</span>
+    ),
+  );
+}
+
 export function GraderClient({
   initialFreeUsed = false,
   initialExistingSlug = null,
@@ -69,8 +90,8 @@ export function GraderClient({
   const uploadUnlocked = emailReady && !freeUsedLocked;
   const heroVisualSrc =
     locale === "en"
-      ? "/grader/hero-visual-en.png"
-      : "/grader/hero-visual-tr.png";
+      ? "/analyzer/hero-visual-en.png"
+      : "/analyzer/hero-visual-tr.png";
 
   useLayoutEffect(() => {
     // Cached images often fire onLoad before React attaches the handler, then a
@@ -223,7 +244,7 @@ export function GraderClient({
           setSubmitting(false);
           if (data.slug) {
             setExistingSlug(data.slug);
-            router.replace(`/grader/${data.slug}`);
+            router.replace(`/analyzer/${data.slug}`);
             return;
           }
           setError(t.freeUsedApiError);
@@ -245,7 +266,7 @@ export function GraderClient({
       // Same wait clock + preview continue on the report page — no progress reset.
       await previewReady;
       bindGraderWaitToSlug(data.slug, { analysisId: data.analysisId });
-      router.replace(`/grader/${data.slug}`);
+      router.replace(`/analyzer/${data.slug}`);
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -600,7 +621,7 @@ export function GraderClient({
                 {freeUsedLocked ? (
                   existingSlug ? (
                     <Link
-                      href={`/grader/${existingSlug}`}
+                      href={`/analyzer/${existingSlug}`}
                       className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-brand-neon px-6 py-3.5 text-sm font-semibold text-brand-dark transition hover:brightness-105"
                     >
                       {t.viewReportCta}
@@ -710,10 +731,7 @@ export function GraderClient({
                 {t.positioningTitle}
               </h2>
               <p className="mt-4 text-base leading-relaxed text-brand-dark/75">
-                {t.positioningP1}
-              </p>
-              <p className="mt-4 text-base leading-relaxed text-brand-dark/75">
-                {t.positioningP2}
+                {t.positioningP1} {t.positioningP2}
               </p>
             </div>
 
@@ -785,7 +803,10 @@ export function GraderClient({
                                         paragraph.title ? "mt-1" : ""
                                       }`}
                                     >
-                                      {paragraph.text}
+                                      {renderMoreInfoText(
+                                        paragraph.text,
+                                        paragraph.bold,
+                                      )}
                                     </p>
                                   </div>
                                 ))}

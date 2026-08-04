@@ -13,6 +13,20 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "6mb",
     },
   },
+  async redirects() {
+    return [
+      {
+        source: "/grader",
+        destination: "/analyzer",
+        permanent: true,
+      },
+      {
+        source: "/grader/:path*",
+        destination: "/analyzer/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

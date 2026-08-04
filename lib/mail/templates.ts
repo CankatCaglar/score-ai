@@ -37,7 +37,7 @@ export function analysisCompletedEmail(input: {
   return { subject, text, html };
 }
 
-/** Guest Grader sonucu — dashboard yerine /grader/[slug] linki. */
+/** Guest Content Analyzer sonucu — dashboard yerine /analyzer/[slug] linki. */
 export function graderAnalysisCompletedEmail(input: {
   title: string;
   score: number;
@@ -45,7 +45,7 @@ export function graderAnalysisCompletedEmail(input: {
   locale?: "tr" | "en";
 }) {
   const baseUrl = getAppBaseUrl();
-  const resultUrl = `${baseUrl}/grader/${encodeURIComponent(input.slug)}`;
+  const resultUrl = `${baseUrl}/analyzer/${encodeURIComponent(input.slug)}`;
   const isEn = input.locale === "en";
   const score = Math.round(input.score);
   const subject = isEn

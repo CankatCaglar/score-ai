@@ -14,7 +14,7 @@ export default async function GraderScorePage({
 
   const { slug } = await params;
   if (!slug?.trim()) {
-    redirect("/grader");
+    redirect("/analyzer");
   }
 
   return <GraderReportClient slug={slug.trim()} />;

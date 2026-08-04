@@ -4,7 +4,7 @@ export const GRADER_LOCALE_STORAGE_KEY = "scoreai_locale";
 
 export type MoreInfoItem = {
   q: string;
-  paragraphs: Array<{ title?: string; text: string }>;
+  paragraphs: Array<{ title?: string; text: string; bold?: string[] }>;
 };
 
 export type GraderCopy = {
@@ -84,15 +84,15 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     eyebrow: "Ücretsiz içerik analizi",
     heroTitle: "Anlık İçerik Kalite Denetimi",
     heroBody:
-      "Görselini yükle; Score 30+ objektif kriterle skorlasın, eksikleri göstersin ve geliştirme potansiyelini açıklasın. Canva ve ChatGPT'den sonra gelen kalite katmanı.",
+      "Görselini yükle; Score 30+ objektif kriterle skorlasın, eksikleri göstersin ve geliştirme potansiyelini açıklasın.",
     bullets: [
-      "Yaklaşık 30 saniyede skor ve kategori kırılımı",
-      "Score AI önerileri ve aksiyon alanları",
-      "İlk analiz ücretsiz, kayıtsız dene",
+      "Yaklaşık 30 saniyede detaylı analiz sonucunu gör",
+      "Score AI önerilerini ve aksiyon alanlarını gör",
+      "30+ objektif kriterle değerlendirme",
     ],
     heroPointCta: "İlk ücretsiz analizinle buradan başla",
     freeAnalysis: "Ücretsiz analiz",
-    criteriaBadge: "31 kriter",
+    criteriaBadge: "30+ kriter",
     emailLabel: "E-posta adresiniz",
     emailPlaceholder: "ornek@mail.com",
     emailHint: "Sonucu ve sonraki adımları paylaşabilmemiz için.",
@@ -131,27 +131,22 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
         d: "Kaydol; Score ile düzenle ve çıktını al.",
       },
     ],
-    positioningTitle: "Üretimden sonra gelen kalite katmanı",
+    positioningTitle: "Üretimden Sonra Gelen Kalite Katmanı",
     positioningP1:
-      "Score AI'ı Canva, ChatGPT veya Adobe'nin karşısına koymuyoruz. Onların ürettiği içeriğin yayınlanmadan önce geçtiği kontrol ve geliştirme sistemi olarak konumlandırıyoruz.",
+      "Canva, ChatGPT veya Adobe içerik üretir. Score AI ise yayınlamadan önce kontrol eder.",
     positioningP2:
-      "İçeriğini yükle. Score analiz etsin, geliştirme alanlarını açıklasın ve yayına hazır hâle getirsin.",
+      "İçeriğini yükle. Score AI analiz etsin, geliştirilmesi gereken noktaları göstersin ve paylaşıma hazır hale getirsin.",
     visualSlotLabel: "Görsel alanı",
     visualSlotHintBefore: "PNG eklemek için",
-    visualSlotPath: "public/grader/hero-visual-tr.png",
+    visualSlotPath: "public/analyzer/hero-visual-tr.png",
     moreInfoTitle: "Daha fazla bilgi",
     moreInfo: [
       {
-        q: "Score Grader nedir?",
+        q: "Content Analyzer nedir?",
         paragraphs: [
           {
-            text: "Score Grader, Score AI'ın ücretsiz giriş noktasıdır. İçeriğini yükler, 31 objektif kritere göre skorunu görür, eksikleri ve geliştirme potansiyelini anlarsın, hesabın olmadan.",
-          },
-          {
-            text: "Ana vaat nettir: içeriğini skorlar, geliştirme alanlarını açıklar, gerekli düzenlemeleri uygular ve onayının ardından yayına hazır veya düzenlenebilir formatta teslim eder.",
-          },
-          {
-            text: "Kısa anlatım: İçeriğini yükle. Score analiz etsin, geliştirsin ve yayına hazır hâle getirsin. Kaydolduğunda bu ilk analiz otomatik olarak Score AI hesabına aktarılır.",
+            text: "Content Analyzer, içeriğinizi yayınlamadan önce analiz eden ücretsiz bir araçtır. İçeriğinizi yükleyin, 30'un üzerinde objektif kritere göre değerlendirin ve güçlü yönlerinizle birlikte geliştirilmesi gereken alanları saniyeler içinde keşfedin.",
+            bold: ["30'un üzerinde objektif kritere göre"],
           },
         ],
       },
@@ -159,13 +154,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
         q: "Score AI, Canva veya ChatGPT'nin rakibi mi?",
         paragraphs: [
           {
-            text: "Hayır. Score'u Canva, ChatGPT veya Adobe'nin karşısına koymuyoruz. Score, içerik üretim araçlarından sonra gelen kalite katmanıdır.",
-          },
-          {
-            text: "Üretilen içeriğin yayınlanmadan önce geçtiği kontrol ve geliştirme sistemi olarak konumlanır: objektif kriterlerle değerlendirir, geliştirme alanlarını belirler ve içeriği markaya özel biçimde yayına hazır hâle getirir.",
-          },
-          {
-            text: "Yani üretim araçlarının yerini almaz; onların çıktısını ölçülebilir, tutarlı ve yayına hazır hale getiren yapay zekâ destekli kalite ve optimizasyon katmanıdır.",
+            text: "Hayır. Score'u Canva, ChatGPT veya Adobe'nin karşısına koymuyoruz. Score, içerik üretim araçlarından sonra gelen kalite katmanıdır. Üretilen içeriğin yayınlanmadan önce geçtiği kontrol ve geliştirme sistemi olarak konumlanır: objektif kriterlerle değerlendirir, geliştirme alanlarını belirler ve içeriği markaya özel biçimde yayına hazır hâle getirir. Yani üretim araçlarının yerini almaz; onların çıktısını ölçülebilir, tutarlı ve yayına hazır hale getiren yapay zekâ destekli kalite ve optimizasyon katmanıdır.",
           },
         ],
       },
@@ -173,18 +162,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
         q: "Kimler için uygun?",
         paragraphs: [
           {
-            text: "Düzenli içerik üreten, küçük veya orta ölçekli bir pazarlama ekibine sahip, büyüme ve kurumsallaşma aşamasındaki markalar. Dev kurumsal şirketler değil; sosyal medyayı işletme sahibinin arada yönettiği mikro KOBİ'ler de değil.",
-          },
-          {
-            title: "Tipik profil",
-            text: "Ayda en az 12-15 dijital içerik üretir; ChatGPT, Canva, Adobe veya benzeri araçlardan yararlanır; büyüyor ve pazarlama operasyonunu daha ölçülebilir hale getirmek ister.",
-          },
-          {
-            title: "En güçlü segmentler",
-            text: "Büyüyen e-ticaret ve tüketici markaları (gıda, kozmetik, moda, ev ve yaşam, wellness, eğitim, turizm, çok şubeli yerel markalar) ve kurumsallaşan B2B firmalar (üretim, teknoloji, yazılım, lojistik, profesyonel hizmet).",
-          },
-          {
-            text: "Özetle hedef: içerik üretimini artık bir operasyon olarak yönetmek zorunda kalan, ekibi oluşmuş ve marka tutarlılığını sistematik yönetmek isteyen büyüyen markalar.",
+            text: "Düzenli içerik üreten herkes. ChatGPT, Canva veya Adobe gibi araçlarla hazırladığınız içerikleri paylaşmadan önce analiz etmek, eksiklerini görmek ve daha güçlü hâle getirmek istiyorsanız Content Analyzer tam size göre. En çok pazarlama ekipleri, markalar, içerik üreticileri ve sosyal medya yöneticileri tarafından kullanılır.",
           },
         ],
       },
@@ -192,13 +170,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
         q: "İlk analizden sonra ne olur?",
         paragraphs: [
           {
-            text: "Grader'da skorunu, kategori kırılımlarını, Score AI önerilerini ve eksiklikleri görürsün. Detaylı kayıt, sürekli analiz ve geliştirme için ücretsiz hesap oluşturursun.",
-          },
-          {
-            text: "Kayıt veya giriş sonrası misafir oturumundaki analiz otomatik olarak dashboard hesabına aktarılır. Boş bir panele düşmezsin; doğrudan ilgili analizine gidersin.",
-          },
-          {
-            text: "İkinci içerikten itibaren Score AI içinde kredi veya üyelikle devam edersin. İlk deneyim ücretsizdir; sürdürülebilir operasyon Score AI ile büyür.",
+            text: "Analyzer'da skorunu, kategori kırılımlarını, Score AI önerilerini ve eksiklikleri görürsün. Detaylı kayıt, sürekli analiz ve geliştirme için ücretsiz hesap oluşturursun. Kayıt veya giriş sonrası misafir oturumundaki analiz otomatik olarak dashboard hesabına aktarılır. Boş bir panele düşmezsin; doğrudan ilgili analizine gidersin. İkinci içerikten itibaren Score AI içinde kredi veya üyelikle devam edersin. İlk deneyim ücretsizdir; sürdürülebilir operasyon Score AI ile büyür.",
           },
         ],
       },
@@ -224,7 +196,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     criteriaLabel: "kriter",
     detailCta: "Detaylı gör, kaydol",
     overallScore: "Genel Skor",
-    potentialShort: "Potansiyel",
+    potentialShort: "Puan Potansiyel Geliştirme",
     potentialTitle: "Potansiyel Skor",
     potentialGainLabel: "Potansiyel artış",
     saveReportTitle: "Detaylı raporu kaydet",
@@ -245,7 +217,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     insightSuggestionsLabel: "Öneriler",
     criteriaPanelTitle: "Mikro Kriterler",
     criteriaPanelSubtitle: "Kategorilere göre objektif değerlendirme",
-    finalCtaTitle: "Detaylı şekilde gör, ücretsiz kaydol",
+    finalCtaTitle: "Detaylı Geliştirme Planı için Ücretsiz Kaydol",
     finalCtaBody:
       "Bu rapor hesabına otomatik aktarılır. Tam kriter detayları ve Score ile geliştirme için ücretsiz hesap oluştur.",
     hasAccount: "Hesabım var, giriş yap",
@@ -255,15 +227,15 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     eyebrow: "Free Content Analysis",
     heroTitle: "Instant Content Quality Audit",
     heroBody:
-      "Upload your visual; Score grades it against 31 objective criteria, shows gaps, and explains improvement potential. The quality layer after Canva and ChatGPT.",
+      "Upload your visual; Score grades it against 30+ objective criteria, shows gaps, and explains improvement potential.",
     bullets: [
-      "Score and category breakdown in about 30 seconds",
-      "Score AI suggestions and action areas",
-      "First analysis free, no signup required",
+      "See detailed analysis results in about 30 seconds",
+      "See Score AI suggestions and action areas",
+      "Evaluation against 30+ objective criteria",
     ],
     heroPointCta: "Start your first free analysis here",
     freeAnalysis: "Free analysis",
-    criteriaBadge: "31 criteria",
+    criteriaBadge: "30+ criteria",
     emailLabel: "Your email",
     emailPlaceholder: "you@company.com",
     emailHint: "So we can share the result and next steps with you.",
@@ -302,27 +274,22 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
         d: "Sign up, refine with Score, and export the output.",
       },
     ],
-    positioningTitle: "The quality layer after production",
+    positioningTitle: "The Quality Layer After Production",
     positioningP1:
-      "We do not position Score AI against Canva, ChatGPT, or Adobe. It is the control and improvement system content passes through before publishing.",
+      "Canva, ChatGPT, or Adobe create content. Score AI checks it before you publish.",
     positioningP2:
-      "Upload your content. Let Score analyze it, explain improvement areas, and make it publish-ready.",
+      "Upload your content. Let Score AI analyze it, show what needs improvement, and make it ready to share.",
     visualSlotLabel: "Visual slot",
     visualSlotHintBefore: "Add a PNG at",
-    visualSlotPath: "public/grader/hero-visual-en.png",
+    visualSlotPath: "public/analyzer/hero-visual-en.png",
     moreInfoTitle: "More information",
     moreInfo: [
       {
-        q: "What is Score Grader?",
+        q: "What is Content Analyzer?",
         paragraphs: [
           {
-            text: "Score Grader is Score AI's free entry point. Upload content, see your score across 31 objective criteria, and understand gaps and potential, without an account.",
-          },
-          {
-            text: "The core promise is clear: Score grades your content, explains improvement areas, applies needed edits, and delivers a publish-ready or editable result after your approval.",
-          },
-          {
-            text: "Short version: Upload your content. Let Score analyze, improve, and make it publish-ready. When you sign up, this first analysis is automatically moved into your Score AI account.",
+            text: "Content Analyzer is a free tool that analyzes your content before you publish. Upload your content, evaluate it against 30+ objective criteria, and discover your strengths along with areas to improve in seconds.",
+            bold: ["30+ objective criteria"],
           },
         ],
       },
@@ -330,13 +297,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
         q: "Is Score AI a competitor to Canva or ChatGPT?",
         paragraphs: [
           {
-            text: "No. We do not put Score against Canva, ChatGPT, or Adobe. Score is the quality layer that comes after content production tools.",
-          },
-          {
-            text: "It is the control and improvement system content goes through before publishing: evaluate with objective criteria, identify gaps, and prepare brand-specific publish-ready output.",
-          },
-          {
-            text: "In other words, it does not replace production tools. It is the AI-powered quality and optimization layer that makes their output measurable, consistent, and ready to publish.",
+            text: "No. We do not put Score against Canva, ChatGPT, or Adobe. Score is the quality layer that comes after content production tools. It is the control and improvement system content goes through before publishing: evaluate with objective criteria, identify gaps, and prepare brand-specific publish-ready output. In other words, it does not replace production tools. It is the AI-powered quality and optimization layer that makes their output measurable, consistent, and ready to publish.",
           },
         ],
       },
@@ -344,18 +305,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
         q: "Who is it for?",
         paragraphs: [
           {
-            text: "Growing brands with a small or mid-sized marketing team that produce content regularly and are professionalizing their operations. Not giant enterprises, and not micro SMBs where the owner occasionally posts on social.",
-          },
-          {
-            title: "Typical profile",
-            text: "Produces at least 12-15 digital assets per month; uses ChatGPT, Canva, Adobe, or similar tools; is growing and wants marketing operations to become more measurable.",
-          },
-          {
-            title: "Strongest segments",
-            text: "Growing ecommerce and consumer brands (food, beauty, fashion, home, wellness, education, travel, multi-location local brands) and maturing B2B companies (manufacturing, tech, software, logistics, professional services).",
-          },
-          {
-            text: "In short: brands that must run content as an operation, already have a team, and want to manage quality and brand consistency systematically.",
+            text: "Anyone who creates content regularly. If you want to analyze content made with tools like ChatGPT, Canva, or Adobe before sharing, see the gaps, and make it stronger, Content Analyzer is for you. It is used most by marketing teams, brands, content creators, and social media managers.",
           },
         ],
       },
@@ -363,13 +313,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
         q: "What happens after the first analysis?",
         paragraphs: [
           {
-            text: "On Grader you see your score, category breakdown, Score AI suggestions, and gaps. Create a free account to keep the report and continue analyzing and improving.",
-          },
-          {
-            text: "After signup or login, the guest-session analysis is automatically transferred into your dashboard account. You do not land on an empty panel; you go straight to that analysis.",
-          },
-          {
-            text: "From the second piece of content onward, you continue inside Score AI with credits or membership. The first experience is free; ongoing operations scale with Score AI.",
+            text: "In Analyzer you see your score, category breakdown, Score AI suggestions, and gaps. Create a free account to keep the report and continue analyzing and improving. After signup or login, the guest-session analysis is automatically transferred into your dashboard account. You do not land on an empty panel; you go straight to that analysis. From the second piece of content onward, you continue inside Score AI with credits or membership. The first experience is free; ongoing operations scale with Score AI.",
           },
         ],
       },
@@ -396,7 +340,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     criteriaLabel: "criteria",
     detailCta: "See details, sign up",
     overallScore: "Overall Score",
-    potentialShort: "Potential",
+    potentialShort: "points potential improvement",
     potentialTitle: "Potential Score",
     potentialGainLabel: "Potential gain",
     saveReportTitle: "Save the full report",
@@ -416,7 +360,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     insightSuggestionsLabel: "Suggestions",
     criteriaPanelTitle: "Micro Criteria",
     criteriaPanelSubtitle: "Objective evaluation by category",
-    finalCtaTitle: "See the full details, sign up free",
+    finalCtaTitle: "Sign Up Free for a Detailed Improvement Plan",
     finalCtaBody:
       "This report is transferred to your account automatically. Create a free account for full criteria detail and Score-powered improvements.",
     hasAccount: "I already have an account, sign in",
