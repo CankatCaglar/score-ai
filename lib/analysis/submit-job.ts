@@ -532,10 +532,19 @@ export async function runAnalysisJobSubmission(input: {
   ownerEmail: string;
   formData: FormData;
   guestId?: string;
+  contactEmail?: string;
+  locale?: string;
   /** When false, create the job and return immediately (caller must process). */
   waitForCompletion?: boolean;
 }): Promise<AnalysisJobSubmissionResult> {
-  const { ownerEmail, formData, guestId, waitForCompletion = true } = input;
+  const {
+    ownerEmail,
+    formData,
+    guestId,
+    contactEmail,
+    locale,
+    waitForCompletion = true,
+  } = input;
   const sourceUrl = normalizeIncomingSourceUrl(String(formData.get("sourceUrl") ?? ""));
   const platformType: Platform = "instagram";
   const file = formData.get("file");
@@ -612,6 +621,14 @@ export async function runAnalysisJobSubmission(input: {
   const result = await createAnalysisJob({
     ownerEmail,
     guestId,
+    contactEmail,
+    locale:
+      locale ??
+      (formData.has("locale")
+        ? String(formData.get("locale")).toLowerCase() === "en"
+          ? "en"
+          : "tr"
+        : undefined),
     title,
     platformType,
     sourceType: hasFile || resolvedFromUrlAsMedia ? "upload" : "url",

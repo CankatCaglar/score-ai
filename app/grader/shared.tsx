@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
   Bot,
@@ -75,6 +75,8 @@ export const GRADER_SHELL_PAD =
 const EXPECTED_ANALYSIS_MS = 28_000;
 const WAIT_STORAGE_PREFIX = "scoreai_grader_wait:";
 const WAIT_PENDING_KEY = `${WAIT_STORAGE_PREFIX}pending`;
+const WAIT_PREVIEW_PREFIX = "scoreai_grader_wait_preview:";
+const WAIT_PREVIEW_PENDING_KEY = `${WAIT_PREVIEW_PREFIX}pending`;
 
 function readWaitStartedAt(key: string): number | null {
   try {
@@ -87,29 +89,75 @@ function readWaitStartedAt(key: string): number | null {
   }
 }
 
-/** Call when user clicks analyze — keeps progress across /grader → /grader/[slug]. */
-export function markGraderWaitPending(): number {
-  const startedAt = Date.now();
+function readSessionItem(key: string): string | null {
   try {
-    window.sessionStorage.setItem(WAIT_PENDING_KEY, String(startedAt));
+    return window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionItem(key: string, value: string) {
+  try {
+    window.sessionStorage.setItem(key, value);
   } catch {
     // ignore quota / private mode
   }
+}
+
+function removeSessionItem(key: string) {
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("File read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Persist local preview so it survives /grader → /grader/[slug] navigation. */
+export async function markGraderWaitPreview(file: File): Promise<void> {
+  try {
+    const dataUrl = await fileToDataUrl(file);
+    writeSessionItem(WAIT_PREVIEW_PENDING_KEY, dataUrl);
+  } catch {
+    // ignore — media API fallback may still work after bind
+  }
+}
+
+/** Call when user clicks analyze — keeps progress across /grader → /grader/[slug]. */
+export function markGraderWaitPending(): number {
+  const startedAt = Date.now();
+  writeSessionItem(WAIT_PENDING_KEY, String(startedAt));
   return startedAt;
 }
 
 /** Bind the pending wait clock to the new report slug before navigating. */
-export function bindGraderWaitToSlug(slug: string): number {
+export function bindGraderWaitToSlug(
+  slug: string,
+  options?: { analysisId?: string | null },
+): number {
   const startedAt = readWaitStartedAt(WAIT_PENDING_KEY) ?? Date.now();
-  try {
-    window.sessionStorage.setItem(
-      `${WAIT_STORAGE_PREFIX}${slug}`,
-      String(startedAt),
-    );
-    window.sessionStorage.removeItem(WAIT_PENDING_KEY);
-  } catch {
-    // ignore
+  writeSessionItem(`${WAIT_STORAGE_PREFIX}${slug}`, String(startedAt));
+  removeSessionItem(WAIT_PENDING_KEY);
+
+  const pendingPreview = readSessionItem(WAIT_PREVIEW_PENDING_KEY);
+  const mediaPreview = options?.analysisId
+    ? `/api/grader/media/${options.analysisId}`
+    : null;
+  const preview = pendingPreview || mediaPreview;
+  if (preview) {
+    writeSessionItem(`${WAIT_PREVIEW_PREFIX}${slug}`, preview);
   }
+  removeSessionItem(WAIT_PREVIEW_PENDING_KEY);
+
   return startedAt;
 }
 
@@ -117,13 +165,28 @@ export function readGraderWaitStart(slug: string): number | null {
   return readWaitStartedAt(`${WAIT_STORAGE_PREFIX}${slug}`);
 }
 
-export function clearGraderWait(slug: string) {
-  try {
-    window.sessionStorage.removeItem(`${WAIT_STORAGE_PREFIX}${slug}`);
-    window.sessionStorage.removeItem(WAIT_PENDING_KEY);
-  } catch {
-    // ignore
+export function readGraderWaitPreview(slug: string): string | null {
+  return (
+    readSessionItem(`${WAIT_PREVIEW_PREFIX}${slug}`) ??
+    readSessionItem(WAIT_PREVIEW_PENDING_KEY)
+  );
+}
+
+export function clearGraderWait(
+  slug: string,
+  options?: { keepPreview?: boolean },
+) {
+  removeSessionItem(`${WAIT_STORAGE_PREFIX}${slug}`);
+  removeSessionItem(WAIT_PENDING_KEY);
+  if (!options?.keepPreview) {
+    removeSessionItem(`${WAIT_PREVIEW_PREFIX}${slug}`);
+    removeSessionItem(WAIT_PREVIEW_PENDING_KEY);
   }
+}
+
+export function clearGraderWaitPreview(slug: string) {
+  removeSessionItem(`${WAIT_PREVIEW_PREFIX}${slug}`);
+  removeSessionItem(WAIT_PREVIEW_PENDING_KEY);
 }
 
 export const categoryIcons: Record<string, typeof ImageIcon> = {
@@ -273,38 +336,36 @@ export function AnalysisWaitingScreen({
   copy,
   previewUrl,
   waitKey,
+  complete = false,
+  onCompleteVisualDone,
 }: {
   tipIndex: number;
   copy: GraderCopy;
   previewUrl?: string | null;
   /** sessionStorage key slug — resumes the same clock after route change */
   waitKey?: string | null;
+  /** When true, bar eases to 100% then calls onCompleteVisualDone */
+  complete?: boolean;
+  onCompleteVisualDone?: () => void;
 }) {
   const [progress, setProgress] = useState(4);
   const [elapsedSec, setElapsedSec] = useState(0);
+  const onDoneRef = useRef(onCompleteVisualDone);
+  onDoneRef.current = onCompleteVisualDone;
 
   useEffect(() => {
+    if (complete) return;
+
     let startedAt = Date.now();
     if (waitKey) {
       startedAt =
         readWaitStartedAt(`${WAIT_STORAGE_PREFIX}${waitKey}`) ??
         readWaitStartedAt(WAIT_PENDING_KEY) ??
         startedAt;
-      try {
-        window.sessionStorage.setItem(
-          `${WAIT_STORAGE_PREFIX}${waitKey}`,
-          String(startedAt),
-        );
-      } catch {
-        // ignore
-      }
+      writeSessionItem(`${WAIT_STORAGE_PREFIX}${waitKey}`, String(startedAt));
     } else {
       startedAt = readWaitStartedAt(WAIT_PENDING_KEY) ?? startedAt;
-      try {
-        window.sessionStorage.setItem(WAIT_PENDING_KEY, String(startedAt));
-      } catch {
-        // ignore
-      }
+      writeSessionItem(WAIT_PENDING_KEY, String(startedAt));
     }
 
     const tick = () => {
@@ -315,9 +376,26 @@ export function AnalysisWaitingScreen({
     tick();
     const timer = window.setInterval(tick, 200);
     return () => window.clearInterval(timer);
-  }, [waitKey]);
+  }, [waitKey, complete]);
 
-  const stepIndex = stepIndexFromProgress(progress, copy.loadingSteps.length);
+  useEffect(() => {
+    if (!complete) return;
+    // Let the current width paint, then ease to full before revealing the report.
+    const startId = window.requestAnimationFrame(() => {
+      setProgress(100);
+    });
+    const doneId = window.setTimeout(() => {
+      onDoneRef.current?.();
+    }, 700);
+    return () => {
+      window.cancelAnimationFrame(startId);
+      window.clearTimeout(doneId);
+    };
+  }, [complete]);
+
+  const stepIndex = complete
+    ? Math.max(0, copy.loadingSteps.length - 1)
+    : stepIndexFromProgress(progress, copy.loadingSteps.length);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-brand-dark">
@@ -365,7 +443,11 @@ export function AnalysisWaitingScreen({
           </p>
           <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/15">
             <div
-              className="h-full rounded-full bg-brand-neon transition-[width] duration-200 ease-out"
+              className={`h-full rounded-full bg-brand-neon ease-out ${
+                complete
+                  ? "transition-[width] duration-500"
+                  : "transition-[width] duration-200"
+              }`}
               style={{ width: `${progress}%` }}
             />
           </div>

@@ -15,6 +15,12 @@ export type GraderCopy = {
   heroPointCta: string;
   freeAnalysis: string;
   criteriaBadge: string;
+  emailLabel: string;
+  emailPlaceholder: string;
+  emailHint: string;
+  emailLockedTitle: string;
+  emailLockedHint: string;
+  emailError: string;
   dropTitle: string;
   dropHint: string;
   selectFile: string;
@@ -87,6 +93,12 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     heroPointCta: "İlk ücretsiz analizinle buradan başla",
     freeAnalysis: "Ücretsiz analiz",
     criteriaBadge: "31 kriter",
+    emailLabel: "E-posta adresiniz",
+    emailPlaceholder: "ornek@mail.com",
+    emailHint: "Sonucu ve sonraki adımları paylaşabilmemiz için.",
+    emailLockedTitle: "Önce e-posta adresinizi girin",
+    emailLockedHint: "Geçerli bir e-posta yazınca dosya seçimi açılır.",
+    emailError: "Lütfen geçerli bir e-posta adresi girin.",
     dropTitle: "Görselinizi buraya sürükleyin",
     dropHint: "PNG · JPG · WEBP · Maks. 20 MB",
     selectFile: "Dosya seç",
@@ -252,6 +264,12 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     heroPointCta: "Start your first free analysis here",
     freeAnalysis: "Free analysis",
     criteriaBadge: "31 criteria",
+    emailLabel: "Your email",
+    emailPlaceholder: "you@company.com",
+    emailHint: "So we can share the result and next steps with you.",
+    emailLockedTitle: "Enter your email first",
+    emailLockedHint: "File selection unlocks once your email is valid.",
+    emailError: "Please enter a valid email address.",
     dropTitle: "Drag your image here",
     dropHint: "PNG · JPG · WEBP · Max 20 MB",
     selectFile: "Choose file",

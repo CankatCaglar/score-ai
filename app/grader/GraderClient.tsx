@@ -29,8 +29,16 @@ import {
   LocaleToggle,
   bindGraderWaitToSlug,
   markGraderWaitPending,
+  markGraderWaitPreview,
 } from "./shared";
 import "./grader.css";
+
+import { isValidGraderContactEmail } from "@/lib/grader/email";
+
+function isValidEmail(value: string): boolean {
+  // `.co` kabul edilmez; `.com` / `.com.tr` vb. tamamlanınca açılır.
+  return isValidGraderContactEmail(value);
+}
 
 export function GraderClient({
   initialFreeUsed = false,
@@ -43,6 +51,7 @@ export function GraderClient({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [locale, setLocale] = useState<GraderLocale>("tr");
   const [localeReady, setLocaleReady] = useState(false);
+  const [email, setEmail] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -56,6 +65,8 @@ export function GraderClient({
   const heroImgRef = useRef<HTMLImageElement>(null);
 
   const t = GRADER_COPY[locale];
+  const emailReady = isValidEmail(email);
+  const uploadUnlocked = emailReady && !freeUsedLocked;
   const heroVisualSrc =
     locale === "en"
       ? "/grader/hero-visual-en.png"
@@ -162,6 +173,10 @@ export function GraderClient({
       setError(t.freeUsedError);
       return;
     }
+    if (!emailReady) {
+      setError(t.emailError);
+      return;
+    }
     if (!selectedFile) {
       setError(t.selectFileError);
       return;
@@ -170,10 +185,13 @@ export function GraderClient({
     setSubmitting(true);
     setTipIndex(0);
     markGraderWaitPending();
+    const previewReady = markGraderWaitPreview(selectedFile);
 
     try {
       const formData = new FormData();
       formData.set("platformType", "instagram");
+      formData.set("email", email.trim().toLowerCase());
+      formData.set("locale", locale);
       formData.set("file", selectedFile);
 
       const response = await fetch("/api/grader/jobs", {
@@ -190,6 +208,11 @@ export function GraderClient({
       };
 
       if (!response.ok) {
+        if (data.error === "EMAIL_REQUIRED") {
+          setSubmitting(false);
+          setError(t.emailError);
+          return;
+        }
         // 402 = ücretsiz hak bitmiş; analiz "yarıda kesildi" gibi görünmesin.
         if (
           data.error === "GUEST_LIMIT" ||
@@ -219,8 +242,9 @@ export function GraderClient({
         return;
       }
 
-      // Same wait clock continues on the report page — no progress reset.
-      bindGraderWaitToSlug(data.slug);
+      // Same wait clock + preview continue on the report page — no progress reset.
+      await previewReady;
+      bindGraderWaitToSlug(data.slug, { analysisId: data.analysisId });
       router.replace(`/grader/${data.slug}`);
     } catch (submitError) {
       setError(
@@ -444,28 +468,70 @@ export function GraderClient({
                   </span>
                 </div>
 
+                {!freeUsedLocked && (
+                  <div className="mb-4">
+                    <label
+                      htmlFor="grader-email"
+                      className="mb-2 block text-xs font-medium text-white/60"
+                    >
+                      {t.emailLabel}
+                    </label>
+                    <div className="relative">
+                      <Mail
+                        className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-brand-dark/40"
+                        strokeWidth={1.75}
+                      />
+                      <input
+                        id="grader-email"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        spellCheck={false}
+                        value={email}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setEmail(next);
+                          setError(null);
+                          if (!isValidEmail(next) && selectedFile) {
+                            setSelectedFile(null);
+                            if (fileInputRef.current) {
+                              fileInputRef.current.value = "";
+                            }
+                          }
+                        }}
+                        placeholder={t.emailPlaceholder}
+                        className={`w-full rounded-xl border bg-bg-offwhite py-3 pl-10 pr-3.5 text-sm text-brand-dark outline-none transition placeholder:text-brand-dark/35 ${
+                          emailReady
+                            ? "border-brand-neon focus:border-brand-neon"
+                            : "border-transparent focus:border-brand-dark/15"
+                        }`}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div
                   onDragOver={(e) => {
                     e.preventDefault();
-                    if (!freeUsedLocked) setIsDragging(true);
+                    if (uploadUnlocked) setIsDragging(true);
                   }}
                   onDragLeave={() => setIsDragging(false)}
                   onDrop={(e) => {
                     e.preventDefault();
                     setIsDragging(false);
-                    if (freeUsedLocked) return;
+                    if (!uploadUnlocked) return;
                     const droppedFile = e.dataTransfer.files?.[0];
                     if (droppedFile) setSelectedFile(droppedFile);
                   }}
-                  className={`flex min-h-60 flex-col items-center justify-center rounded-xl border border-dashed px-4 py-8 transition-colors sm:min-h-72 lg:min-h-80 xl:min-h-[22rem] ${
-                    freeUsedLocked
+                  className={`flex min-h-60 flex-col items-center justify-center rounded-xl border border-dashed px-4 py-8 transition-all duration-300 sm:min-h-72 lg:min-h-80 xl:min-h-[22rem] ${
+                    !uploadUnlocked
                       ? "border-white/10 bg-white/3 opacity-55"
                       : isDragging
                         ? "border-brand-neon bg-white/10"
                         : "border-white/20 bg-white/5"
                   }`}
                 >
-                  {selectedFile && selectedFilePreviewUrl && !freeUsedLocked ? (
+                  {selectedFile && selectedFilePreviewUrl && uploadUnlocked ? (
                     <div className="relative w-full">
                       <button
                         type="button"
@@ -494,12 +560,20 @@ export function GraderClient({
                         strokeWidth={1.5}
                       />
                       <p className="mt-4 text-base font-medium text-white sm:text-[1.05rem]">
-                        {freeUsedLocked ? t.freeUsedCta : t.dropTitle}
+                        {freeUsedLocked
+                          ? t.freeUsedCta
+                          : uploadUnlocked
+                            ? t.dropTitle
+                            : t.emailLockedTitle}
                       </p>
                       <p className="mt-1.5 max-w-sm text-center text-xs text-white/45 sm:text-sm">
-                        {freeUsedLocked ? t.freeUsedApiError : t.dropHint}
+                        {freeUsedLocked
+                          ? t.freeUsedApiError
+                          : uploadUnlocked
+                            ? t.dropHint
+                            : t.emailLockedHint}
                       </p>
-                      {!freeUsedLocked && (
+                      {uploadUnlocked && (
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
@@ -514,9 +588,9 @@ export function GraderClient({
                     ref={fileInputRef}
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
-                    disabled={freeUsedLocked}
+                    disabled={!uploadUnlocked}
                     onChange={(e) => {
-                      if (freeUsedLocked) return;
+                      if (!uploadUnlocked) return;
                       setSelectedFile(e.target.files?.[0] ?? null);
                     }}
                     className="hidden"
@@ -546,13 +620,18 @@ export function GraderClient({
                   <button
                     type="button"
                     onClick={() => {
+                      if (!emailReady) {
+                        setError(t.emailError);
+                        document.getElementById("grader-email")?.focus();
+                        return;
+                      }
                       if (!selectedFile) {
                         fileInputRef.current?.click();
                         return;
                       }
                       void submitJob();
                     }}
-                    disabled={submitting}
+                    disabled={submitting || !emailReady}
                     className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-brand-neon px-6 py-3.5 text-sm font-semibold text-brand-dark transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {t.analyzeCta}

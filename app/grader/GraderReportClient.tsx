@@ -31,7 +31,9 @@ import {
   ReportCard,
   categoryIcons,
   clearGraderWait,
+  clearGraderWaitPreview,
   formatGain,
+  readGraderWaitPreview,
   readGraderWaitStart,
   type GraderResult,
 } from "./shared";
@@ -191,15 +193,58 @@ export function GraderReportClient({ slug }: { slug: string }) {
   );
 
   const [liveResult, setLiveResult] = useState<GraderResult | null>(null);
+  const [pendingResult, setPendingResult] = useState<GraderResult | null>(null);
+  const [completingWait, setCompletingWait] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jobPending, setJobPending] = useState(false);
   const [fetchSettled, setFetchSettled] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
+  const [waitPreviewUrl, setWaitPreviewUrl] = useState<string | null>(null);
+  const [reportMediaUrl, setReportMediaUrl] = useState<string | null>(null);
 
   const result = liveResult ?? cachedResult;
-  const waitingForJob = !result && (storageWaiting || jobPending);
-  const bootstrapping = !result && !waitingForJob && !error && !fetchSettled;
+  const waitingForJob =
+    (!result && (storageWaiting || jobPending)) || completingWait;
+  const bootstrapping =
+    !result && !waitingForJob && !completingWait && !error && !fetchSettled;
   const t = GRADER_COPY[locale];
+  const mediaApiUrl = result?.id ? `/api/grader/media/${result.id}` : null;
+
+  useEffect(() => {
+    setWaitPreviewUrl(readGraderWaitPreview(slug));
+  }, [slug]);
+
+  // Rapor açılınca lokal önizlemeyi hemen göster; GCS media arkada yüklensin.
+  useEffect(() => {
+    if (!mediaApiUrl) {
+      setReportMediaUrl(null);
+      return;
+    }
+
+    const preview = readGraderWaitPreview(slug);
+    if (preview) {
+      setWaitPreviewUrl(preview);
+      setReportMediaUrl(preview);
+    } else {
+      setReportMediaUrl(mediaApiUrl);
+    }
+
+    let cancelled = false;
+    const probe = new window.Image();
+    probe.onload = () => {
+      if (cancelled) return;
+      setReportMediaUrl(mediaApiUrl);
+      clearGraderWaitPreview(slug);
+    };
+    probe.onerror = () => {
+      // API yüklenemezse lokal önizleme kalsın
+    };
+    probe.src = mediaApiUrl;
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mediaApiUrl, slug]);
 
   // Grader guest = base (31). Strategic/33 only when dashboard benchmark context exists.
   const criteriaGroups = useMemo(() => {
@@ -281,7 +326,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
   }, [result, t.suggestionFallbackAction]);
 
   useEffect(() => {
-    if (cachedResult) clearGraderWait(slug);
+    if (cachedResult) clearGraderWait(slug, { keepPreview: true });
   }, [cachedResult, slug]);
 
   useEffect(() => {
@@ -340,8 +385,8 @@ export function GraderReportClient({ slug }: { slug: string }) {
             data.analysis.jobStatus === "completed" ||
             data.analysis.jobStatus === "failed"
           ) {
-            clearGraderWait(slug);
             if (data.analysis.jobStatus === "failed") {
+              clearGraderWait(slug);
               if (!cancelled) {
                 setError(data.analysis.insight || t.genericSubmitError);
                 setJobPending(false);
@@ -350,9 +395,10 @@ export function GraderReportClient({ slug }: { slug: string }) {
               return;
             }
             // Sadece mevcut sonucu okur; yeni AI job tetiklemez.
-            writeCachedResult(data.analysis);
+            // Önce progress bar %100'e tamamlansın, sonra rapor açılsın.
             if (!cancelled) {
-              setLiveResult(data.analysis);
+              setPendingResult(data.analysis);
+              setCompletingWait(true);
               setJobPending(false);
               setFetchSettled(true);
             }
@@ -420,6 +466,18 @@ export function GraderReportClient({ slug }: { slug: string }) {
           tipIndex={tipIndex}
           copy={t}
           waitKey={slug}
+          previewUrl={waitPreviewUrl}
+          complete={completingWait}
+          onCompleteVisualDone={() => {
+            // Preview'ı tut — rapor kartında anında görünsün, media API sonra gelsin.
+            clearGraderWait(slug, { keepPreview: true });
+            if (pendingResult) {
+              writeCachedResult(pendingResult);
+              setLiveResult(pendingResult);
+              setPendingResult(null);
+            }
+            setCompletingWait(false);
+          }}
         />
       </div>
     );
@@ -527,16 +585,21 @@ export function GraderReportClient({ slug }: { slug: string }) {
           </Link>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 items-stretch gap-4 md:grid-cols-[minmax(0,1.05fr)_auto_minmax(0,0.95fr)] md:gap-3">
+        <div className="mt-8 grid grid-cols-1 items-stretch gap-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-10 lg:gap-14 xl:gap-16">
           {/* Mevcut skor: görsel kendi oranında (9:16/kare/yatay), kırpma yok */}
           <ReportCard className="flex flex-col p-4! sm:p-5!">
             <div className="flex items-center gap-3 sm:gap-5">
-              {result.id ? (
+              {reportMediaUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={`/api/grader/media/${result.id}`}
+                  src={reportMediaUrl}
                   alt={result.title || t.contentScoreFallback}
                   className="h-auto max-h-80 w-auto max-w-[48%] shrink-0 rounded-2xl bg-bg-offwhite object-contain"
+                />
+              ) : result.id ? (
+                <div
+                  className="h-40 w-[48%] max-w-40 shrink-0 animate-pulse rounded-2xl bg-brand-dark/5 sm:h-48"
+                  aria-hidden
                 />
               ) : null}
 
@@ -553,7 +616,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
             </div>
           </ReportCard>
 
-          <div className="flex flex-col items-center justify-center gap-2.5 self-center py-2 md:px-1">
+          <div className="flex flex-col items-center justify-center gap-2.5 self-center py-2 md:min-w-[5.5rem] md:px-3">
             <div className="flex size-10 items-center justify-center rounded-full bg-brand-neon shadow-sm sm:size-11">
               <ArrowRight
                 className="size-4 rotate-90 text-brand-dark md:rotate-0 sm:size-5"
@@ -569,7 +632,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
           </div>
 
           {/* Potansiyel: ring yukarı/büyük; kategoriler kart altında sabit */}
-          <ReportCard className="flex h-full min-h-0 flex-col border-brand-neon/40 p-4! sm:p-5!">
+          <ReportCard className="flex h-full min-h-0 flex-col p-4! sm:p-5!">
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
               <ScoreRing
                 score={result.potentialScore}
@@ -624,7 +687,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
             {topSuggestions.map((s, index) => (
               <div
                 key={`${s.id ?? s.text}-${index}`}
-                className="flex min-h-14 items-center gap-4 rounded-xl border border-brand-neon/55 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-neon/80 hover:shadow-[0_12px_28px_-18px_rgba(0,39,44,0.28)] sm:min-h-15"
+                className="flex min-h-14 items-center gap-4 rounded-xl border border-brand-dark/10 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-dark/15 hover:shadow-[0_12px_28px_-18px_rgba(0,39,44,0.28)] sm:min-h-15"
               >
                 <span className="min-w-0 flex-1 text-[13px] font-medium leading-snug text-brand-dark">
                   {s.text}
@@ -698,7 +761,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
                         </span>
                         {typeof item.value === "number" ? (
                           <span
-                            className="mr-3 w-12 shrink-0 text-right text-[13px] font-bold tabular-nums"
+                            className="mr-42 w-12 shrink-0 text-right text-[13px] font-bold tabular-nums"
                             style={color ? { color } : undefined}
                           >
                             {item.value}

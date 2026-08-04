@@ -37,6 +37,77 @@ export function analysisCompletedEmail(input: {
   return { subject, text, html };
 }
 
+/** Guest Grader sonucu — dashboard yerine /grader/[slug] linki. */
+export function graderAnalysisCompletedEmail(input: {
+  title: string;
+  score: number;
+  slug: string;
+  locale?: "tr" | "en";
+}) {
+  const baseUrl = getAppBaseUrl();
+  const resultUrl = `${baseUrl}/grader/${encodeURIComponent(input.slug)}`;
+  const isEn = input.locale === "en";
+  const score = Math.round(input.score);
+  const subject = isEn
+    ? `Your analysis is ready: ${input.title} (${score}/100)`
+    : `Analiziniz hazır: ${input.title} (${score}/100)`;
+  const text = isEn
+    ? [
+        "Hi,",
+        "",
+        `Your analysis for "${input.title}" is complete.`,
+        `Your score: ${score}/100`,
+        "",
+        `View your report: ${resultUrl}`,
+        "",
+        "Score AI",
+      ].join("\n")
+    : [
+        "Merhaba,",
+        "",
+        `"${input.title}" analiziniz tamamlandı.`,
+        `Skorunuz: ${score}/100`,
+        "",
+        `Raporunu görüntüle: ${resultUrl}`,
+        "",
+        "Score AI",
+      ].join("\n");
+
+  const html = wrapEmailHtml(
+    isEn
+      ? `
+    <p style="font-size: 16px; margin: 0 0 16px;">Hi,</p>
+    <p style="font-size: 16px; margin: 0 0 16px;">
+      Your analysis for <strong>${escapeHtml(input.title)}</strong> is complete.
+    </p>
+    <p style="font-size: 16px; margin: 0 0 20px;">
+      Your score: <strong>${score}/100</strong>
+    </p>
+    <p style="margin: 0 0 8px;">
+      <a href="${resultUrl}" style="display:inline-block;background:#42B24D;color:#0f1a12;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:10px;">
+        View Report
+      </a>
+    </p>
+  `
+      : `
+    <p style="font-size: 16px; margin: 0 0 16px;">Merhaba,</p>
+    <p style="font-size: 16px; margin: 0 0 16px;">
+      <strong>${escapeHtml(input.title)}</strong> analiziniz tamamlandı.
+    </p>
+    <p style="font-size: 16px; margin: 0 0 20px;">
+      Skorunuz: <strong>${score}/100</strong>
+    </p>
+    <p style="margin: 0 0 8px;">
+      <a href="${resultUrl}" style="display:inline-block;background:#42B24D;color:#0f1a12;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:10px;">
+        Raporu Görüntüle
+      </a>
+    </p>
+  `,
+  );
+
+  return { subject, text, html };
+}
+
 export function inactiveUserEmail() {
   const baseUrl = getAppBaseUrl();
   const dashboardUrl = `${baseUrl}/dashboard`;

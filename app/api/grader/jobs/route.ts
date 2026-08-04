@@ -12,6 +12,11 @@ import {
 } from "@/lib/analysis/repository";
 import { assertGraderApiAccess } from "@/lib/grader/access";
 import {
+  isValidGraderContactEmail,
+  normalizeGraderContactEmail,
+} from "@/lib/grader/email";
+import { upsertGraderLead } from "@/lib/grader/leads";
+import {
   GRADER_GUEST_COOKIE_NAME,
   GRADER_GUEST_TTL_SECONDS,
   GRADER_LOCK_COOKIE_NAME,
@@ -211,11 +216,27 @@ export async function POST(request: Request) {
     return response;
   }
 
+  const contactEmail = normalizeGraderContactEmail(
+    String(formData.get("email") ?? ""),
+  );
+  if (!isValidGraderContactEmail(contactEmail)) {
+    return NextResponse.json(
+      {
+        error: "EMAIL_REQUIRED",
+        message: "Analiz için geçerli bir e-posta adresi gerekli.",
+      },
+      { status: 400 },
+    );
+  }
+
+  const locale = String(formData.get("locale") ?? "tr");
   const ownerEmail = guestOwnerEmail(guestId);
   const result = await runAnalysisJobSubmission({
     ownerEmail,
     formData,
     guestId,
+    contactEmail,
+    locale,
     waitForCompletion: false,
   });
 
@@ -223,6 +244,21 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: result.error, message: result.message },
       { status: result.status },
+    );
+  }
+
+  try {
+    await upsertGraderLead({
+      email: contactEmail,
+      locale,
+      guestId,
+      analysisId: result.analysisId,
+      slug: result.slug,
+    });
+  } catch (error) {
+    console.error(
+      "[grader/jobs] upsertGraderLead failed",
+      error instanceof Error ? error.message : error,
     );
   }
 

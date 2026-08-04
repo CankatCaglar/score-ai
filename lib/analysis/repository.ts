@@ -45,13 +45,17 @@ import type {
 } from "@/lib/analysis/types";
 import { splitDisplayName, userDocIdFromEmail } from "@/lib/user-profile";
 import { sendMail } from "@/lib/mail/smtp";
-import { analysisCompletedEmail } from "@/lib/mail/templates";
+import {
+  analysisCompletedEmail,
+  graderAnalysisCompletedEmail,
+} from "@/lib/mail/templates";
 import {
   createAppNotification,
   getNotificationPreferences,
 } from "@/lib/notifications/repository";
 import { canSendAnalysisResultEmail } from "@/lib/notifications/types";
 import { isGuestOwnerEmail } from "@/lib/grader-auth";
+import { isValidGraderContactEmail } from "@/lib/grader/email";
 
 async function loadMergedBrandContext(ownerEmail: string): Promise<{
   brandContext: string | null;
@@ -112,6 +116,8 @@ const COLLECTIONS = {
 type CreateAnalysisJobInput = {
   ownerEmail: string;
   guestId?: string;
+  contactEmail?: string;
+  locale?: string;
   title: string;
   platformType: Platform;
   sourceType: "url" | "upload";
@@ -502,6 +508,16 @@ export async function createAnalysisJob(
     typeof input.guestId === "string" && input.guestId.trim()
       ? input.guestId.trim()
       : null;
+  const contactEmail =
+    typeof input.contactEmail === "string" && input.contactEmail.trim()
+      ? input.contactEmail.trim().toLowerCase()
+      : null;
+  const locale =
+    typeof input.locale === "string" && input.locale.trim()
+      ? input.locale.trim().toLowerCase() === "en"
+        ? "en"
+        : "tr"
+      : null;
 
   await ensureUserDoc(input.ownerEmail);
 
@@ -521,6 +537,7 @@ export async function createAnalysisJob(
     id: contentRef.id,
     ownerEmail: input.ownerEmail,
     guestId,
+    contactEmail,
     sourceType: input.sourceType,
     sourceUrl: input.sourceUrl ?? null,
     mediaUrl: input.mediaUrl ?? null,
@@ -539,6 +556,8 @@ export async function createAnalysisJob(
     id: analysisRef.id,
     ownerEmail: input.ownerEmail,
     guestId,
+    contactEmail,
+    locale,
     slug,
     title: normalizedTitle,
     platformType: input.platformType,
@@ -582,6 +601,7 @@ export async function createAnalysisJob(
     id: jobRef.id,
     ownerEmail: input.ownerEmail,
     guestId,
+    contactEmail,
     analysisId: analysisRef.id,
     contentItemId: contentRef.id,
     status: "pending",
@@ -977,8 +997,15 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
       try {
         const ownerEmail =
           typeof jobData.ownerEmail === "string" ? jobData.ownerEmail.trim() : "";
+        const resultSlug = String(analysisData.slug ?? jobData.analysisId);
+        const contactEmailRaw =
+          (typeof analysisData.contactEmail === "string" &&
+            analysisData.contactEmail) ||
+          (typeof jobData.contactEmail === "string" && jobData.contactEmail) ||
+          "";
+        const contactEmail = contactEmailRaw.trim().toLowerCase();
+
         if (ownerEmail && !isGuestOwnerEmail(ownerEmail)) {
-          const resultSlug = String(analysisData.slug ?? jobData.analysisId);
           const resultHref = `/dashboard/analiz-sonucu?slug=${encodeURIComponent(resultSlug)}`;
           const prefs = await getNotificationPreferences(ownerEmail);
 
@@ -1014,6 +1041,45 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
             body: `"${nextTitle}" hazır · Skor: ${Math.round(currentScore)}/100`,
             href: resultHref,
           });
+        } else if (contactEmail && isValidGraderContactEmail(contactEmail)) {
+          // Guest Grader: contactEmail'e sonuç maili (mailing + rapor linki)
+          const mailLocale =
+            typeof analysisData.locale === "string" &&
+            analysisData.locale.toLowerCase() === "en"
+              ? "en"
+              : "tr";
+          const mail = graderAnalysisCompletedEmail({
+            title: nextTitle,
+            score: Math.round(currentScore),
+            slug: resultSlug,
+            locale: mailLocale,
+          });
+          const sent = await sendMail({
+            to: contactEmail,
+            subject: mail.subject,
+            text: mail.text,
+            html: mail.html,
+            headers: {
+              "X-Score-Mail": "grader-analysis-completed",
+              "X-Entity-Ref-ID": String(jobData.analysisId),
+            },
+          });
+          if (!sent.ok) {
+            console.warn(
+              "[grader-analysis-complete-mail] failed",
+              contactEmail,
+              sent.error,
+            );
+          } else if (!sent.skipped) {
+            await analysisRef.set(
+              {
+                resultEmailSentAt: now,
+                resultEmailTo: contactEmail,
+                updatedAt: now,
+              },
+              { merge: true },
+            );
+          }
         }
       } catch (mailError) {
         console.warn(
