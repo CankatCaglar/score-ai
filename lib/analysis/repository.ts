@@ -1447,31 +1447,20 @@ export async function getDashboardOverview(
   const topCategory = topCategories[0];
   const weakestCategory = [...topCategories]
     .sort((a, b) => a.value - b.value)[0];
-  const latestAnalysis = analyses[0];
-  const topSuggestion = latestAnalysis?.suggestions?.[0];
-  const topSuggestionFocus =
-    topSuggestion?.text?.split(":")[0]?.trim() || "öncelikli kriterler";
-
   let aiInsight: string;
   if (!analyses.length) {
     aiInsight = "İlk analizinizi başlatarak kişiselleştirilmiş içgörüler alın.";
+  } else if (
+    topCategory &&
+    weakestCategory &&
+    topCategory.label !== weakestCategory.label
+  ) {
+    aiInsight = `${topCategory.label} içerikleri daha güçlü performans gösteriyor; ${weakestCategory.label} alanında gelişim fırsatı var.`;
+  } else if (topCategory) {
+    aiInsight = `${topCategory.label} en güçlü alanınız. Detaylı içgörüler Creative Memory'de.`;
   } else {
-    const trendDirection =
-      monthChange > 0.4
-        ? "yukarı yönlü"
-        : monthChange < -0.4
-          ? "aşağı yönlü"
-          : "dengede";
-    const topCategoryText = topCategory
-      ? `${topCategory.label} (${topCategory.value}/100)`
-      : "kategori performansı";
-    const weakestCategoryText = weakestCategory
-      ? `${weakestCategory.label} (${weakestCategory.value}/100)`
-      : "gelişim alanları";
     aiInsight =
-      `Son 7 günlük performans trendi ${trendDirection} (${monthChange >= 0 ? "+" : ""}${monthChange} puan). ` +
-      `En güçlü alan ${topCategoryText}; gelişim için öncelik ${weakestCategoryText}. ` +
-      `Son analizde ${topSuggestionFocus} odaklı aksiyonlar skor artışı için en yüksek potansiyeli gösteriyor.`;
+      "Son analizlerinizden net aksiyon noktaları oluştu. Detaylar Creative Memory'de.";
   }
 
   const db = getAdminDb();

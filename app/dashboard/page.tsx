@@ -14,8 +14,9 @@ import {
   TrendingUp,
   UploadCloud,
 } from "lucide-react";
+import { FaInstagram, FaLinkedinIn } from "react-icons/fa6";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { DashboardOverview } from "@/lib/analysis/types";
+import type { Analysis, DashboardOverview } from "@/lib/analysis/types";
 import { withReturnTo } from "@/lib/dashboard/return-navigation";
 import {
   hasShownProductTip,
@@ -65,6 +66,119 @@ function ChangeBadge({ change }: { change: number }) {
       {positive ? "+" : ""}
       {change} puan
     </span>
+  );
+}
+
+function PotentialGainBadge({ gain }: { gain: number }) {
+  const positive = gain > 0;
+  return (
+    <span
+      className={`inline-flex max-w-full items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-snug whitespace-nowrap @[15rem]:px-2 @[15rem]:text-[11px] ${
+        positive
+          ? "bg-emerald-500/12 text-emerald-700"
+          : "bg-brand-dark/5 text-brand-dark/55"
+      }`}
+    >
+      {positive ? (
+        <ArrowUpRight className="size-3 shrink-0" strokeWidth={2.25} />
+      ) : null}
+      <span className="truncate">
+        {positive ? (
+          <>
+            +{gain}
+            <span className="hidden @[13rem]:inline"> puan</span>
+          </>
+        ) : (
+          "Sabit"
+        )}
+      </span>
+    </span>
+  );
+}
+
+function scoreToneClass(score: number): string {
+  if (score >= 80) return "text-emerald-600";
+  if (score >= 65) return "text-orange-500";
+  return "text-red-500";
+}
+
+/** Son Analizler kartı — yazı bloğu üst boşluğu. Arttır/azalt: "0px" | "12px" | "20px" | "28px" | "36px" */
+const RECENT_CARD_TEXT_TOP = "20px";
+
+function RecentAnalysisCard({ item }: { item: Analysis }) {
+  const isInstagram = item.platformType === "instagram";
+  const platformLabel = isInstagram ? "Instagram" : "LinkedIn";
+  const potentialGain = Math.max(0, item.potentialScore - item.score);
+  const hasMedia = Boolean(item.mediaUrl || item.sourceUrl);
+
+  return (
+    <div className="@container flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-brand-dark/8 bg-white p-3 transition-colors hover:border-brand-dark/16 sm:p-3.5 xl:p-3">
+      <div className="flex min-h-0 min-w-0 flex-1 items-start gap-3 @[16rem]:gap-4">
+        <div className="flex aspect-4/5 w-[50%] max-w-32 min-w-18 shrink-0 items-center justify-center self-start overflow-hidden rounded-2xl bg-white @[18rem]:max-w-32 @[22rem]:max-w-36">
+          {hasMedia ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`/api/dashboard/media/${item.id}`}
+              alt={item.title}
+              className="max-h-full max-w-full rounded-2xl object-contain"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center text-[11px] text-brand-dark/30">
+              Görsel yok
+            </div>
+          )}
+        </div>
+
+        <div
+          className="flex min-w-0 flex-1 flex-col overflow-hidden"
+          style={{ marginTop: RECENT_CARD_TEXT_TOP }}
+        >
+          <p className="line-clamp-2 text-xs font-semibold leading-snug break-normal text-brand-dark @[15rem]:text-sm">
+            {item.title}
+          </p>
+          <p className="mt-1 flex min-w-0 items-center gap-1 text-[11px] text-brand-dark/45 @[15rem]:mt-1.5 @[15rem]:gap-1.5 @[15rem]:text-xs">
+            {isInstagram ? (
+              <FaInstagram
+                className="size-3 shrink-0 text-[#E4405F] @[15rem]:size-3.5"
+                aria-hidden
+              />
+            ) : (
+              <FaLinkedinIn
+                className="size-3 shrink-0 text-[#0A66C2] @[15rem]:size-3.5"
+                aria-hidden
+              />
+            )}
+            <span className="truncate">{platformLabel}</span>
+          </p>
+          <div className="mt-2 flex min-w-0 items-baseline gap-0.5 overflow-hidden whitespace-nowrap @[15rem]:mt-2.5">
+            <span
+              className={`text-[1.375rem] font-bold tabular-nums leading-none @[15rem]:text-2xl @[20rem]:text-[1.75rem] ${scoreToneClass(item.score)}`}
+            >
+              {item.score}
+            </span>
+            <span className="text-[10px] font-medium text-brand-dark/30 @[15rem]:text-xs">
+              /100
+            </span>
+          </div>
+          <div className="mt-1.5 min-w-0 overflow-hidden @[15rem]:mt-2">
+            <PotentialGainBadge gain={potentialGain} />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-2.5 flex min-w-0 shrink-0 items-center justify-between gap-2 @[15rem]:mt-3">
+        <span className="min-w-0 truncate py-0.5 text-[10px] leading-snug text-brand-dark/40 @[15rem]:text-[11px]">
+          {item.date}
+        </span>
+        <Link
+          href={`/dashboard/analizler/${item.slug}`}
+          className="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-brand-dark/12 bg-white px-2 py-1 text-[11px] font-semibold text-brand-dark transition-colors hover:border-brand-dark/25 hover:bg-bg-offwhite @[15rem]:gap-1 @[15rem]:px-2.5 @[15rem]:py-1.5 @[15rem]:text-xs"
+        >
+          Detay
+          <ChevronRight className="size-3 @[15rem]:size-3.5" strokeWidth={2} />
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -222,13 +336,13 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
         <Card className="flex h-full min-h-0 flex-col">
-          <div className="flex shrink-0 items-center justify-between">
+          <div className="flex shrink-0 items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-full bg-brand-neon/90">
+              <TrendingUp className="size-[18px] text-brand-dark" strokeWidth={1.75} />
+            </div>
             <h2 className="text-sm font-medium text-brand-dark/60">
               Ortalama Score
             </h2>
-            <div className="flex size-9 items-center justify-center rounded-full bg-brand-neon/90">
-              <TrendingUp className="size-[18px] text-brand-dark" strokeWidth={2} />
-            </div>
           </div>
           <div className="mt-6 flex shrink-0 items-baseline">
             <span className="text-5xl font-bold tracking-tight text-brand-dark">
@@ -321,6 +435,13 @@ export default function DashboardPage() {
               "İlk analizinizi tamamladıktan sonra kişiselleştirilmiş içgörüler burada görünecek."
             }
           />
+          <Link
+            href="/dashboard/creative-memory"
+            className="mt-auto inline-flex items-center gap-1 self-end pt-3 text-sm font-semibold text-brand-dark hover:underline hover:underline-offset-4"
+          >
+            Tüm içgörüleri gör
+            <ChevronRight className="size-4" strokeWidth={2} />
+          </Link>
         </Card>
       </div>
       <Card>
@@ -334,49 +455,12 @@ export default function DashboardPage() {
             <ChevronRight className="size-4" strokeWidth={2} />
           </Link>
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {recentAnalyses.map((item) => (
-            <Link
-              key={item.id}
-              href={`/dashboard/analizler/${item.slug}`}
-              className="group rounded-2xl border border-brand-dark/8 p-4 transition-colors hover:border-brand-dark/20"
-            >
-              <div className="aspect-video w-full overflow-hidden rounded-xl bg-bg-offwhite">
-                {item.mediaUrl || item.sourceUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={`/api/dashboard/media/${item.id}`}
-                    alt={item.title}
-                    className="size-full object-contain p-1"
-                  />
-                ) : null}
-              </div>
-              <div className="mt-3 flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-brand-dark">
-                    {item.title}
-                  </p>
-                  <p className="mt-0.5 text-xs text-brand-dark/45">
-                    {item.platform.split(" ")[0]}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-baseline">
-                  <span className="text-xl font-bold text-brand-dark">
-                    {item.score}
-                  </span>
-                  <span className="text-xs font-medium text-brand-dark/30">
-                    /100
-                  </span>
-                </div>
-              </div>
-              <div className="mt-2 flex items-center justify-between">
-                <ChangeBadge change={item.change} />
-                  <span className="text-[11px] text-brand-dark/35">{item.date}</span>
-              </div>
-            </Link>
+            <RecentAnalysisCard key={item.id} item={item} />
           ))}
           {!loading && recentAnalyses.length === 0 && (
-            <div className="rounded-2xl border border-brand-dark/8 p-4 text-sm text-brand-dark/60">
+            <div className="rounded-2xl border border-brand-dark/8 p-4 text-sm text-brand-dark/60 sm:col-span-2 xl:col-span-4">
               Henüz analiz bulunmuyor. İlk analizi başlatmak için “Yeni Analiz”e
               tıklayın.
             </div>

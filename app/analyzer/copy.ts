@@ -340,7 +340,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     criteriaLabel: "criteria",
     detailCta: "See details, sign up",
     overallScore: "Overall Score",
-    potentialShort: "points potential improvement",
+    potentialShort: "Points Potential Improvement",
     potentialTitle: "Potential Score",
     potentialGainLabel: "Potential gain",
     saveReportTitle: "Save the full report",

@@ -10,8 +10,10 @@ import {
   ChevronDown,
   Clock,
   CloudUpload,
+  FileText,
   History,
   Lightbulb,
+  Link2,
   Lock,
   Mail,
   MapPin,
@@ -28,6 +30,8 @@ import {
   Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { type IconType } from "react-icons";
+import { FaFacebookF, FaInstagram, FaLinkedinIn } from "react-icons/fa6";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -60,13 +64,17 @@ const AUDIENCE_CARD_IMAGES = [
   "/screenshots/audience-card-5.png",
 ] as const;
 
-const UPLOAD_SOURCE_ICONS = [
-  { label: "IG", src: "/screenshots/upload-icon-instagram..png", alt: "Instagram ikonu" },
-  { label: "IN", src: "/screenshots/upload-icon-linkedin.png", alt: "LinkedIn ikonu" },
-  { label: "FB", src: "/screenshots/upload-icon-facebook.svg", alt: "Facebook ikonu" },
-  { label: "DOC", src: "/screenshots/upload-icon-doc.png", alt: "Dosya ikonu" },
-  { label: "URL", src: "/screenshots/upload-icon-link.png", alt: "Link ikonu" },
-] as const;
+const UPLOAD_SOURCE_ICONS: {
+  label: string;
+  icon: IconType | LucideIcon;
+  className?: string;
+}[] = [
+  { label: "Instagram", icon: FaInstagram, className: "text-[#E4405F]" },
+  { label: "LinkedIn", icon: FaLinkedinIn, className: "text-[#0A66C2]" },
+  { label: "Facebook", icon: FaFacebookF, className: "text-[#1877F2]" },
+  { label: "Document", icon: FileText, className: "text-brand-dark/70" },
+  { label: "Link", icon: Link2, className: "text-brand-dark/70" },
+];
 
 const LANDING_SCREENSHOTS = {
   tr: {
@@ -628,7 +636,7 @@ export default function LandingPage() {
       </header>
 
       {/* 1. HERO */}
-      <section className="bg-bg-light pt-24 pb-20">
+      <section className="bg-bg-light pt-24 pb-20 lg:min-h-svh">
         <div
           className={`grid items-center gap-12 lg:grid-cols-[1fr_2fr] lg:gap-16 xl:gap-16 ${PAGE_CONTAINER}`}
         >
@@ -788,7 +796,7 @@ export default function LandingPage() {
                 </ul>
                 <button
                   type="button"
-                  className="mt-8 w-full rounded-xl bg-linear-to-r from-violet-600 to-teal-500 py-4 text-base font-semibold text-white"
+                  className="mt-8 w-full rounded-xl bg-brand-dark py-4 text-base font-semibold text-white transition hover:brightness-110"
                 >
                   {locale === "en" ? "Update in Canva" : "Canva'da Güncelle"}
                 </button>
@@ -1075,10 +1083,10 @@ export default function LandingPage() {
               {featurePills.map(({ title, desc, icon: Icon }) => (
                 <div
                   key={title}
-                  className="flex gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-brand-neon/30 sm:min-h-[128px]"
+                  className="flex gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:shadow-md sm:min-h-[128px]"
                 >
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-neon/15">
-                    <Icon className="size-4.5 text-brand-neon" strokeWidth={1.75} />
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-neon/75">
+                    <Icon className="size-4.5 text-brand-dark" strokeWidth={1.75} />
                   </div>
                   <div className="min-w-0">
                     <p className="text-[15px] font-semibold leading-tight text-white">{title}</p>
@@ -1139,7 +1147,7 @@ export default function LandingPage() {
               </div>
             </FadeIn>
 
-            <FadeIn delay={0.2} className="space-y-5">
+            <FadeIn delay={0.2} className="flex w-fit max-w-full flex-col gap-5">
               {(
                 locale === "en"
                   ? [
@@ -1167,12 +1175,12 @@ export default function LandingPage() {
               ).map(({ icon: Icon, title, desc }) => (
                 <div
                   key={title}
-                  className="flex gap-4 rounded-2xl border border-brand-dark/10 bg-bg-light p-5 shadow-sm"
+                  className="flex w-full gap-4 rounded-2xl border border-brand-dark/10 bg-bg-light p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-dark/20 hover:shadow-md"
                 >
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-dark">
-                    <Icon className="size-5 text-brand-neon" />
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-neon/75">
+                    <Icon className="size-5 text-brand-dark" strokeWidth={1.75} />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-semibold text-brand-dark">{title}</p>
                     <p className="mt-1 text-sm text-brand-dark/60">{desc}</p>
                   </div>
@@ -1245,53 +1253,35 @@ export default function LandingPage() {
             {steps.map((step, i) => (
               <FadeIn key={step.num} delay={i * 0.05}>
                 <div
-                  className="group relative flex h-full min-h-[460px] flex-col rounded-2xl border border-brand-dark/12 bg-bg-light p-6 transition hover:border-brand-dark/25 hover:bg-bg-offwhite"
+                  className="group relative flex h-full min-h-[400px] flex-col rounded-2xl border border-brand-dark/12 bg-bg-light p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-dark/20 hover:shadow-md"
                 >
                   <span className="absolute left-4 top-4 flex size-7 items-center justify-center rounded-full bg-brand-dark text-xs font-bold text-white">
                     {step.num}
                   </span>
-                  <div className="mx-auto mt-2 flex size-16 items-center justify-center rounded-full bg-brand-dark/5 transition group-hover:bg-brand-dark/10">
-                    <step.icon className="size-10 text-brand-dark" />
+                  <div className="mx-auto mt-1 flex size-14 items-center justify-center rounded-full bg-brand-neon/75">
+                    <step.icon className="size-7 text-brand-dark" strokeWidth={1.75} />
                   </div>
-                  <p className="mt-6 text-center text-2xl leading-tight font-bold text-brand-dark">
+                  <p className="mt-4 text-center text-xl leading-tight font-bold text-brand-dark">
                     {step.title}
                   </p>
-                  <p className="mt-2 text-center text-base leading-relaxed text-brand-dark/70">
+                  <p className="mt-1.5 text-center text-sm leading-relaxed text-brand-dark/70">
                     {step.desc}
                   </p>
                   {step.num === 1 && (
-                    <div className="mt-4 space-y-4 text-sm">
+                    <div className="mt-3 space-y-3 text-sm">
                       <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-3">
                         <p className="text-brand-dark/90">
                           {locale === "en" ? "Upload your content" : "İçeriğinizi yükleyin"}
                         </p>
                         <div className="mt-3 grid grid-cols-5 gap-2">
-                          {UPLOAD_SOURCE_ICONS.map(({ label, src }) => (
+                          {UPLOAD_SOURCE_ICONS.map(({ label, icon: Icon, className }) => (
                             <div
                               key={label}
-                              className="relative flex h-10 items-center justify-center overflow-hidden rounded-md border border-brand-dark/10 bg-bg-light"
+                              title={label}
+                              className="flex h-10 items-center justify-center rounded-md border border-brand-dark/10 bg-bg-light"
                             >
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={src}
-                                alt={
-                                  locale === "en"
-                                    ? `${label} icon`
-                                    : `${label} ikonu`
-                                }
-                                className="h-5 w-5 object-contain"
-                                decoding="async"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = "none";
-                                  const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
-                                  if (fallback) fallback.style.display = "flex";
-                                }}
-                              />
-                              <span
-                                className="absolute inset-0 hidden items-center justify-center text-[11px] text-brand-dark/55"
-                              >
-                                {label}
-                              </span>
+                              <Icon className={`size-5 ${className ?? ""}`} aria-hidden />
+                              <span className="sr-only">{label}</span>
                             </div>
                           ))}
                         </div>
@@ -1309,11 +1299,11 @@ export default function LandingPage() {
                     </div>
                   )}
                   {step.num === 2 && (
-                    <div className="mt-6 rounded-xl border border-brand-dark/10 bg-bg-light p-3">
+                    <div className="mt-3 rounded-xl border border-brand-dark/10 bg-bg-light p-3">
                       <p className="text-brand-dark/90">
                         {locale === "en" ? "Analysis Criteria" : "Analiz Kriterleri"}
                       </p>
-                      <div className="mt-3 space-y-2.5">
+                      <div className="mt-2.5 space-y-2">
                         {(
                           locale === "en"
                             ? [
@@ -1339,15 +1329,12 @@ export default function LandingPage() {
                             </div>
                           </div>
                         ))}
-                        <p className="text-xs text-brand-dark/70">
-                          {locale === "en" ? "... and 40 more criteria" : "... ve 40 kriter daha"}
-                        </p>
                       </div>
                     </div>
                   )}
                   {step.num === 3 && (
-                    <div className="mt-6 space-y-3">
-                      <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-4 text-center">
+                    <div className="mt-3 space-y-2.5">
+                      <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-3 text-center">
                         <p className="text-sm font-semibold text-brand-dark">
                           {locale === "en" ? "Ready to Publish" : "Yayınlanmaya Hazır"}
                         </p>
@@ -1355,13 +1342,13 @@ export default function LandingPage() {
                           {locale === "en" ? "+12 points vs last month" : "Geçen aya göre +12 puan artışı"}
                         </p>
                       </div>
-                      <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-4 text-center">
+                      <div className="rounded-xl border border-brand-dark/10 bg-bg-light p-3 text-center">
                         <p className="text-brand-dark/85">
                           {locale === "en" ? "Improvement Area" : "Gelişim Alanı"}
                         </p>
-                        <p className="mt-1 text-4xl leading-none font-bold text-brand-dark">
+                        <p className="mt-1 text-3xl leading-none font-bold text-brand-dark">
                           12{" "}
-                          <span className="text-base font-medium text-brand-dark/75">
+                          <span className="text-sm font-medium text-brand-dark/75">
                             {locale === "en" ? "items" : "adet"}
                           </span>
                         </p>
@@ -1369,11 +1356,11 @@ export default function LandingPage() {
                     </div>
                   )}
                   {step.num === 4 && (
-                    <div className="mt-6 rounded-xl border border-brand-dark/10 bg-bg-light p-3">
+                    <div className="mt-3 rounded-xl border border-brand-dark/10 bg-bg-light p-3">
                       <p className="text-brand-dark/90">
                         {locale === "en" ? "Suggested Improvements" : "Önerilen İyileştirmeler"}
                       </p>
-                      <ul className="mt-3 space-y-2.5">
+                      <ul className="mt-2.5 space-y-2">
                         {(
                           locale === "en"
                             ? [
@@ -1400,7 +1387,7 @@ export default function LandingPage() {
                     </div>
                   )}
                   {step.num === 5 && (
-                    <div className="mt-6 rounded-xl border border-brand-dark/10 bg-bg-light p-3">
+                    <div className="mt-3 rounded-xl border border-brand-dark/10 bg-bg-light p-3">
                       <div className="overflow-hidden rounded-lg border border-brand-dark/10">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -1416,17 +1403,20 @@ export default function LandingPage() {
                       </div>
                       <button
                         type="button"
-                        className="mt-3 w-full rounded-lg bg-brand-dark py-2 text-sm font-semibold text-white transition hover:brightness-110"
+                        className="mt-2.5 w-full rounded-lg bg-brand-dark py-2 text-sm font-semibold text-white transition hover:brightness-110"
                       >
                         {locale === "en" ? "Open in Canva" : "Canva'da Aç"}
                       </button>
-                      <p className="mt-2 text-center text-xs text-brand-dark/65">
+                      <p className="mt-1.5 text-center text-xs text-brand-dark/65">
                         {locale === "en" ? "Edit, download, and share" : "Düzenle, indir ve paylaş"}
                       </p>
                     </div>
                   )}
                   {i < steps.length - 1 && (
-                    <ArrowRight className="absolute -right-3 top-1/2 hidden size-5 -translate-y-1/2 text-brand-dark/50 lg:block" />
+                    <ArrowRight
+                      aria-hidden
+                      className="pointer-events-none absolute left-full top-1/2 z-10 hidden size-5 -translate-y-1/2 text-brand-dark/40 lg:block"
+                    />
                   )}
                 </div>
               </FadeIn>
@@ -1605,7 +1595,7 @@ export default function LandingPage() {
                 const Icon = FINAL_STATS_ICONS[i] as LucideIcon;
                 return (
                   <div key={lbl} className="flex h-full flex-col items-center text-center">
-                    <div className="flex size-22 items-center justify-center rounded-full bg-brand-neon/20">
+                    <div className="flex size-22 items-center justify-center">
                       <Icon className="size-10 text-brand-dark" strokeWidth={1.5} />
                     </div>
                     <p className="mt-4 text-[2rem] leading-none font-bold text-brand-dark">{val}</p>
@@ -1638,7 +1628,7 @@ export default function LandingPage() {
               <span className="text-2xl font-bold leading-none text-brand-dark">&ldquo;</span>
             </div>
             <h3 className="text-3xl font-bold text-white">
-              {locale === "en" ? "It does more than analyze. It improves." : "Sadece analiz etmez. Geliştirir."}
+              {locale === "en" ? "It does more than analyze. It improves." : "Yayına çıkmadan önce son kontrol "}
             </h3>
             <p className="mt-6 max-w-[62ch] text-base leading-relaxed text-white/70">
               {locale === "en"

@@ -12,9 +12,9 @@ export const DASHBOARD_SCREENSHOTS = {
 } as const;
 
 const variantStyles = {
-  hero: "aspect-[15/10] min-h-[280px] rounded-2xl border border-white/10 bg-bg-offwhite shadow-2xl",
+  hero: "aspect-[16/9] w-full rounded-2xl border border-white/10 bg-bg-offwhite shadow-2xl",
   section: "h-full min-h-[480px] rounded-xl border border-white/10 bg-white",
-  video: "aspect-[16/9] w-full rounded-t-lg border border-white/10 bg-bg-offwhite",
+  video: "aspect-[16/9] w-full border-0 bg-bg-offwhite",
 } as const;
 
 type DashboardScreenshotProps = {
@@ -103,7 +103,7 @@ export function MacbookFrame({ children }: { children: React.ReactNode }) {
           <span className="size-2.5 rounded-full bg-yellow-400" />
           <span className="size-2.5 rounded-full bg-green-400" />
         </div>
-        <div className="overflow-hidden rounded-t-lg bg-bg-offwhite">{children}</div>
+        <div className="overflow-hidden bg-bg-offwhite">{children}</div>
       </div>
       <div className="mx-auto h-3 w-[102%] translate-x-[-1%] rounded-b-xl bg-brand-dark/80" />
       <div className="mx-auto mt-1 h-1 w-24 rounded-full bg-brand-dark/40" />

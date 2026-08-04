@@ -524,17 +524,19 @@ function MicroCriteriaTab({ analysis }: { analysis: Analysis }) {
       analysis.rubricVersion || RUBRIC_VERSION_BASE,
     );
     const micro = analysis.microCriteria ?? [];
-    let criterionNumber = 0;
-    return getMainCategoryDefinitions(mode).map((category) => {
+    const categories = getMainCategoryDefinitions(mode);
+    return categories.map((category, categoryIndex) => {
       const average =
         analysis.categories.find((cat) => cat.id === category.id)?.value ?? 0;
-      const items = category.criteria.map((criterion) => {
-        criterionNumber += 1;
+      const start = categories
+        .slice(0, categoryIndex)
+        .reduce((sum, item) => sum + item.criteria.length, 0);
+      const items = category.criteria.map((criterion, index) => {
         const scored = micro.find((item) => item.id === criterion.id);
         return {
           id: criterion.id,
           value: scored?.value ?? null,
-          number: criterionNumber,
+          number: start + index + 1,
         };
       });
       return {
@@ -576,7 +578,7 @@ function MicroCriteriaTab({ analysis }: { analysis: Analysis }) {
                   strokeWidth={1.75}
                 />
                 <h3 className="text-[15px] font-semibold text-brand-dark">
-                  {localizeCategoryLabel(group.id, "tr")}
+                  {localizeCategoryLabel(group.id, "en")}
                 </h3>
               </div>
               <span className="text-sm font-semibold tabular-nums text-brand-dark">
@@ -593,17 +595,17 @@ function MicroCriteriaTab({ analysis }: { analysis: Analysis }) {
                 return (
                   <div
                     key={item.id}
-                    className="grid w-fit max-w-full grid-cols-[1.25rem_minmax(0,10.5rem)_2rem] items-center gap-x-1.5"
+                    className="grid w-fit max-w-full grid-cols-[1.25rem_minmax(0,12.5rem)_2rem] items-start gap-x-1.5"
                   >
-                    <span className="text-[11px] font-medium tabular-nums text-brand-dark/60">
+                    <span className="pt-0.5 text-[11px] font-medium tabular-nums text-brand-dark/60">
                       {item.number}
                     </span>
-                    <span className="truncate text-[13px] font-medium text-brand-dark">
-                      {localizeCriterionLabel(item.id, "tr")}
+                    <span className="text-[13px] font-medium leading-snug text-brand-dark">
+                      {localizeCriterionLabel(item.id, "en")}
                     </span>
                     {typeof item.value === "number" ? (
                       <span
-                        className="text-right text-[13px] font-bold tabular-nums"
+                        className="pt-0.5 text-right text-[13px] font-bold tabular-nums"
                         style={color ? { color } : undefined}
                       >
                         {item.value}

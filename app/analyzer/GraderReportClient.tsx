@@ -265,18 +265,20 @@ export function GraderReportClient({ slug }: { slug: string }) {
       result.rubricVersion || RUBRIC_VERSION_BASE,
     );
     const micro = result.microCriteria ?? [];
-    let criterionNumber = 0;
-    return getMainCategoryDefinitions(mode).map((category) => {
+    const categories = getMainCategoryDefinitions(mode);
+    return categories.map((category, categoryIndex) => {
       const average =
         result.categories.find((cat) => cat.id === category.id)?.value ?? 0;
-      const items = category.criteria.map((criterion) => {
-        criterionNumber += 1;
+      const start = categories
+        .slice(0, categoryIndex)
+        .reduce((sum, item) => sum + item.criteria.length, 0);
+      const items = category.criteria.map((criterion, index) => {
         const scored = micro.find((item) => item.id === criterion.id);
         return {
           id: criterion.id,
           label: criterion.label,
           value: scored?.value ?? null,
-          number: criterionNumber,
+          number: start + index + 1,
         };
       });
       return {
