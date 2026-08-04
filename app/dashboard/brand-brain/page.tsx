@@ -1057,7 +1057,7 @@ export default function BrandBrainPage() {
                   return (
                     <label
                       key={audience}
-                      className="inline-flex cursor-pointer items-center gap-2 text-sm text-brand-dark/70"
+                      className="relative inline-flex cursor-pointer items-center gap-2 text-sm text-brand-dark/70"
                     >
                       <input
                         type="checkbox"
@@ -1076,7 +1076,7 @@ export default function BrandBrainPage() {
                             8,
                           );
                         }}
-                        className="peer sr-only"
+                        className="peer absolute top-1/2 left-0 size-4 -translate-y-1/2 opacity-0"
                       />
                       <span
                         className={`flex size-4 shrink-0 items-center justify-center rounded border transition-colors ${

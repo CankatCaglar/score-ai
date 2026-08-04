@@ -372,7 +372,7 @@ export function DashboardShell({
 
   return (
     <DashboardBackProvider>
-      <div className="dashboard-ui flex h-dvh max-h-dvh overflow-hidden [&_a]:cursor-pointer [&_button:not(:disabled)]:cursor-pointer [&_input[type='checkbox']]:cursor-pointer [&_input[type='radio']]:cursor-pointer [&_label]:cursor-pointer **:[[role='button']]:cursor-pointer **:[[role='switch']]:cursor-pointer **:[[role='tab']]:cursor-pointer [&_summary]:cursor-pointer">
+      <div className="dashboard-ui fixed inset-0 flex overflow-hidden bg-bg-offwhite [&_a]:cursor-pointer [&_button:not(:disabled)]:cursor-pointer [&_input[type='checkbox']]:cursor-pointer [&_input[type='radio']]:cursor-pointer [&_label]:cursor-pointer **:[[role='button']]:cursor-pointer **:[[role='switch']]:cursor-pointer **:[[role='tab']]:cursor-pointer [&_summary]:cursor-pointer">
         <aside className="hidden h-full w-64 shrink-0 flex-col bg-brand-dark text-white lg:flex">
           <SidebarContent
             pathname={pathname}

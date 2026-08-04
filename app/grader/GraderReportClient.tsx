@@ -1,10 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useState } from "react";
-import { ArrowRight, Bot, ImageIcon, PartyPopper, Sparkles } from "lucide-react";
-import { Logo } from "@/components/Logo";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  ArrowRight,
+  ImageIcon,
+  PartyPopper,
+} from "lucide-react";
 import { ScoreRing } from "@/app/dashboard/analizler/ScoreRing";
+import {
+  getCriterionIds,
+  getMainCategoryDefinitions,
+  rubricModeFromVersion,
+  RUBRIC_VERSION_BASE,
+  STRATEGIC_BRAND_CRITERION_IDS,
+} from "@/lib/analysis/rubric";
+import { scoreColor } from "@/lib/analysis/ui";
+import type { Suggestion } from "@/lib/analysis/types";
 import {
   GRADER_COPY,
   GRADER_LOCALE_STORAGE_KEY,
@@ -13,6 +25,7 @@ import {
 } from "./copy";
 import {
   AnalysisWaitingScreen,
+  ContentAnalyzerLogo,
   GRADER_SHELL_PAD,
   LocaleToggle,
   ReportCard,
@@ -27,6 +40,42 @@ import "./grader.css";
 function hasActiveGraderWait(slug: string): boolean {
   if (typeof window === "undefined") return false;
   return readGraderWaitStart(slug) != null;
+}
+
+const localeListeners = new Set<() => void>();
+
+function subscribeLocale(onStoreChange: () => void) {
+  localeListeners.add(onStoreChange);
+  return () => {
+    localeListeners.delete(onStoreChange);
+  };
+}
+
+function emitLocaleChange() {
+  localeListeners.forEach((listener) => listener());
+}
+
+function writeLocale(next: GraderLocale) {
+  window.localStorage.setItem(GRADER_LOCALE_STORAGE_KEY, next);
+  emitLocaleChange();
+}
+
+const cacheListeners = new Map<string, Set<() => void>>();
+
+function subscribeCache(slug: string, onStoreChange: () => void) {
+  let listeners = cacheListeners.get(slug);
+  if (!listeners) {
+    listeners = new Set();
+    cacheListeners.set(slug, listeners);
+  }
+  listeners.add(onStoreChange);
+  return () => {
+    listeners?.delete(onStoreChange);
+  };
+}
+
+function emitCacheChange(slug: string) {
+  cacheListeners.get(slug)?.forEach((listener) => listener());
 }
 
 function estimatePotentialCategories(
@@ -45,8 +94,6 @@ function estimatePotentialCategories(
   }));
 }
 
-const POTENTIAL_GREEN = "#3CB043";
-
 function CategoryBars({
   categories,
   variant = "default",
@@ -60,29 +107,21 @@ function CategoryBars({
       {categories.map((cat) => (
         <div key={cat.id || cat.label}>
           <div className="mb-1 flex justify-between gap-2 text-[10px] tracking-wide">
-            <span lang="en" className="truncate text-white/55">
+            <span lang="en" className="truncate font-medium text-brand-dark/55">
               {cat.label.toLocaleUpperCase("en-US")}
             </span>
-            <span className="shrink-0 font-semibold text-white">
+            <span className="shrink-0 font-semibold text-brand-dark">
               {cat.value}/100
             </span>
           </div>
-          <div className="h-1 overflow-hidden rounded-full bg-white/10">
+          <div className="h-1.5 overflow-hidden rounded-full bg-brand-dark/8">
             <div
-              className={
-                isNeon
-                  ? "h-full rounded-full"
-                  : `h-full rounded-full ${
-                      cat.value >= 70
-                        ? "bg-[#2ec4b6]"
-                        : cat.value >= 45
-                          ? "bg-amber-400"
-                          : "bg-orange-400"
-                    }`
-              }
+              className="h-full rounded-full"
               style={{
                 width: `${Math.min(100, Math.max(0, cat.value))}%`,
-                ...(isNeon ? { backgroundColor: POTENTIAL_GREEN } : {}),
+                backgroundColor: isNeon
+                  ? "var(--color-brand-dark)"
+                  : scoreColor(cat.value),
               }}
             />
           </div>
@@ -96,65 +135,158 @@ function cacheKey(slug: string) {
   return `grader_result_cache:${slug}`;
 }
 
-function readCachedResult(slug: string): GraderResult | null {
+/** Keep stable object refs for useSyncExternalStore (JSON.parse would infinite-loop). */
+const cachedResultSnapshots = new Map<
+  string,
+  { raw: string | null; value: GraderResult | null }
+>();
+
+function readCachedResultSnapshot(slug: string): GraderResult | null {
   try {
     const raw = window.sessionStorage.getItem(cacheKey(slug));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as GraderResult;
-    if (parsed?.jobStatus === "completed" && parsed.slug === slug) {
-      return parsed;
+    const prev = cachedResultSnapshots.get(slug);
+    if (prev && prev.raw === raw) return prev.value;
+
+    let value: GraderResult | null = null;
+    if (raw) {
+      const parsed = JSON.parse(raw) as GraderResult;
+      if (parsed?.jobStatus === "completed" && parsed.slug === slug) {
+        value = parsed;
+      }
     }
-    return null;
+    cachedResultSnapshots.set(slug, { raw, value });
+    return value;
   } catch {
+    cachedResultSnapshots.set(slug, { raw: null, value: null });
     return null;
   }
 }
 
 function writeCachedResult(result: GraderResult) {
   try {
-    window.sessionStorage.setItem(cacheKey(result.slug), JSON.stringify(result));
+    const raw = JSON.stringify(result);
+    window.sessionStorage.setItem(cacheKey(result.slug), raw);
+    cachedResultSnapshots.set(result.slug, { raw, value: result });
+    emitCacheChange(result.slug);
   } catch {
     // ignore quota / private mode
   }
 }
 
 export function GraderReportClient({ slug }: { slug: string }) {
-  const [locale, setLocale] = useState<GraderLocale>("tr");
-  const [localeReady, setLocaleReady] = useState(false);
-  // SSR + ilk client render aynı olmalı (sessionStorage burada okunursa hydration patlar).
-  const [result, setResult] = useState<GraderResult | null>(null);
+  const locale = useSyncExternalStore(
+    subscribeLocale,
+    getDefaultGraderLocale,
+    () => "tr" as const,
+  );
+  const cachedResult = useSyncExternalStore(
+    (onStoreChange) => subscribeCache(slug, onStoreChange),
+    () => readCachedResultSnapshot(slug),
+    () => null,
+  );
+  const storageWaiting = useSyncExternalStore(
+    () => () => {},
+    () => hasActiveGraderWait(slug) && readCachedResultSnapshot(slug) == null,
+    () => false,
+  );
+
+  const [liveResult, setLiveResult] = useState<GraderResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [waitingForJob, setWaitingForJob] = useState(false);
-  const [bootstrapping, setBootstrapping] = useState(true);
+  const [jobPending, setJobPending] = useState(false);
+  const [fetchSettled, setFetchSettled] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
 
+  const result = liveResult ?? cachedResult;
+  const waitingForJob = !result && (storageWaiting || jobPending);
+  const bootstrapping = !result && !waitingForJob && !error && !fetchSettled;
   const t = GRADER_COPY[locale];
 
-  useLayoutEffect(() => {
-    const cached = readCachedResult(slug);
-    if (cached) {
-      clearGraderWait(slug);
-      setResult(cached);
-      setWaitingForJob(false);
-      setBootstrapping(false);
-      return;
-    }
-    if (hasActiveGraderWait(slug)) {
-      setWaitingForJob(true);
-      setBootstrapping(false);
-    }
-  }, [slug]);
+  // Grader guest = base (31). Strategic/33 only when dashboard benchmark context exists.
+  const criteriaGroups = useMemo(() => {
+    if (!result) return [];
+    const mode = rubricModeFromVersion(
+      result.rubricVersion || RUBRIC_VERSION_BASE,
+    );
+    const micro = result.microCriteria ?? [];
+    let criterionNumber = 0;
+    return getMainCategoryDefinitions(mode).map((category) => {
+      const average =
+        result.categories.find((cat) => cat.id === category.id)?.value ?? 0;
+      const items = category.criteria.map((criterion) => {
+        criterionNumber += 1;
+        const scored = micro.find((item) => item.id === criterion.id);
+        return {
+          id: criterion.id,
+          label: scored?.label || criterion.label,
+          value: scored?.value ?? null,
+          number: criterionNumber,
+        };
+      });
+      return {
+        id: category.id,
+        category: category.label,
+        average,
+        items,
+      };
+    });
+  }, [result]);
+
+  /** Top 3 actionable tips from the base 31 criteria — skip empty / strategic placeholders. */
+  const topSuggestions = useMemo(() => {
+    if (!result) return [] as Suggestion[];
+    const baseIds = new Set(getCriterionIds("base"));
+    const strategicIds = new Set<string>(STRATEGIC_BRAND_CRITERION_IDS);
+    const emptyAction =
+      /aksiyon\s*önerisi\s*üretilmedi|aksiyon\s*onerisi\s*uretilmedi/i;
+
+    const fromApi = (result.suggestions ?? [])
+      .filter((s) => {
+        if (s.criterionId) {
+          if (strategicIds.has(s.criterionId)) return false;
+          if (!baseIds.has(s.criterionId)) return false;
+        }
+        const text = s.text?.trim() ?? "";
+        if (!text || emptyAction.test(text)) return false;
+        return s.gain > 0;
+      })
+      .sort((a, b) => b.gain - a.gain);
+
+    if (fromApi.length >= 3) return fromApi.slice(0, 3);
+
+    const usedIds = new Set(
+      fromApi.map((s) => s.criterionId).filter((id): id is string => Boolean(id)),
+    );
+    const fallbacks = (result.microCriteria ?? [])
+      .filter(
+        (m) =>
+          baseIds.has(m.id) &&
+          !usedIds.has(m.id) &&
+          typeof m.value === "number" &&
+          m.value < 80,
+      )
+      .sort((a, b) => a.value - b.value)
+      .slice(0, 3 - fromApi.length)
+      .map((m, index) => {
+        const deficit = Math.max(0, 100 - m.value);
+        const gain = Math.round(Math.max(0.8, deficit * 0.04) * 100) / 100;
+        return {
+          id: `micro-fallback-${m.id}-${index}`,
+          criterionId: m.id,
+          text: `${m.label}: ${t.suggestionFallbackAction}`,
+          gain,
+        } satisfies Suggestion;
+      });
+
+    return [...fromApi, ...fallbacks].slice(0, 3);
+  }, [result, t.suggestionFallbackAction]);
 
   useEffect(() => {
-    setLocale(getDefaultGraderLocale());
-    setLocaleReady(true);
-  }, []);
+    if (cachedResult) clearGraderWait(slug);
+  }, [cachedResult, slug]);
 
   useEffect(() => {
-    if (!localeReady) return;
     document.documentElement.lang = locale;
-    window.localStorage.setItem(GRADER_LOCALE_STORAGE_KEY, locale);
-  }, [locale, localeReady]);
+  }, [locale]);
 
   useEffect(() => {
     if (!waitingForJob) return;
@@ -166,11 +298,8 @@ export function GraderReportClient({ slug }: { slug: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    const cached = readCachedResult(slug);
-    if (cached) {
-      setResult(cached);
-      setBootstrapping(false);
-      setWaitingForJob(false);
+    if (cachedResult) {
+      return;
     }
 
     const poll = async () => {
@@ -197,11 +326,11 @@ export function GraderReportClient({ slug }: { slug: string }) {
                 continue;
               }
               clearGraderWait(slug);
-              if (!cached) {
+              if (!cancelled) {
                 setError(data.message || t.genericSubmitError);
+                setJobPending(false);
+                setFetchSettled(true);
               }
-              setBootstrapping(false);
-              setWaitingForJob(false);
               return;
             }
             throw new Error(data.message || t.genericSubmitError);
@@ -213,35 +342,39 @@ export function GraderReportClient({ slug }: { slug: string }) {
           ) {
             clearGraderWait(slug);
             if (data.analysis.jobStatus === "failed") {
-              setError(data.analysis.insight || t.genericSubmitError);
-              setBootstrapping(false);
-              setWaitingForJob(false);
+              if (!cancelled) {
+                setError(data.analysis.insight || t.genericSubmitError);
+                setJobPending(false);
+                setFetchSettled(true);
+              }
               return;
             }
             // Sadece mevcut sonucu okur; yeni AI job tetiklemez.
             writeCachedResult(data.analysis);
-            setResult(data.analysis);
-            setBootstrapping(false);
-            setWaitingForJob(false);
+            if (!cancelled) {
+              setLiveResult(data.analysis);
+              setJobPending(false);
+              setFetchSettled(true);
+            }
             return;
           }
 
           // Hâlâ işleniyor: bekleme ekranı (yeniden analiz değil)
           if (!cancelled) {
-            setBootstrapping(false);
-            setWaitingForJob(true);
+            setJobPending(true);
+            setFetchSettled(true);
           }
         } catch (pollError) {
           if (attempt >= 39) {
-            if (!cached) {
+            if (!cancelled) {
               setError(
                 pollError instanceof Error
                   ? pollError.message
                   : t.genericSubmitError,
               );
+              setJobPending(false);
+              setFetchSettled(true);
             }
-            setBootstrapping(false);
-            setWaitingForJob(false);
             return;
           }
         }
@@ -249,10 +382,10 @@ export function GraderReportClient({ slug }: { slug: string }) {
         await new Promise((resolve) => window.setTimeout(resolve, 1500));
       }
 
-      if (!cancelled && !cached) {
+      if (!cancelled) {
         setError(t.genericSubmitError);
-        setBootstrapping(false);
-        setWaitingForJob(false);
+        setJobPending(false);
+        setFetchSettled(true);
       }
     };
 
@@ -260,7 +393,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
     return () => {
       cancelled = true;
     };
-  }, [slug, t.genericSubmitError]);
+  }, [slug, cachedResult, t.genericSubmitError]);
 
   const authNext = result?.slug
     ? `/dashboard/analizler/${result.slug}`
@@ -282,7 +415,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
 
   if (waitingForJob) {
     return (
-      <div className="grader-page min-h-screen bg-white text-[#0b1f22]">
+      <div className="grader-page min-h-screen bg-bg-offwhite text-brand-dark">
         <AnalysisWaitingScreen
           tipIndex={tipIndex}
           copy={t}
@@ -294,19 +427,19 @@ export function GraderReportClient({ slug }: { slug: string }) {
 
   if (bootstrapping) {
     return (
-      <div className="grader-page min-h-screen bg-white text-[#0b1f22]">
-        <header className="sticky top-0 z-40 bg-[#f7f8f6]/95 backdrop-blur-md">
+      <div className="grader-page min-h-screen bg-bg-offwhite text-brand-dark">
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-brand-dark/95 backdrop-blur-md">
           <div
             className={`${GRADER_SHELL_PAD} flex items-center justify-between py-3.5 sm:py-4`}
           >
             <Link
               href="/grader"
-              className="text-[#0b1f22] transition-opacity hover:opacity-70"
-              aria-label="Score AI"
+              className="transition-opacity hover:opacity-85"
+              aria-label="Content Analyzer by Score AI"
             >
-              <Logo className="h-7 w-auto sm:h-8" />
+              <ContentAnalyzerLogo variant="dark" size="sm" />
             </Link>
-            <LocaleToggle locale={locale} onChange={setLocale} />
+            <LocaleToggle locale={locale} onChange={writeLocale} variant="dark" />
           </div>
         </header>
       </div>
@@ -315,28 +448,28 @@ export function GraderReportClient({ slug }: { slug: string }) {
 
   if (error || !result) {
     return (
-      <div className="grader-page min-h-screen bg-white text-[#0b1f22]">
-        <header className="sticky top-0 z-40 bg-[#f7f8f6]/95 backdrop-blur-md">
+      <div className="grader-page min-h-screen bg-bg-offwhite text-brand-dark">
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-brand-dark/95 backdrop-blur-md">
           <div
             className={`${GRADER_SHELL_PAD} flex items-center justify-between py-3.5 sm:py-4`}
           >
             <Link
               href="/grader"
-              className="text-[#0b1f22] transition-opacity hover:opacity-70"
-              aria-label="Score AI"
+              className="transition-opacity hover:opacity-85"
+              aria-label="Content Analyzer by Score AI"
             >
-              <Logo className="h-7 w-auto sm:h-8" />
+              <ContentAnalyzerLogo variant="dark" size="sm" />
             </Link>
-            <LocaleToggle locale={locale} onChange={setLocale} />
+            <LocaleToggle locale={locale} onChange={writeLocale} variant="dark" />
           </div>
         </header>
         <main className={`${GRADER_SHELL_PAD} py-16 text-center`}>
-          <p className="text-base text-[#0b1f22]/70">
+          <p className="text-base text-brand-dark/70">
             {error || t.genericSubmitError}
           </p>
           <Link
             href="/grader"
-            className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#0b1f22] px-5 py-2.5 text-sm font-semibold text-white"
+            className="mt-6 inline-flex items-center gap-2 rounded-md bg-brand-dark px-5 py-2.5 text-sm font-semibold text-white"
           >
             Score Grader
             <ArrowRight className="size-4" strokeWidth={2} />
@@ -347,52 +480,47 @@ export function GraderReportClient({ slug }: { slug: string }) {
   }
 
   return (
-    <div className="grader-page min-h-screen bg-white text-[#0b1f22]">
-      <header className="sticky top-0 z-40 bg-[#f7f8f6]/95 backdrop-blur-md">
+    <div className="grader-page min-h-screen bg-bg-offwhite text-brand-dark">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-brand-dark/95 backdrop-blur-md">
         <div
           className={`${GRADER_SHELL_PAD} flex items-center justify-between py-3.5 sm:py-4`}
         >
           <Link
             href="/grader"
-            className="text-[#0b1f22] transition-opacity hover:opacity-70"
-            aria-label="Score AI"
+            className="transition-opacity hover:opacity-85"
+            aria-label="Content Analyzer by Score AI"
           >
-            <Logo className="h-7 w-auto sm:h-8" />
+            <ContentAnalyzerLogo variant="dark" size="sm" />
           </Link>
-          <LocaleToggle locale={locale} onChange={setLocale} />
+          <LocaleToggle locale={locale} onChange={writeLocale} variant="dark" />
         </div>
       </header>
 
       <main className={`${GRADER_SHELL_PAD} pb-16 pt-6 lg:pb-24 lg:pt-10`}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="min-w-0">
-            <div className="relative inline-flex items-center gap-2">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#0b1f22]/55">
-                {t.analysisDone}
-              </p>
-              <span className="relative inline-flex text-[#0b1f22]">
-                <PartyPopper
-                  className="size-4 text-[#0b1f22]/70"
-                  strokeWidth={2}
-                  aria-hidden
-                />
-                <span className="grader-confetti" aria-hidden>
-                  <span />
-                  <span />
-                  <span />
-                  <span />
-                  <span />
-                  <span />
-                </span>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative inline-flex items-center gap-2.5">
+            <p className="text-base font-bold uppercase tracking-[0.14em] text-brand-dark sm:text-lg">
+              {t.analysisDone}
+            </p>
+            <span className="relative inline-flex text-brand-dark">
+              <PartyPopper
+                className="size-5 text-brand-dark"
+                strokeWidth={2}
+                aria-hidden
+              />
+              <span className="grader-confetti" aria-hidden>
+                <span />
+                <span />
+                <span />
+                <span />
+                <span />
+                <span />
               </span>
-            </div>
-            <h1 className="mt-2 wrap-break-word text-2xl font-bold tracking-tight text-[#0b1f22] sm:text-3xl">
-              {result.title || t.contentScoreFallback}
-            </h1>
+            </span>
           </div>
           <Link
             href={kayitHref}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-[#d8ff3f] px-5 py-2.5 text-sm font-semibold text-[#0b1f22] transition-opacity hover:opacity-90"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-brand-neon px-5 py-2.5 text-sm font-semibold text-brand-dark transition hover:brightness-105"
           >
             {t.detailCta}
             <ArrowRight className="size-4" strokeWidth={2} />
@@ -401,25 +529,20 @@ export function GraderReportClient({ slug }: { slug: string }) {
 
         <div className="mt-8 grid grid-cols-1 items-stretch gap-4 md:grid-cols-[minmax(0,1.05fr)_auto_minmax(0,0.95fr)] md:gap-3">
           {/* Mevcut skor: görsel kendi oranında (9:16/kare/yatay), kırpma yok */}
-          <section className="flex flex-col rounded-[1.35rem] bg-[#0b1f22] p-4 text-white shadow-[0_24px_50px_-28px_rgba(11,31,34,0.45)] sm:p-5">
+          <ReportCard className="flex flex-col p-4! sm:p-5!">
             <div className="flex items-center gap-3 sm:gap-5">
               {result.id ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={`/api/grader/media/${result.id}`}
                   alt={result.title || t.contentScoreFallback}
-                  className="h-auto max-h-80 w-auto max-w-[48%] shrink-0 rounded-2xl object-contain"
+                  className="h-auto max-h-80 w-auto max-w-[48%] shrink-0 rounded-2xl bg-bg-offwhite object-contain"
                 />
               ) : null}
 
               <div className="flex min-w-0 flex-1 flex-col items-center justify-center py-1">
-                <ScoreRing
-                  score={result.score}
-                  size={132}
-                  stroke={9}
-                  trackColor="rgba(255,255,255,0.16)"
-                />
-                <p className="mt-3 text-[15px] font-medium text-white/65">
+                <ScoreRing score={result.score} size={132} stroke={9} />
+                <p className="mt-3 text-[15px] font-medium text-brand-dark/55">
                   {t.overallScore}
                 </p>
               </div>
@@ -428,36 +551,33 @@ export function GraderReportClient({ slug }: { slug: string }) {
             <div className="mt-4 w-full">
               <CategoryBars categories={result.categories.slice(0, 5)} />
             </div>
-          </section>
+          </ReportCard>
 
-          <div className="flex items-center justify-center md:px-0.5">
-            <div className="flex items-center gap-2 px-2 py-1 md:flex-col md:gap-1">
-              <p className="text-[10px] font-bold tracking-wide text-[#0b1f22]/45">
-                {t.potentialGainLabel.toLocaleUpperCase("en-US")}
-              </p>
-              <div className="flex items-center gap-1.5">
-                <span className="text-2xl font-bold leading-none text-[#0b1f22] sm:text-[1.75rem]">
-                  +{formatGain(netGain)}
-                </span>
-                <ArrowRight
-                  className="size-4 text-[#0b1f22]"
-                  strokeWidth={2.5}
-                />
-              </div>
+          <div className="flex flex-col items-center justify-center gap-2.5 self-center py-2 md:px-1">
+            <div className="flex size-10 items-center justify-center rounded-full bg-brand-neon shadow-sm sm:size-11">
+              <ArrowRight
+                className="size-4 rotate-90 text-brand-dark md:rotate-0 sm:size-5"
+                strokeWidth={2.25}
+              />
             </div>
+            <span className="text-2xl font-bold leading-none tracking-tight text-brand-dark sm:text-3xl">
+              +{formatGain(netGain)}
+            </span>
+            <span className="text-sm font-semibold text-brand-dark">
+              {t.potentialShort}
+            </span>
           </div>
 
           {/* Potansiyel: ring yukarı/büyük; kategoriler kart altında sabit */}
-          <section className="flex h-full min-h-0 flex-col rounded-[1.35rem] border border-[#3CB043]/40 bg-[#0b1f22] p-4 text-white shadow-[0_24px_50px_-28px_rgba(11,31,34,0.45)] sm:p-5">
+          <ReportCard className="flex h-full min-h-0 flex-col border-brand-neon/40 p-4! sm:p-5!">
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
               <ScoreRing
                 score={result.potentialScore}
                 size={152}
                 stroke={10}
-                color={POTENTIAL_GREEN}
-                trackColor="rgba(255,255,255,0.16)"
+                color="var(--color-brand-dark)"
               />
-              <p className="mt-3 text-[15px] font-medium text-white/65">
+              <p className="mt-3 text-[15px] font-medium text-brand-dark/55">
                 {t.potentialTitle}
               </p>
             </div>
@@ -465,24 +585,29 @@ export function GraderReportClient({ slug }: { slug: string }) {
             <div className="mt-4 w-full shrink-0">
               <CategoryBars categories={potentialCategories} variant="neon" />
             </div>
-          </section>
+          </ReportCard>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {result.categories.map((cat) => {
             const Icon = categoryIcons[cat.label] ?? ImageIcon;
             return (
-              <ReportCard key={cat.id || cat.label} className="p-4!">
-                <div className="flex size-9 items-center justify-center">
+              <ReportCard
+                key={cat.id || cat.label}
+                className="p-4! transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_-20px_rgba(0,39,44,0.32)]"
+              >
+                <div className="flex size-9 items-center justify-center rounded-lg bg-brand-neon/75">
                   <Icon
-                    className="size-4.5 text-[#0b1f22]"
+                    className="size-4.5 text-brand-dark"
                     strokeWidth={1.75}
                   />
                 </div>
-                <p className="mt-3 text-xs text-[#0b1f22]/55">{cat.label}</p>
-                <p className="mt-1 text-xl font-bold text-[#0b1f22]">
+                <p className="mt-3 text-xs font-medium text-brand-dark/70">
+                  {cat.label}
+                </p>
+                <p className="mt-1 text-xl font-bold text-brand-dark">
                   {cat.value}
-                  <span className="text-sm font-medium text-[#0b1f22]/30">
+                  <span className="text-sm font-medium text-brand-dark/30">
                     /100
                   </span>
                 </p>
@@ -491,76 +616,104 @@ export function GraderReportClient({ slug }: { slug: string }) {
           })}
         </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <ReportCard className="flex h-full flex-col">
-            <div className="flex items-center gap-2">
-              <Sparkles className="size-4 text-[#0b1f22]/55" strokeWidth={2} />
-              <h2 className="text-base font-semibold text-[#0b1f22]">
-                {t.suggestions}
-              </h2>
+        <section className="mt-8">
+          <h2 className="mb-3 text-base font-semibold text-brand-dark sm:text-lg">
+            {t.suggestions}
+          </h2>
+          <div className="space-y-2.5">
+            {topSuggestions.map((s, index) => (
+              <div
+                key={`${s.id ?? s.text}-${index}`}
+                className="flex min-h-14 items-center gap-4 rounded-xl border border-brand-neon/55 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-neon/80 hover:shadow-[0_12px_28px_-18px_rgba(0,39,44,0.28)] sm:min-h-15"
+              >
+                <span className="min-w-0 flex-1 text-[13px] font-medium leading-snug text-brand-dark">
+                  {s.text}
+                </span>
+                <span className="shrink-0 rounded-full bg-brand-neon/45 px-2.5 py-1 text-[11px] font-semibold text-brand-dark">
+                  +{formatGain(s.gain)} {t.gainPotentialLabel}
+                </span>
+              </div>
+            ))}
+            <div className="flex min-h-14 items-center justify-between gap-4 rounded-xl border border-brand-dark/10 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-neon/50 hover:shadow-[0_12px_28px_-18px_rgba(0,39,44,0.28)] sm:min-h-11">
+              <span className="min-w-0 text-[13px] font-semibold leading-snug text-brand-dark">
+                {t.suggestionsMoreCta}
+              </span>
+              <Link
+                href={kayitHref}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-dark px-3 py-1.5 text-[11px] font-semibold text-brand-neon transition-opacity hover:opacity-90"
+              >
+                {t.detailCta}
+                <ArrowRight className="size-3.5" strokeWidth={2.25} />
+              </Link>
             </div>
-            <div className="mt-4 flex-1 space-y-2">
-              {result.suggestions.slice(0, 6).map((s, index) => (
-                <div
-                  key={`${s.id ?? s.text}-${index}`}
-                  className="flex items-start gap-2.5 rounded-xl bg-[#f4f7f5] px-3 py-2.5"
-                >
-                  <span className="min-w-0 flex-1 text-[13px] leading-snug text-[#0b1f22]/75">
-                    {s.text}
-                  </span>
-                  <span className="shrink-0 rounded-full bg-[#3CB043]/15 px-2 py-0.5 text-[10px] font-semibold text-[#3CB043]">
-                    +{formatGain(s.gain)}
+          </div>
+        </section>
+
+        <section className="mt-8 space-y-4">          <div>
+            <h2 className="text-base font-semibold text-brand-dark sm:text-lg">
+              {t.criteriaPanelTitle}
+              {result.criteriaCount ? (
+                <span className="ml-2 text-sm font-medium text-brand-dark/40">
+                  ({result.criteriaCount})
+                </span>
+              ) : null}
+            </h2>
+            <p className="mt-1 text-sm text-brand-dark/55">
+              {t.criteriaPanelSubtitle}
+            </p>
+          </div>
+
+          {criteriaGroups.map((group) => {
+            const Icon = categoryIcons[group.category] ?? ImageIcon;
+            return (
+              <ReportCard key={group.id}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <Icon
+                      className="size-4.5 shrink-0 text-brand-dark"
+                      strokeWidth={1.75}
+                    />
+                    <h3 className="text-[15px] font-semibold text-brand-dark">
+                      {group.category}
+                    </h3>
+                  </div>
+                  <span className="text-sm font-semibold tabular-nums text-brand-dark">
+                    {group.average}
+                    <span className="font-medium text-brand-dark/30">/100</span>
                   </span>
                 </div>
-              ))}
-            </div>
-          </ReportCard>
+                <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                  {group.items.map((item) => {
+                    const color =
+                      typeof item.value === "number"
+                        ? scoreColor(item.value)
+                        : undefined;
+                    return (
+                      <div key={item.id} className="flex min-w-0 items-center gap-1">
+                        <span className="shrink-0 text-[11px] font-medium tabular-nums text-brand-dark/60">
+                          {item.number}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate pr-4 text-[13px] font-medium text-brand-dark">
+                          {item.label}
+                        </span>
+                        {typeof item.value === "number" ? (
+                          <span
+                            className="mr-3 w-12 shrink-0 text-right text-[13px] font-bold tabular-nums"
+                            style={color ? { color } : undefined}
+                          >
+                            {item.value}
+                          </span>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </ReportCard>
+            );
+          })}
+        </section>
 
-          <ReportCard className="flex h-full flex-col">
-            <div className="flex size-10 items-center justify-center rounded-full bg-[#d8ff3f]/80">
-              <Bot className="size-5 text-[#0b1f22]" strokeWidth={1.75} />
-            </div>
-            <p className="mt-4 text-sm font-semibold text-[#0b1f22]">
-              {t.insightTitle}
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-[#0b1f22]/75">
-              {result.insight?.trim() || result.evaluation}
-            </p>
-            {result.strength?.trim() ? (
-              <div className="mt-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#0b1f22]/40">
-                  {t.strength.toLocaleUpperCase("en-US")}
-                </p>
-                <p className="mt-1 text-sm leading-relaxed text-[#0b1f22]/75">
-                  {result.strength}
-                </p>
-              </div>
-            ) : null}
-            {result.suggestions.length > 0 ? (
-              <div className="mt-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#0b1f22]/40">
-                  {t.insightSuggestionsLabel.toLocaleUpperCase("en-US")}
-                </p>
-                <ul className="mt-2 space-y-2">
-                  {result.suggestions.slice(0, 3).map((suggestion, index) => (
-                    <li
-                      key={`${suggestion.id ?? suggestion.text}-${index}`}
-                      className="flex items-start gap-2 text-sm leading-relaxed text-[#0b1f22]/75"
-                    >
-                      <Sparkles
-                        className="mt-0.5 size-3.5 shrink-0 text-[#0b1f22]/40"
-                        strokeWidth={2}
-                      />
-                      <span>{suggestion.text}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </ReportCard>
-        </div>
-
-        <div className="mt-5 rounded-[1.35rem] bg-[#0b1f22] px-6 py-7 text-white sm:px-10">
+        <div className="mt-8 rounded-[1.35rem] bg-brand-dark px-6 py-7 text-white sm:px-10">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
             <div className="min-w-0 flex-1">
               <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
@@ -573,7 +726,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
             <div className="flex shrink-0 flex-row items-center justify-end gap-4 self-end lg:self-auto">
               <Link
                 href={kayitHref}
-                className="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[#d8ff3f] px-5 py-3 text-sm font-semibold text-[#0b1f22] transition-opacity hover:opacity-90"
+                className="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-brand-neon px-5 py-3 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
               >
                 {t.freeSignup}
                 <ArrowRight className="size-4 shrink-0" strokeWidth={2} />

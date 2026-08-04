@@ -3,8 +3,19 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, ChevronRight, UploadCloud, X } from "lucide-react";
-import { Logo } from "@/components/Logo";
+import {
+  ArrowRight,
+  ChevronRight,
+  Gauge,
+  Lightbulb,
+  Mail,
+  MapPin,
+  Sparkles,
+  UploadCloud,
+  Wand2,
+  X,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   GRADER_COPY,
   GRADER_LOCALE_STORAGE_KEY,
@@ -13,6 +24,7 @@ import {
 } from "./copy";
 import {
   AnalysisWaitingScreen,
+  ContentAnalyzerLogo,
   GRADER_SHELL_PAD,
   LocaleToggle,
   bindGraderWaitToSlug,
@@ -220,52 +232,214 @@ export function GraderClient({
     }
   };
 
+  const scrollToUpload = () => {
+    document
+      .getElementById("grader-upload")
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const footerColumns =
+    locale === "en"
+      ? [
+          {
+            title: "PRODUCT",
+            links: [
+              { label: "Features", href: "/#ozellikler" },
+              { label: "How It Works?", href: "/#nasil-calisir" },
+            ],
+          },
+          {
+            title: "RESOURCES",
+            links: [
+              { label: "Blog", href: "/blog" },
+              { label: "FAQ", href: "/#faq" },
+            ],
+          },
+          {
+            title: "COMPANY",
+            links: [
+              {
+                label: "About",
+                href: "https://www.nerasocial.com/hakkimizda",
+                newTab: true,
+              },
+              {
+                label: "Contact",
+                href: "https://www.nerasocial.com/iletisim",
+                newTab: true,
+              },
+              {
+                label: "Privacy Policy",
+                href: "https://www.nerasocial.com/gizlilik-politikasi",
+                newTab: true,
+              },
+              {
+                label: "Terms",
+                href: "https://www.nerasocial.com/kullanim-kosullari",
+                newTab: true,
+              },
+            ],
+          },
+        ]
+      : [
+          {
+            title: "ÜRÜN",
+            links: [
+              { label: "Özellikler", href: "/#ozellikler" },
+              { label: "Nasıl Çalışır?", href: "/#nasil-calisir" },
+            ],
+          },
+          {
+            title: "KAYNAKLAR",
+            links: [
+              { label: "Blog", href: "/blog" },
+              { label: "SSS", href: "/#faq" },
+            ],
+          },
+          {
+            title: "ŞİRKET",
+            links: [
+              {
+                label: "Hakkımızda",
+                href: "https://www.nerasocial.com/hakkimizda",
+                newTab: true,
+              },
+              {
+                label: "İletişim",
+                href: "https://www.nerasocial.com/iletisim",
+                newTab: true,
+              },
+              {
+                label: "Gizlilik Politikası",
+                href: "https://www.nerasocial.com/gizlilik-politikasi",
+                newTab: true,
+              },
+              {
+                label: "Kullanım Koşulları",
+                href: "https://www.nerasocial.com/kullanim-kosullari",
+                newTab: true,
+              },
+            ],
+          },
+        ];
+
   return (
-    <div className="grader-page min-h-screen bg-white text-[#0b1f22]">
+    <div className="grader-page min-h-screen bg-bg-offwhite text-brand-dark">
       <main>
-        <header className="sticky top-0 z-40 bg-[#f7f8f6]/95 backdrop-blur-md">
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-brand-dark/95 backdrop-blur-md">
           <div
             className={`${GRADER_SHELL_PAD} flex items-center justify-between py-3.5 sm:py-4`}
           >
-            <Link
-              href="/"
-              className="text-[#0b1f22] transition-opacity hover:opacity-70"
-              aria-label="Score AI"
+            <button
+              type="button"
+              onClick={() =>
+                window.scrollTo({ top: 0, behavior: "smooth" })
+              }
+              className="transition-opacity hover:opacity-85"
+              aria-label="Content Analyzer by Score AI"
             >
-              <Logo className="h-7 w-auto sm:h-8" />
-            </Link>
-            <LocaleToggle locale={locale} onChange={setLocale} />
+              <ContentAnalyzerLogo variant="dark" size="sm" />
+            </button>
+            <LocaleToggle
+              locale={locale}
+              onChange={setLocale}
+              variant="dark"
+            />
           </div>
         </header>
 
-        <div className="flex min-h-[calc(100dvh-4.25rem)] flex-col bg-white">
+        <div className="flex min-h-[calc(100dvh-4.25rem)] flex-col bg-bg-offwhite">
           <section
-            className={`${GRADER_SHELL_PAD} grid min-h-0 flex-1 gap-8 py-4 sm:gap-10 sm:py-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-12 xl:gap-16`}
+            className={`${GRADER_SHELL_PAD} relative grid min-h-0 flex-1 gap-6 py-5 sm:gap-8 sm:py-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-center lg:gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.65fr)] xl:gap-10 2xl:gap-16`}
           >
-            <div className="grader-fade-up">
-              <h1 className="mt-3 max-w-[16ch] text-[2.25rem] font-bold leading-[1.08] tracking-tight text-[#0b1f22] sm:text-4xl lg:text-[3.1rem] xl:text-[3.4rem]">
-                {t.heroTitle}
-              </h1>
-              <p className="mt-4 max-w-xl text-base leading-relaxed text-[#0b1f22]/75 sm:mt-5 sm:text-[1.05rem]">
-                {t.heroBody}
-              </p>
-              <ul className="mt-5 space-y-2.5 text-[15px] font-medium text-[#0b1f22]/80 sm:mt-7">
-                {t.bullets.map((item) => (
-                  <li key={item} className="flex items-start gap-2.5">
-                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#0b1f22]" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
+            <div className="grader-fade-up relative z-10 order-2 flex min-w-0 flex-col lg:order-1">
+              <button
+                type="button"
+                onClick={scrollToUpload}
+                className="order-1 mb-14 flex w-full flex-col items-center gap-1.5 text-center transition hover:opacity-85 sm:mb-10 lg:order-3 lg:mb-0 lg:mt-8 lg:max-w-none lg:flex-row lg:items-end lg:gap-2 lg:text-left"
+              >
+                {/* Mobile: ok yazının orta üstünden yukarı */}
+                <svg
+                  className="grader-point-arrow-up h-10 w-9 text-brand-dark lg:hidden"
+                  viewBox="0 0 36 48"
+                  fill="none"
+                  aria-hidden
+                >
+                  <path
+                    d="M18 44 C 18 30, 10 26, 12 14 C 13 9, 16 7, 18 5"
+                    stroke="currentColor"
+                    strokeWidth="2.25"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M11 13 L18 3 L25 13"
+                    stroke="currentColor"
+                    strokeWidth="2.25"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="shrink-0 text-base font-semibold text-brand-dark sm:text-[1.05rem] lg:pb-1 lg:text-left">
+                  {t.heroPointCta}
+                </span>
+                {/* Desktop: ok kolon genişledikçe uzar, tool’a yaklaşır */}
+                <svg
+                  className="grader-point-arrow mb-0.5 hidden h-10 min-w-[5rem] flex-1 text-brand-dark lg:block"
+                  viewBox="0 0 220 44"
+                  fill="none"
+                  preserveAspectRatio="none"
+                  aria-hidden
+                >
+                  <path
+                    d="M4 30 C 48 30, 84 10, 140 12 C 172 13, 196 20, 208 18"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <path
+                    d="M196 8 L214 18 L194 28"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </svg>
+              </button>
+
+              <div className="order-2 w-full">
+                <span className="inline-flex items-center gap-2 rounded-full bg-brand-neon px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-brand-dark sm:text-[13px]">
+                  <Sparkles className="size-3.5" />
+                  {t.eyebrow}
+                </span>
+                <h1 className="mt-4 max-w-[18ch] text-[clamp(2rem,3.2vw,3.5rem)] font-bold leading-[1.08] tracking-tight text-brand-dark">
+                  {t.heroTitle}
+                </h1>
+                <p className="mt-3 max-w-[42ch] text-[15px] leading-relaxed text-brand-dark/70 sm:mt-4 sm:text-base lg:max-w-[48ch] lg:text-[1.05rem] xl:max-w-none xl:text-lg">
+                  {t.heroBody}
+                </p>
+                <ul className="mt-5 space-y-2.5 text-[14px] font-medium text-brand-dark/80 sm:mt-6 sm:text-[15px] lg:text-base">
+                  {t.bullets.map((item) => (
+                    <li key={item} className="flex items-start gap-2.5">
+                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand-dark lg:mt-2" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
 
-            <div className="grader-fade-up grader-fade-up-delay-1 min-h-0">
-              <div className="rounded-[1.35rem] bg-[#0b1f22] p-4 text-white shadow-[0_24px_60px_-28px_rgba(11,31,34,0.55)] sm:p-6">
-                <div className="mb-4 flex items-center justify-between sm:mb-5">
+            <div
+              id="grader-upload"
+              className="grader-fade-up grader-fade-up-delay-1 relative z-10 order-1 min-w-0 scroll-mt-24 lg:order-2"
+            >
+              <div className="rounded-3xl bg-brand-dark p-5 text-white shadow-[0_28px_70px_-28px_rgba(0,39,44,0.55)] sm:p-7 lg:p-8 xl:p-9">
+                <div className="mb-5 flex items-center justify-between sm:mb-6">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/50">
                     {t.freeAnalysis}
                   </p>
-                  <span className="rounded-full bg-[#d8ff3f]/20 px-2.5 py-1 text-[10px] font-semibold text-[#d8ff3f]">
+                  <span className="rounded-full bg-brand-neon/20 px-2.5 py-1 text-[10px] font-semibold text-brand-neon">
                     {t.criteriaBadge}
                   </span>
                 </div>
@@ -283,11 +457,11 @@ export function GraderClient({
                     const droppedFile = e.dataTransfer.files?.[0];
                     if (droppedFile) setSelectedFile(droppedFile);
                   }}
-                  className={`flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed px-4 py-6 transition-colors sm:min-h-56 lg:min-h-64 xl:min-h-72 ${
+                  className={`flex min-h-60 flex-col items-center justify-center rounded-xl border border-dashed px-4 py-8 transition-colors sm:min-h-72 lg:min-h-80 xl:min-h-[22rem] ${
                     freeUsedLocked
                       ? "border-white/10 bg-white/3 opacity-55"
                       : isDragging
-                        ? "border-[#d8ff3f] bg-white/10"
+                        ? "border-brand-neon bg-white/10"
                         : "border-white/20 bg-white/5"
                   }`}
                 >
@@ -301,12 +475,12 @@ export function GraderClient({
                       >
                         <X className="size-4" strokeWidth={2} />
                       </button>
-                      <div className="mx-auto flex max-h-64 min-h-44 w-full items-center justify-center overflow-hidden rounded-lg bg-black/20 p-2">
+                      <div className="mx-auto flex max-h-72 min-h-48 w-full items-center justify-center overflow-hidden rounded-lg bg-black/20 p-2">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={selectedFilePreviewUrl}
                           alt={selectedFile.name}
-                          className="max-h-60 w-auto max-w-full rounded-md object-contain"
+                          className="max-h-64 w-auto max-w-full rounded-md object-contain"
                         />
                       </div>
                       <p className="mt-3 truncate text-center text-xs text-white/55">
@@ -316,20 +490,20 @@ export function GraderClient({
                   ) : (
                     <>
                       <UploadCloud
-                        className="size-9 text-white/70"
+                        className="size-10 text-white/70 sm:size-11"
                         strokeWidth={1.5}
                       />
-                      <p className="mt-4 text-[15px] font-medium text-white">
+                      <p className="mt-4 text-base font-medium text-white sm:text-[1.05rem]">
                         {freeUsedLocked ? t.freeUsedCta : t.dropTitle}
                       </p>
-                      <p className="mt-1 text-xs text-white/45">
+                      <p className="mt-1.5 max-w-sm text-center text-xs text-white/45 sm:text-sm">
                         {freeUsedLocked ? t.freeUsedApiError : t.dropHint}
                       </p>
                       {!freeUsedLocked && (
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className="mt-5 rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-[#0b1f22] transition-opacity hover:opacity-90"
+                          className="mt-6 rounded-md bg-brand-neon px-5 py-2.5 text-sm font-semibold text-brand-dark transition hover:brightness-105"
                         >
                           {t.selectFile}
                         </button>
@@ -353,7 +527,7 @@ export function GraderClient({
                   existingSlug ? (
                     <Link
                       href={`/grader/${existingSlug}`}
-                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-[#d8ff3f] px-6 py-3.5 text-sm font-semibold text-[#0b1f22] transition-opacity hover:opacity-90"
+                      className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-brand-neon px-6 py-3.5 text-sm font-semibold text-brand-dark transition hover:brightness-105"
                     >
                       {t.viewReportCta}
                       <ArrowRight className="size-4" strokeWidth={2} />
@@ -362,7 +536,7 @@ export function GraderClient({
                     <button
                       type="button"
                       disabled
-                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-[#d8ff3f] px-6 py-3.5 text-sm font-semibold text-[#0b1f22] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-brand-neon px-6 py-3.5 text-sm font-semibold text-brand-dark disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       {t.freeUsedCta}
                       <ArrowRight className="size-4" strokeWidth={2} />
@@ -371,9 +545,15 @@ export function GraderClient({
                 ) : (
                   <button
                     type="button"
-                    onClick={submitJob}
-                    disabled={submitting || !selectedFile}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-[#d8ff3f] px-6 py-3.5 text-sm font-semibold text-[#0b1f22] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                    onClick={() => {
+                      if (!selectedFile) {
+                        fileInputRef.current?.click();
+                        return;
+                      }
+                      void submitJob();
+                    }}
+                    disabled={submitting}
+                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-brand-neon px-6 py-3.5 text-sm font-semibold text-brand-dark transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {t.analyzeCta}
                     <ArrowRight className="size-4" strokeWidth={2} />
@@ -385,14 +565,14 @@ export function GraderClient({
                     {t.freeUsedNoticeBefore}{" "}
                     <Link
                       href="/giris?next=%2Fdashboard%2Fyeni-analiz"
-                      className="font-semibold text-[#d8ff3f] underline underline-offset-2"
+                      className="font-semibold text-brand-neon underline underline-offset-2"
                     >
                       {t.freeUsedLogin}
                     </Link>{" "}
                     {t.freeUsedOr}{" "}
                     <Link
                       href="/kayit?next=%2Fdashboard%2Fyeni-analiz"
-                      className="font-semibold text-[#d8ff3f] underline underline-offset-2"
+                      className="font-semibold text-brand-neon underline underline-offset-2"
                     >
                       {t.freeUsedSignup}
                     </Link>
@@ -409,64 +589,81 @@ export function GraderClient({
           </section>
         </div>
 
-        <section className="bg-[#f4f7f5]">
+        <section className="bg-bg-offwhite">
           <div
             className={`${GRADER_SHELL_PAD} grid gap-4 py-12 sm:grid-cols-3 lg:gap-5 lg:py-16`}
           >
-            {t.features.map((item, i) => (
-              <div
-                key={item.t}
-                className={`grader-fade-up grader-fade-up-delay-${i + 1} rounded-2xl bg-white px-6 py-6 shadow-[0_10px_40px_-28px_rgba(11,31,34,0.35)] transition-transform duration-300 hover:-translate-y-0.5`}
-              >
-                <p className="text-[15px] font-bold text-[#0b1f22]">{item.t}</p>
-                <p className="mt-2 text-[15px] leading-relaxed text-[#0b1f22]/70">
-                  {item.d}
-                </p>
-              </div>
-            ))}
+            {(
+              [
+                { icon: Gauge },
+                { icon: Lightbulb },
+                { icon: Wand2 },
+              ] as Array<{ icon: LucideIcon }>
+            ).map(({ icon: Icon }, i) => {
+              const item = t.features[i];
+              if (!item) return null;
+              return (
+                <div
+                  key={item.t}
+                  className={`grader-fade-up grader-fade-up-delay-${i + 1} rounded-2xl border border-brand-dark/8 bg-white px-6 py-6 shadow-[0_10px_40px_-28px_rgba(0,39,44,0.28)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_-24px_rgba(0,39,44,0.38)]`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-neon/75 text-brand-dark">
+                      <Icon className="size-4.5" strokeWidth={1.75} />
+                    </span>
+                    <p className="text-[15px] font-bold text-brand-dark">{item.t}</p>
+                  </div>
+                  <p className="mt-3 text-[15px] leading-relaxed text-brand-dark/70">
+                    {item.d}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </section>
 
-        <section
-          className={`${GRADER_SHELL_PAD} grid gap-10 py-14 lg:grid-cols-2 lg:items-center lg:gap-16 lg:py-20`}
-        >
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-[#0b1f22] sm:text-3xl">
-              {t.positioningTitle}
-            </h2>
-            <p className="mt-4 text-base leading-relaxed text-[#0b1f22]/75">
-              {t.positioningP1}
-            </p>
-            <p className="mt-4 text-base leading-relaxed text-[#0b1f22]/75">
-              {t.positioningP2}
-            </p>
-          </div>
+        <section className="bg-bg-offwhite">
+          <div
+            className={`${GRADER_SHELL_PAD} grid gap-10 py-14 lg:grid-cols-2 lg:items-center lg:gap-16 lg:py-20`}
+          >
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-brand-dark sm:text-3xl">
+                {t.positioningTitle}
+              </h2>
+              <p className="mt-4 text-base leading-relaxed text-brand-dark/75">
+                {t.positioningP1}
+              </p>
+              <p className="mt-4 text-base leading-relaxed text-brand-dark/75">
+                {t.positioningP2}
+              </p>
+            </div>
 
-          <div className="relative w-full">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              key={heroVisualSrc}
-              ref={heroImgRef}
-              src={heroVisualSrc}
-              alt=""
-              className={`block h-auto w-full object-contain transition-opacity ${
-                heroVisualReady ? "opacity-100" : "absolute opacity-0"
-              }`}
-              onLoad={() => setHeroVisualReady(true)}
-              onError={() => setHeroVisualReady(false)}
-            />
-            {!heroVisualReady ? (
-              <div
-                className="flex aspect-4/3 animate-pulse items-center justify-center rounded-2xl bg-[#f4f7f5]"
-                aria-hidden
+            <div className="relative w-full">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                key={heroVisualSrc}
+                ref={heroImgRef}
+                src={heroVisualSrc}
+                alt=""
+                className={`block h-auto w-full object-contain transition-opacity ${
+                  heroVisualReady ? "opacity-100" : "absolute opacity-0"
+                }`}
+                onLoad={() => setHeroVisualReady(true)}
+                onError={() => setHeroVisualReady(false)}
               />
-            ) : null}
+              {!heroVisualReady ? (
+                <div
+                  className="flex aspect-4/3 animate-pulse items-center justify-center rounded-2xl bg-brand-dark/5"
+                  aria-hidden
+                />
+              ) : null}
+            </div>
           </div>
         </section>
 
-        <section className="bg-[#f7f8f6]">
+        <section className="bg-bg-offwhite">
           <div className={`${GRADER_SHELL_PAD} py-14 lg:py-16`}>
-            <h2 className="text-2xl font-bold tracking-tight text-[#0b1f22] sm:text-3xl">
+            <h2 className="text-2xl font-bold tracking-tight text-brand-dark sm:text-3xl">
               {t.moreInfoTitle}
             </h2>
             <div className="mt-8 grid gap-3 sm:grid-cols-2 sm:items-start">
@@ -480,17 +677,17 @@ export function GraderClient({
                         key={item.q}
                         type="button"
                         onClick={() => toggleInfo(index)}
-                        className="h-auto self-stretch rounded-2xl bg-white px-5 py-4 text-left shadow-[0_8px_30px_-24px_rgba(11,31,34,0.45)] transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_36px_-22px_rgba(11,31,34,0.4)]"
+                        className="h-auto self-stretch rounded-2xl border border-brand-dark/8 bg-white px-5 py-4 text-left shadow-[0_8px_30px_-24px_rgba(0,39,44,0.35)] transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_36px_-22px_rgba(0,39,44,0.35)]"
                       >
                         <div className="flex items-start gap-2.5">
                           <ChevronRight
-                            className={`mt-0.5 size-4 shrink-0 text-[#0b1f22]/40 transition-transform duration-200 ${
+                            className={`mt-0.5 size-4 shrink-0 text-brand-dark/40 transition-transform duration-200 ${
                               open ? "rotate-90" : ""
                             }`}
                             strokeWidth={2}
                           />
                           <div className="min-w-0">
-                            <p className="text-[15px] font-semibold leading-snug text-[#0b1f22]">
+                            <p className="text-[15px] font-semibold leading-snug text-brand-dark">
                               {item.q}
                             </p>
                             {open && (
@@ -500,12 +697,12 @@ export function GraderClient({
                                     key={`${item.q}-${paragraph.text.slice(0, 24)}`}
                                   >
                                     {paragraph.title ? (
-                                      <p className="text-[15px] font-bold text-[#0b1f22]">
+                                      <p className="text-[15px] font-bold text-brand-dark">
                                         {paragraph.title}
                                       </p>
                                     ) : null}
                                     <p
-                                      className={`text-[15px] leading-relaxed text-[#0b1f22]/72 ${
+                                      className={`text-[15px] leading-relaxed text-brand-dark/70 ${
                                         paragraph.title ? "mt-1" : ""
                                       }`}
                                     >
@@ -526,6 +723,107 @@ export function GraderClient({
           </div>
         </section>
       </main>
+
+      <footer className="relative overflow-clip bg-brand-dark pb-14 pt-12">
+        <div
+          className="pointer-events-none absolute inset-0 overflow-clip select-none"
+          aria-hidden
+        >
+          <p className="absolute bottom-0 left-1/2 max-h-full -translate-x-1/2 text-[28vw] font-black leading-none text-white/3 md:text-[12rem]">
+            SCORE
+          </p>
+        </div>
+        <div className={`relative ${GRADER_SHELL_PAD}`}>
+          <div className="grid gap-10 md:grid-cols-4 md:gap-8">
+            <div className="md:col-span-1">
+              <button
+                type="button"
+                onClick={() =>
+                  window.scrollTo({ top: 0, behavior: "smooth" })
+                }
+                className="text-left transition-opacity hover:opacity-85"
+                aria-label="Content Analyzer by Score AI"
+              >
+                <ContentAnalyzerLogo variant="dark" size="sm" />
+              </button>
+              <p className="mt-4 text-sm leading-relaxed text-white/50">
+                {locale === "en"
+                  ? "We help brands get better results with AI-powered content analysis."
+                  : "Yapay zeka destekli içerik analizi ile markaların daha iyi sonuçlar almasını sağlıyoruz."}
+              </p>
+            </div>
+            {footerColumns.map((col) => (
+              <div key={col.title}>
+                <p className="text-xs font-bold tracking-widest text-brand-neon">
+                  {col.title}
+                </p>
+                <ul className="mt-4 space-y-2">
+                  {col.links.map((link) => (
+                    <li key={link.label}>
+                      {"newTab" in link && link.newTab ? (
+                        <a
+                          href={link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-white/50 transition hover:text-white"
+                        >
+                          {link.label}
+                        </a>
+                      ) : (
+                        <Link
+                          href={link.href}
+                          className="text-sm text-white/50 transition hover:text-white"
+                        >
+                          {link.label}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/40">
+            <p>
+              {locale === "en"
+                ? "© 2026 Score AI. All rights reserved."
+                : "© 2026 Score AI. Tüm Hakları Saklıdır."}
+            </p>
+            <p>
+              {locale === "en"
+                ? "Content Analyzer is a free tool by Score AI."
+                : "Content Analyzer, Score AI tarafından sunulan ücretsiz bir araçtır."}
+            </p>
+            <a
+              href="mailto:info@usescore.net"
+              className="flex items-center gap-1.5 transition hover:text-white"
+              aria-label={
+                locale === "en"
+                  ? "Email the Score AI team"
+                  : "Score AI ekibine e-posta gönder"
+              }
+            >
+              <Mail className="size-3" />
+              info@usescore.net
+            </a>
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=Tallinn%2C+Estonia"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 transition hover:text-white"
+              aria-label={
+                locale === "en"
+                  ? "Open Tallinn, Estonia in Google Maps"
+                  : "Tallinn, Estonya konumunu Google Maps'te aç"
+              }
+            >
+              <MapPin className="size-3" />
+              {locale === "en" ? "Tallinn, Estonia" : "Tallinn, Estonya"}
+            </a>
+          </div>
+        </div>
+      </footer>
 
       {submitting && (
         <AnalysisWaitingScreen

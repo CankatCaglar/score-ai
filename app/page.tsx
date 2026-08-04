@@ -8,22 +8,26 @@ import {
   Brain,
   Check,
   ChevronDown,
+  Clock,
   CloudUpload,
   History,
   Lightbulb,
   Lock,
   Mail,
   MapPin,
+  Maximize2,
   Menu,
   Play,
   Search,
   Sparkles,
   Target,
   TrendingUp,
+  Users,
   Wand2,
   X,
   Zap,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -32,6 +36,7 @@ import {
 } from "@/components/landing/DashboardScreenshot";
 import { LiveSupportWidget } from "@/components/landing/LiveSupportWidget";
 import { joinWaitlist } from "@/actions/waitlist";
+import { EmailAuthCredential } from "firebase/auth";
 
 const PAGE_CONTAINER =
   "mx-auto w-full max-w-[1880px] px-4 sm:px-6 lg:px-8 xl:px-10  2xl:px-12";
@@ -55,26 +60,10 @@ const AUDIENCE_CARD_IMAGES = [
   "/screenshots/audience-card-5.png",
 ] as const;
 
-const FINAL_STATS_ICON_IMAGES = [
-  "/screenshots/final-stat-icon-1.png",
-  "/screenshots/final-stat-icon-2.png",
-  "/screenshots/final-stat-icon-3.png",
-  "/screenshots/final-stat-icon-4.png",
-] as const;
-
-const FEATURE_PILL_IMAGES = [
-  "/screenshots/feature-pill-1.png",
-  "/screenshots/feature-pill-2.png",
-  "/screenshots/feature-pill-3.png",
-  "/screenshots/feature-pill-4.png",
-  "/screenshots/feature-pill-5.png",
-  "/screenshots/feature-pill-6.png",
-] as const;
-
 const UPLOAD_SOURCE_ICONS = [
   { label: "IG", src: "/screenshots/upload-icon-instagram..png", alt: "Instagram ikonu" },
   { label: "IN", src: "/screenshots/upload-icon-linkedin.png", alt: "LinkedIn ikonu" },
-  { label: "YT", src: "/screenshots/upload-icon-youtube.png", alt: "YouTube ikonu" },
+  { label: "FB", src: "/screenshots/upload-icon-facebook.svg", alt: "Facebook ikonu" },
   { label: "DOC", src: "/screenshots/upload-icon-doc.png", alt: "Dosya ikonu" },
   { label: "URL", src: "/screenshots/upload-icon-link.png", alt: "Link ikonu" },
 ] as const;
@@ -171,7 +160,8 @@ function getDefaultLocale(): Locale {
   return window.navigator.language.toLowerCase().startsWith("en") ? "en" : "tr";
 }
 
-const FEATURE_PILL_ICONS = [Target, Brain, TrendingUp, History, Lightbulb, Wand2] as const;
+const FEATURE_PILL_ICONS = [Maximize2, Brain, TrendingUp, History, Lightbulb, Wand2] as const;
+const FINAL_STATS_ICONS = [Users, TrendingUp, Target, Clock] as const;
 const STEP_ICONS = [CloudUpload, Search, Target, Sparkles, Zap] as const;
 
 const PAGE_COPY = {
@@ -188,22 +178,22 @@ const PAGE_COPY = {
       ],
       titleDesktopLine1: "İçerikleriniz neden performans\u00a0göstermiyor?",
       titleDesktopLine2: "Score AI bunu size saniyeler içinde\u00a0söylesin.",
-      desc: "Score AI, içeriklerinizi 40 mikro kriterle analiz eder, markanızı anlar ve daha iyi sonuçlar için otomatik olarak uygulanabilir öneriler sunar.",
+      desc: "Score AI, içeriklerinizi 30+ mikro kriterle analiz eder, markanızı anlar ve daha iyi sonuçlar için otomatik olarak uygulanabilir öneriler sunar.",
       subtitle: "Waitlist'e katılın, lansmana özel avantajlardan ilk siz haberdar olun.",
       waitlistCountLabel: "kişi bekleme listesinde.",
       screenshotAlt: "Score AI Dashboard — içerik skor karşılaştırması",
     },
     steps: [
-      { title: "İçeriğinizi Yükleyin", desc: "Görsel, video, metin veya link ile içeriğinizi platforma alın." },
-      { title: "40 Mikro Kriter ile Analiz Edilir", desc: "İçeriğiniz 40 mikro kriter ile detaylı olarak incelenir." },
-      { title: "Score'unuzu Görün", desc: "İçeriğinizin genel skorunu görün ve gelişim alanlarını keşfedin." },
-      { title: "AI Önerilerini Alın", desc: "AI, içeriğinizi iyileştirmek için size özel öneriler sunar." },
+      { title: "İçeriğinizi Yükleyin", desc: "Görsel veya link ile içeriğinizi platforma alın." },
+      { title: "30+ Mikro Kriter ile Analiz Edilsin", desc: "5 Ana kategoride 30+ mikro kriter ile detaylı analiz edilir." },
+      { title: "Skor'unuzu Görün", desc: "İçeriğinizin genel skorunu görün ve gelişim alanlarını keşfedin." },
+      { title: "Geliştirme Önerilerini Alın", desc: "Score, içeriğinizi iyileştirmek için size özel öneriler sunar." },
       { title: "Tek Tıkla Uygula ve Yayınla", desc: "Önerileri Canva'da uygulayın, tasarımınızı yapın ve paylaşın." },
     ],
     featurePills: [
-      { title: "AI Content Scoring", desc: "40 mikro kritere göre içerik kalitenizi ölçün ve skorlayın." },
+      { title: "AI İçerik Skorlama", desc: "30+ mikro kritere göre içerik kalitenizi ölçün ve skorlayın." },
       { title: "Marka Öğrenimi", desc: "Markanızın dilini, tonunu ve görsel kimliğini öğrenir." },
-      { title: "Rakip Analizi", desc: "Sektördeki en iyi içerikleri analiz edin, öne geçin." },
+      { title: "Rakip Analizi", desc: "Sektördeki en iyi markaları analiz edin, öne geçin." },
       { title: "İçerik Geçmişi", desc: "Tüm içerik performanslarınızı tek yerde takip edin." },
       { title: "Aksiyon Odaklı Öneriler", desc: "Ne yapmanız gerektiğini net ve uygulanabilir şekilde söyler." },
       { title: "Creative Copilot", desc: "Başlık, metin, CTA ve daha fazlası için AI önerileri alın." },
@@ -216,8 +206,7 @@ const PAGE_COPY = {
       { title: "E-ticaret işletmeleri", desc: "Ürünlerinizi doğru içeriklerle tanıtın, satışlarınızı artırın." },
     ],
     faqItems: [
-      { question: "Score AI tam olarak ne yapar?", answer: "Score AI, içeriklerinizi 40 mikro kritere göre analiz eder, 0-100 arası bir skor verir ve performansı artırmak için uygulanabilir öneriler sunar. Markanızı öğrenir, geçmiş verilerinizden çıkarım yapar ve içerik üretim sürecinizi hızlandırır." },
-      { question: "Hangi platformları destekliyor?", answer: "Instagram, TikTok, LinkedIn, YouTube Shorts ve benzeri sosyal medya formatlarını destekler. Görsel, video, metin ve URL ile içerik yükleyebilirsiniz." },
+      { question: "Score AI tam olarak ne yapar?", answer: "Score, sosyal medya içeriklerinin yayınlanmadan önce daha stratejik, etkili ve performans odaklı hale gelmesini sağlayan yapay zeka destekli bir içerik analiz platformudur. İçerikleri marka dili, hedef kitle uyumu, mecra dinamikleri ve etkileşim potansiyeli açısından değerlendirir; skorlar ve geliştirme önerileri sunup tasarlar. Markaların daha güçlü dijital iletişim kurmasına yardımcı olur." },
       { question: "İçeriklerim güvende mi?", answer: "Evet. İçerikleriniz şifreli olarak saklanır, üçüncü taraflarla paylaşılmaz. KVKK uyumlu veri işleme politikaları uygulanır." },
       { question: "Score AI ücretsiz mi?", answer: "Beta döneminde waitlist'e katılan kullanıcılara özel erken erişim ve indirimli fiyatlandırma sunulacaktır. Detaylar lansman öncesinde paylaşılacak." },
       { question: "Ne zaman erişime açılacak?", answer: "Waitlist sırasına göre kademeli olarak erişim verilecektir. Kayıt olduğunuzda sıranızı ve tahmini erişim tarihinizi e-posta ile bildireceğiz." },
@@ -237,20 +226,20 @@ const PAGE_COPY = {
       titleMobile: ["Why are your contents not", "performing? Let Score AI","tell you in seconds."],
       titleDesktopLine1: "Why are your contents not performing?",
       titleDesktopLine2: "Let Score AI tell you in seconds.",
-      desc: "Score AI analyzes your content across 40 micro criteria, understands your brand, and provides actionable recommendations for better results.",
+      desc: "Score AI analyzes your content across 30+ micro criteria, understands your brand, and provides actionable recommendations for better results.",
       subtitle: "Join the waitlist and be the first to hear about launch-only advantages.",
       waitlistCountLabel: "people on the waitlist.",
       screenshotAlt: "Score AI Dashboard — content score comparison",
     },
     steps: [
       { title: "Upload Your Content", desc: "Add your content with image, video, text, or URL." },
-      { title: "Analyzed with 40 Micro Criteria", desc: "Your content is deeply analyzed with 40 micro criteria." },
+      { title: "Analyzed with 30+ Micro Criteria", desc: "Your content is deeply analyzed with 30+ micro criteria." },
       { title: "See Your Score", desc: "View your overall score and discover improvement opportunities." },
       { title: "Get AI Suggestions", desc: "AI gives you tailored suggestions to improve your content." },
       { title: "Apply and Publish in One Click", desc: "Apply suggestions in Canva, design, and publish." },
     ],
     featurePills: [
-      { title: "AI Content Scoring", desc: "Measure and score your content quality across 40 micro criteria." },
+      { title: "AI Content Scoring", desc: "Measure and score your content quality across 30+ micro criteria." },
       { title: "Brand Learning", desc: "Learns your brand voice, tone, and visual identity." },
       { title: "Competitor Analysis", desc: "Analyze top content in your sector and stay ahead." },
       { title: "Content History", desc: "Track all your content performance in one place." },
@@ -265,8 +254,7 @@ const PAGE_COPY = {
       { title: "E-commerce businesses", desc: "Promote your products with better content and increase sales." },
     ],
     faqItems: [
-      { question: "What exactly does Score AI do?", answer: "Score AI analyzes your content with 40 micro criteria, gives a 0-100 score, and provides actionable suggestions to improve performance. It learns your brand, derives insights from past data, and speeds up your content workflow." },
-      { question: "Which platforms are supported?", answer: "It supports Instagram, TikTok, LinkedIn, YouTube Shorts, and similar social formats. You can upload images, videos, text, and URLs." },
+      { question: "What exactly does Score AI do?", answer: "Score AI analyzes your content with 30+ micro criteria, gives a 0-100 score, and provides actionable suggestions to improve performance. It learns your brand, derives insights from past data, and speeds up your content workflow." },
       { question: "Is my content secure?", answer: "Yes. Your content is stored securely and is not shared with third parties." },
       { question: "Is Score AI free?", answer: "During beta, users on the waitlist will get early access and special pricing. Details will be shared before launch." },
       { question: "When will it be available?", answer: "Access will be granted gradually based on waitlist order." },
@@ -292,10 +280,10 @@ function FadeIn({
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 32 }}
+      initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.6, ease: "easeOut", delay }}
+      viewport={{ once: true, margin: "-40px", amount: 0.15 }}
+      transition={{ duration: 0.55, ease: "easeOut", delay }}
     >
       {children}
     </motion.div>
@@ -506,7 +494,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="bg-bg-offwhite text-brand-dark [&_a]:cursor-pointer [&_button:not(:disabled)]:cursor-pointer">
+    <div className="overflow-x-clip bg-bg-offwhite text-brand-dark [&_a]:cursor-pointer [&_button:not(:disabled)]:cursor-pointer">
       {/* HEADER */}
       <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-brand-dark/95 backdrop-blur-md">
         <div className={`flex h-16 items-center justify-between gap-4 md:grid md:grid-cols-3 ${PAGE_CONTAINER}`}>
@@ -984,7 +972,7 @@ export default function LandingPage() {
                     </>
                   ) : (
                     <>
-                      Sektörünüzdeki en iyi içeriklerle sürekli{" "}
+                      Sektörünüzdeki markalarla sürekli{" "}
                       <span className="text-brand-neon">kıyaslama.</span>
                     </>
                   )}
@@ -999,14 +987,12 @@ export default function LandingPage() {
                     locale === "en"
                       ? [
                           "Compare your score with industry averages.",
-                          "See your position against leading brands.",
-                          "Capture trends and opportunities.",
+                          "See your position against leading brands.",                          
                           "Move forward with data-driven strategies.",
                         ]
                       : [
                           "Kendi skorunuzu sektör ortalamasıyla karşılaştırın.",
-                          "Lider markalara göre konumunuzu görün.",
-                          "Trendleri ve fırsatları yakalayın.",
+                          "Lider markalara göre konumunuzu görün.",                     
                           "Veriye dayalı stratejilerle ilerleyin.",
                         ]
                   ).map((item) => (
@@ -1086,22 +1072,13 @@ export default function LandingPage() {
           {/* 6 Feature Pills */}
           <FadeIn>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-              {featurePills.map(({ title, desc }, i) => (
+              {featurePills.map(({ title, desc, icon: Icon }) => (
                 <div
                   key={title}
                   className="flex gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-brand-neon/30 sm:min-h-[128px]"
                 >
-                  <div className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-neon/15">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={FEATURE_PILL_IMAGES[i]}
-                      alt={`${title} ${locale === "en" ? "icon" : "ikonu"}`}
-                      className="h-full w-full object-cover"
-                      decoding="async"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-neon/15">
+                    <Icon className="size-4.5 text-brand-neon" strokeWidth={1.75} />
                   </div>
                   <div className="min-w-0">
                     <p className="text-[15px] font-semibold leading-tight text-white">{title}</p>
@@ -1122,11 +1099,11 @@ export default function LandingPage() {
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-brand-dark md:text-5xl">
               {locale === "en" ? (
                 <>
-                  Watch Score AI in <span className="text-brand-dark">60 seconds</span>.
+                  See how <span className="text-brand-dark">Score AI works</span>.
                 </>
               ) : (
                 <>
-                  Score AI&apos;yı <span className="text-brand-dark">60 saniyede</span> izleyin.
+                  Score AI&apos;nın <span className="text-brand-dark">nasıl çalıştığını</span> görün.
                 </>
               )}
             </h2>
@@ -1169,7 +1146,7 @@ export default function LandingPage() {
                       {
                         icon: BarChart3,
                         title: "AI-Powered Analysis",
-                        desc: "Measures your content quality across 40 micro criteria.",
+                        desc: "Measures your content quality across 30+ micro criteria.",
                       },
                       {
                         icon: TrendingUp,
@@ -1183,7 +1160,7 @@ export default function LandingPage() {
                       },
                     ]
                   : [
-                      { icon: BarChart3, title: "AI Destekli Analiz", desc: "40 mikro kritere göre içerik kalitenizi ölçer." },
+                      { icon: BarChart3, title: "AI Destekli Analiz", desc: "30+ mikro kritere göre içerik kalitenizi ölçer." },
                       { icon: TrendingUp, title: "Akıllı Öneriler", desc: "İçeriklerinizi geliştirmek için uygulanabilir öneriler sunar." },
                       { icon: Sparkles, title: "Daha İyi Sonuçlar", desc: "Performansınızı artırır, hedeflerinize daha hızlı ulaşmanızı sağlar." },
                     ]
@@ -1621,31 +1598,22 @@ export default function LandingPage() {
                   : [
                       { val: "1.000+", lbl: "Kişi waitlist'te", sub: "Her geçen gün büyüyoruz." },
                       { val: "60 sn", lbl: "İlk Analiz", sub: "Hızlı, kolay ve tamamen otomatik." },
-                      { val: "40", lbl: "Mikro Kriter", sub: "Detaylı kalite analizi." },
+                      { val: "30+", lbl: "Mikro Kriter", sub: "Detaylı kalite analizi." },
                       { val: "7/24", lbl: "Anında Analiz", sub: "İçeriklerinizi istediğiniz zaman değerlendirin." },
                     ]
-              ).map(({ val, lbl, sub }, i) => (
-                <div key={lbl} className="flex h-full flex-col items-center text-center">
-                  <div className="relative size-22 overflow-hidden rounded-full bg-brand-neon/20">
-                    <div className="absolute inset-0 flex items-center justify-center text-[10px] text-brand-dark/35">
-                      Icon
+              ).map(({ val, lbl, sub }, i) => {
+                const Icon = FINAL_STATS_ICONS[i] as LucideIcon;
+                return (
+                  <div key={lbl} className="flex h-full flex-col items-center text-center">
+                    <div className="flex size-22 items-center justify-center rounded-full bg-brand-neon/20">
+                      <Icon className="size-10 text-brand-dark" strokeWidth={1.5} />
                     </div>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={FINAL_STATS_ICON_IMAGES[i]}
-                      alt={`${lbl} ${locale === "en" ? "icon" : "ikonu"}`}
-                      className="relative z-10 h-full w-full object-cover"
-                      decoding="async"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
+                    <p className="mt-4 text-[2rem] leading-none font-bold text-brand-dark">{val}</p>
+                    <p className="mt-2 text-base font-semibold text-brand-dark/80">{lbl}</p>
+                    <p className="mt-1 text-sm text-brand-dark/50">{sub}</p>
                   </div>
-                  <p className="mt-4 text-[2rem] leading-none font-bold text-brand-dark">{val}</p>
-                  <p className="mt-2 text-base font-semibold text-brand-dark/80">{lbl}</p>
-                  <p className="mt-1 text-sm text-brand-dark/50">{sub}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </FadeIn>
         </div>
@@ -1655,13 +1623,15 @@ export default function LandingPage() {
       <section className="bg-brand-dark py-16">
         <div className={`grid items-center gap-10 lg:grid-cols-2 lg:gap-16 xl:gap-20 ${PAGE_CONTAINER}`}>
           <FadeIn>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={landingScreens.footerQuote}
-              alt={locale === "en" ? "Footer insight visual" : "Footer içgörü görseli"}
-              className="mx-auto w-full max-w-[440px] rounded-3xl"
-              decoding="async"
-            />
+            <div className="mx-auto w-full max-w-[720px] overflow-hidden rounded-3xl lg:max-w-none">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={landingScreens.footerQuote}
+                alt={locale === "en" ? "Footer insight visual" : "Footer içgörü görseli"}
+                className="h-auto w-full object-contain"
+                decoding="async"
+              />
+            </div>
           </FadeIn>
           <FadeIn delay={0.1}>
             <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-brand-neon">
@@ -1672,8 +1642,8 @@ export default function LandingPage() {
             </h3>
             <p className="mt-6 max-w-[62ch] text-base leading-relaxed text-white/70">
               {locale === "en"
-                ? "Analyzes your content with 40 micro quality criteria, learns your brand, and provides actionable suggestions to boost performance."
-                : "İçeriğinizi 40 mikro kalite kriterine göre analiz eder, markanızı öğrenir ve performansınızı artıracak uygulanabilir öneriler sunar."}
+                ? "Analyzes your content with 30+ micro quality criteria, learns your brand, and provides actionable suggestions to boost performance."
+                : "İçeriğinizi 30+ mikro kalite kriterine göre analiz eder, markanızı öğrenir ve performansınızı artıracak uygulanabilir öneriler sunar."}
               <br />
               {locale === "en"
                 ? "Every post becomes stronger than the previous one."
@@ -1684,10 +1654,15 @@ export default function LandingPage() {
       </section>
 
       {/* FOOTER */}
-      <footer className="relative overflow-hidden bg-brand-dark pb-20 pt-12">
-        <p className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 text-[28vw] font-black leading-none text-white/3 select-none md:text-[12rem]">
-          SCORE
-        </p>
+      <footer className="relative overflow-clip bg-brand-dark pb-20 pt-12">
+        <div
+          className="pointer-events-none absolute inset-0 overflow-clip select-none"
+          aria-hidden
+        >
+          <p className="absolute bottom-0 left-1/2 max-h-full -translate-x-1/2 text-[28vw] font-black leading-none text-white/3 md:text-[12rem]">
+            SCORE
+          </p>
+        </div>
         <div className={`relative ${PAGE_CONTAINER}`}>
           <div className="grid gap-10 md:grid-cols-4 md:gap-8">
             <div className="md:col-span-1">

@@ -46,8 +46,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-bg-light font-sans font-normal text-brand-dark">
+    <html lang="tr" className={`${inter.variable} min-h-full antialiased`}>
+      <body className="flex min-h-full flex-col bg-bg-offwhite font-sans font-normal text-brand-dark">
         {children}
         <CookieConsentBanner />
         <ConsentAnalytics />

@@ -10,18 +10,29 @@
 
 html {
   scroll-behavior: smooth;
+  overscroll-behavior-y: none;
 }
 
 html,
 body {
-  height: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
+  min-height: 100%;
   font-family: var(--font-sans);
   font-weight: 400;
+  overscroll-behavior-y: none;
+}
+
+/* Dashboard is a fixed viewport shell — never let the document scroll under it */
+html:has(.dashboard-ui),
+html:has(.dashboard-ui) body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background-color: var(--color-bg-offwhite);
 }
 
 .dashboard-ui {

@@ -204,6 +204,7 @@ function buildSuggestionsFromEvaluations(
   const criterionDefs = getCriterionDefinitions(mode);
   const potentialRows = calculateCriterionPotentialGainRows(evaluations, mode)
     .filter((row) => row.gain > 0)
+    .filter((row) => Boolean(evaluations[row.criterionId]?.aksiyon_onerisi?.trim()))
     .sort((a, b) => b.gain - a.gain);
 
   const totalPotentialGain = Math.max(
@@ -218,9 +219,10 @@ function buildSuggestionsFromEvaluations(
   }
 
   return potentialRows.map((row, index) => {
-    const evaluation = evaluations[row.criterionId];
-    const criterionLabel = criterionDefs.find((item) => item.id === row.criterionId)?.label;
-    const actionText = evaluation?.aksiyon_onerisi?.trim() || "Kriter icin aksiyon onerisi uretilmedi.";
+    const actionText = evaluations[row.criterionId]!.aksiyon_onerisi.trim();
+    const criterionLabel = criterionDefs.find(
+      (item) => item.id === row.criterionId,
+    )?.label;
     const normalizedGain = (roundedCents[index] ?? 0) / 100;
     return {
       id: `${row.criterionId}-${index}`,

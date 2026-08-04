@@ -17,7 +17,7 @@ export default async function GraderPage() {
   if (session?.email && session.emailVerified) {
     redirect("/dashboard/yeni-analiz");
   }
-
+  
   const cookieStore = await cookies();
   const isAdmin = Boolean(
     verifySessionToken(cookieStore.get(ADMIN_COOKIE_NAME)?.value),

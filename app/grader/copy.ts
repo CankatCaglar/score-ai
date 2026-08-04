@@ -12,6 +12,7 @@ export type GraderCopy = {
   heroTitle: string;
   heroBody: string;
   bullets: [string, string, string];
+  heroPointCta: string;
   freeAnalysis: string;
   criteriaBadge: string;
   dropTitle: string;
@@ -59,8 +60,13 @@ export type GraderCopy = {
   contentPreview: string;
   scoreDistribution: string;
   suggestions: string;
+  gainPotentialLabel: string;
+  suggestionsMoreCta: string;
+  suggestionFallbackAction: string;
   insightTitle: string;
   insightSuggestionsLabel: string;
+  criteriaPanelTitle: string;
+  criteriaPanelSubtitle: string;
   finalCtaTitle: string;
   finalCtaBody: string;
   hasAccount: string;
@@ -69,15 +75,16 @@ export type GraderCopy = {
 
 export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
   tr: {
-    eyebrow: "Score Grader",
-    heroTitle: "Anlık içerik kalite denetimi",
+    eyebrow: "Ücretsiz içerik analizi",
+    heroTitle: "Anlık İçerik Kalite Denetimi",
     heroBody:
-      "Görselini yükle; Score 31 objektif kriterle skorlasın, eksikleri göstersin ve geliştirme potansiyelini açıklasın. Canva ve ChatGPT'den sonra gelen kalite katmanı.",
+      "Görselini yükle; Score 30+ objektif kriterle skorlasın, eksikleri göstersin ve geliştirme potansiyelini açıklasın. Canva ve ChatGPT'den sonra gelen kalite katmanı.",
     bullets: [
       "Yaklaşık 30 saniyede skor ve kategori kırılımı",
       "Score AI önerileri ve aksiyon alanları",
       "İlk analiz ücretsiz, kayıtsız dene",
     ],
+    heroPointCta: "İlk ücretsiz analizinle buradan başla",
     freeAnalysis: "Ücretsiz analiz",
     criteriaBadge: "31 kriter",
     dropTitle: "Görselinizi buraya sürükleyin",
@@ -101,7 +108,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     features: [
       {
         t: "Skorla",
-        d: "31 objektif kritere göre içerik kalitesini ölç.",
+        d: "30+ objektif kritere göre içerik kalitesini ölç.",
       },
       {
         t: "Anla",
@@ -217,8 +224,15 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     contentPreview: "İçerik Önizleme",
     scoreDistribution: "Score Dağılımı",
     suggestions: "Score AI Önerileri",
+    gainPotentialLabel: "puan potansiyeli",
+    suggestionsMoreCta:
+      "Daha fazla öneri ve tam aksiyon planı için Score AI’ya geçin",
+    suggestionFallbackAction:
+      "Bu kriteri güçlendir; skora en hızlı katkı buradan gelir.",
     insightTitle: "Score AI İçgörüsü",
     insightSuggestionsLabel: "Öneriler",
+    criteriaPanelTitle: "Mikro Kriterler",
+    criteriaPanelSubtitle: "Kategorilere göre objektif değerlendirme",
     finalCtaTitle: "Detaylı şekilde gör, ücretsiz kaydol",
     finalCtaBody:
       "Bu rapor hesabına otomatik aktarılır. Tam kriter detayları ve Score ile geliştirme için ücretsiz hesap oluştur.",
@@ -226,8 +240,8 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     removeFileAria: "Seçili dosyayı kaldır",
   },
   en: {
-    eyebrow: "Score Grader",
-    heroTitle: "Instant content quality audit",
+    eyebrow: "Free Content Analysis",
+    heroTitle: "Instant Content Quality Audit",
     heroBody:
       "Upload your visual; Score grades it against 31 objective criteria, shows gaps, and explains improvement potential. The quality layer after Canva and ChatGPT.",
     bullets: [
@@ -235,6 +249,7 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
       "Score AI suggestions and action areas",
       "First analysis free, no signup required",
     ],
+    heroPointCta: "Start your first free analysis here",
     freeAnalysis: "Free analysis",
     criteriaBadge: "31 criteria",
     dropTitle: "Drag your image here",
@@ -374,8 +389,15 @@ export const GRADER_COPY: Record<GraderLocale, GraderCopy> = {
     contentPreview: "Content preview",
     scoreDistribution: "Score distribution",
     suggestions: "Score AI suggestions",
+    gainPotentialLabel: "point potential",
+    suggestionsMoreCta:
+      "Continue in Score AI for more suggestions and a full action plan",
+    suggestionFallbackAction:
+      "Strengthen this criterion — it’s one of the fastest ways to raise your score.",
     insightTitle: "Score AI insight",
     insightSuggestionsLabel: "Suggestions",
+    criteriaPanelTitle: "Micro Criteria",
+    criteriaPanelSubtitle: "Objective evaluation by category",
     finalCtaTitle: "See the full details, sign up free",
     finalCtaBody:
       "This report is transferred to your account automatically. Create a free account for full criteria detail and Score-powered improvements.",
