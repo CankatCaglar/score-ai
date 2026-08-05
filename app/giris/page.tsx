@@ -17,6 +17,7 @@ import {
 } from "@/components/auth/AuthFormFields";
 import { isSoftAuthFeedback } from "@/lib/auth/errors";
 import { signInWithEmail, signInWithGoogle } from "@/lib/auth/client";
+import { invalidateDashboardCache } from "@/lib/dashboard/client-cache";
 import { invalidateCurrentUserProfileCache } from "@/lib/dashboard/profile-cache";
 
 const RETURNING_KEY = "score_has_account";
@@ -62,6 +63,7 @@ function LoginForm() {
     setFeedback("");
     markReturningUser();
     invalidateCurrentUserProfileCache();
+    invalidateDashboardCache();
     toast.success(t("login.success"));
     if (!emailVerified) {
       router.replace("/email-dogrula");

@@ -47,7 +47,3 @@ export function getLandingScreenshotUrls(locale: LandingLocale): string[] {
     ]),
   );
 }
-
-export function getOppositeLandingLocale(locale: LandingLocale): LandingLocale {
-  return locale === "tr" ? "en" : "tr";
-}

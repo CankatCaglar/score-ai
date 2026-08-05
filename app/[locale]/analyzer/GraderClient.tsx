@@ -29,10 +29,7 @@ import {
 import "./grader.css";
 
 import { isValidGraderContactEmail } from "@/lib/grader/email";
-import {
-  ANALYZER_HERO_VISUALS,
-  scheduleOppositeAnalyzerAssetPreload,
-} from "@/lib/analyzer/preload-assets";
+import { ANALYZER_HERO_VISUALS } from "@/lib/analyzer/preload-assets";
 
 const EMAIL_DRAFT_KEY = "score-analyzer-email-draft";
 
@@ -126,10 +123,6 @@ export function GraderClient({
   useEffect(() => {
     hasPlayedGraderEntranceMotion = true;
   }, []);
-
-  useEffect(() => {
-    return scheduleOppositeAnalyzerAssetPreload(locale);
-  }, [locale]);
 
   useLayoutEffect(() => {
     const draft = readEmailDraft();

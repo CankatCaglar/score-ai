@@ -55,8 +55,6 @@ import {
   ANALYSIS_PREVIEW_IMAGES,
   LANDING_SCREENSHOTS,
 } from "@/lib/landing/screenshots";
-import { scheduleOppositeLocaleScreenshotPreload } from "@/lib/landing/preload-screenshots";
-
 const PAGE_CONTAINER =
   "mx-auto w-full max-w-[1880px] px-4 sm:px-6 lg:px-8 xl:px-10  2xl:px-12";
 
@@ -208,10 +206,6 @@ export default function LandingPage() {
   const accessToastShownRef = useRef(false);
   const landingScreens = LANDING_SCREENSHOTS[locale];
   const analysisPreviewImages = ANALYSIS_PREVIEW_IMAGES[locale];
-
-  useEffect(() => {
-    return scheduleOppositeLocaleScreenshotPreload(locale);
-  }, [locale]);
 
   const menuLabels = t.raw("nav.menuItems") as string[];
   const menuItems = useMemo(

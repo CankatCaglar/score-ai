@@ -38,50 +38,10 @@ function warmUrl(url: string): Promise<void> {
   return promise;
 }
 
+/** Warm analyzer hero for a locale — used by LocaleToggle hover/click. */
 export function preloadAnalyzerAssets(locale: AppLocale): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (preloaded.has(locale)) return Promise.resolve();
   preloaded.add(locale);
   return warmUrl(ANALYZER_HERO_VISUALS[locale]);
-}
-
-export function scheduleOppositeAnalyzerAssetPreload(
-  locale: AppLocale,
-): () => void {
-  if (typeof window === "undefined") return () => undefined;
-
-  const opposite: AppLocale = locale === "tr" ? "en" : "tr";
-  let idleId: number | undefined;
-  let timeoutId: number | undefined;
-  let cancelled = false;
-
-  // Opposite hero is the only heavy locale-swapped asset on this page.
-  void warmUrl(ANALYZER_HERO_VISUALS[opposite]);
-
-  const run = () => {
-    if (cancelled) return;
-    void preloadAnalyzerAssets(opposite);
-  };
-
-  const win = window as Window &
-    typeof globalThis & {
-      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-      cancelIdleCallback?: (id: number) => void;
-    };
-
-  if (typeof win.requestIdleCallback === "function") {
-    idleId = win.requestIdleCallback(run, { timeout: 2000 });
-  } else {
-    timeoutId = window.setTimeout(run, 800);
-  }
-
-  return () => {
-    cancelled = true;
-    if (idleId !== undefined && typeof win.cancelIdleCallback === "function") {
-      win.cancelIdleCallback(idleId);
-    }
-    if (timeoutId !== undefined) {
-      window.clearTimeout(timeoutId);
-    }
-  };
 }

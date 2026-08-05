@@ -26,7 +26,11 @@ import { useClickOutside } from "@/hooks/useClickOutside";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { DashboardBackProvider } from "@/components/dashboard/DashboardBackContext";
 import { DashboardHeaderBack } from "@/components/dashboard/DashboardHeaderBack";
-import { prefetchDashboard } from "@/lib/dashboard/client-cache";
+import {
+  invalidateDashboardCache,
+  prefetchDashboard,
+} from "@/lib/dashboard/client-cache";
+import { invalidateCurrentUserProfileCache } from "@/lib/dashboard/profile-cache";
 import { clientAllowsInstantNotify } from "@/lib/notifications/client-preferences";
 import { flushProductTipQueue } from "@/lib/notifications/product-tips";
 
@@ -395,6 +399,8 @@ export function DashboardShell({
     try {
       await logoutUser();
       await auth.signOut().catch(() => undefined);
+      invalidateDashboardCache();
+      invalidateCurrentUserProfileCache();
       toast.success(t("logout.success"));
       router.replace("/giris");
       router.refresh();

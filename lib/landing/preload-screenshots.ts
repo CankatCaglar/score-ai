@@ -1,6 +1,5 @@
 import {
   getLandingScreenshotUrls,
-  getOppositeLandingLocale,
   LANDING_SCREENSHOTS,
   type LandingLocale,
 } from "@/lib/landing/screenshots";
@@ -40,7 +39,7 @@ function warmUrl(url: string): Promise<void> {
   return promise;
 }
 
-/** Warm screenshot cache for a locale so EN↔TR switches feel instant. */
+/** Warm screenshot cache for a locale so EN↔TR switches feel instant on toggle. */
 export function preloadLandingScreenshots(locale: LandingLocale): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (preloadedLocales.has(locale)) return Promise.resolve();
@@ -50,46 +49,4 @@ export function preloadLandingScreenshots(locale: LandingLocale): Promise<void> 
   const urls = getLandingScreenshotUrls(locale);
   const ordered = [hero, ...urls.filter((url) => url !== hero)];
   return Promise.all(ordered.map(warmUrl)).then(() => undefined);
-}
-
-/** Idle-time warm of the opposite locale after the current page has painted. */
-export function scheduleOppositeLocaleScreenshotPreload(
-  locale: LandingLocale,
-): () => void {
-  if (typeof window === "undefined") return () => undefined;
-
-  const opposite = getOppositeLandingLocale(locale);
-  let idleId: number | undefined;
-  let timeoutId: number | undefined;
-  let cancelled = false;
-
-  // Hero is above the fold after locale switch — warm it immediately.
-  void warmUrl(LANDING_SCREENSHOTS[opposite].hero);
-
-  const run = () => {
-    if (cancelled) return;
-    void preloadLandingScreenshots(opposite);
-  };
-
-  const win = window as Window &
-    typeof globalThis & {
-      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-      cancelIdleCallback?: (id: number) => void;
-    };
-
-  if (typeof win.requestIdleCallback === "function") {
-    idleId = win.requestIdleCallback(run, { timeout: 2500 });
-  } else {
-    timeoutId = window.setTimeout(run, 1200);
-  }
-
-  return () => {
-    cancelled = true;
-    if (idleId !== undefined && typeof win.cancelIdleCallback === "function") {
-      win.cancelIdleCallback(idleId);
-    }
-    if (timeoutId !== undefined) {
-      window.clearTimeout(timeoutId);
-    }
-  };
 }
