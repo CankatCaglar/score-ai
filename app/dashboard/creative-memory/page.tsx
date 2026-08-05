@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  formatAnalysisDate,
+  toAnalysisUiLocale,
+} from "@/lib/analysis/display-copy";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -17,17 +22,23 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { ScoreRing } from "@/app/dashboard/analizler/ScoreRing";
-import type { Analysis, DashboardOverview } from "@/lib/analysis/types";
+import type { Analysis } from "@/lib/analysis/types";
+import {
+  fetchDashboardCached,
+  getDashboardCache,
+  prefetchCreativeMemoryDetail,
+  seedCreativeMemoryDetail,
+} from "@/lib/dashboard/client-cache";
 import { withReturnTo } from "@/lib/dashboard/return-navigation";
 
 type ScoreRangeValue = "all" | "0-49" | "50-69" | "70-84" | "85-100";
 
-const SCORE_RANGE_OPTIONS: Array<{ value: ScoreRangeValue; label: string }> = [
-  { value: "all", label: "Tümü" },
-  { value: "0-49", label: "0 - 49" },
-  { value: "50-69", label: "50 - 69" },
-  { value: "70-84", label: "70 - 84" },
-  { value: "85-100", label: "85 - 100" },
+const SCORE_RANGE_VALUES: ScoreRangeValue[] = [
+  "all",
+  "0-49",
+  "50-69",
+  "70-84",
+  "85-100",
 ];
 
 function hasInsight(analysis: Analysis): boolean {
@@ -49,7 +60,9 @@ function Card({
 }
 
 function ChangeBadge({ change }: { change: number }) {
+  const t = useTranslations("dashboard.creativeMemory");
   const positive = change >= 0;
+  const signed = `${positive ? "+" : ""}${change}`;
   return (
     <span
       className={`inline-flex items-center gap-0.5 text-sm font-semibold tabular-nums ${
@@ -61,8 +74,7 @@ function ChangeBadge({ change }: { change: number }) {
       ) : (
         <ArrowDownRight className="size-3.5" strokeWidth={2.25} />
       )}
-      {positive ? "+" : ""}
-      {change} puan
+      {t("pointsChange", { change: signed })}
     </span>
   );
 }
@@ -100,9 +112,12 @@ function ScoreRangeSelect({
   value: ScoreRangeValue;
   onChange: (value: ScoreRangeValue) => void;
 }) {
+  const t = useTranslations("dashboard.creativeMemory");
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const selected = SCORE_RANGE_OPTIONS.find((option) => option.value === value);
+  const labelFor = (range: ScoreRangeValue) =>
+    range === "all" ? t("scoreRange.all") : range;
+  const selectedLabel = labelFor(value);
 
   useEffect(() => {
     if (!open) return;
@@ -129,10 +144,12 @@ function ScoreRangeSelect({
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label="Skor aralığı"
+        aria-label={t("scoreRange.ariaLabel")}
         className="inline-flex min-w-40 items-center gap-2 rounded-xl border border-brand-dark/10 bg-bg-light py-2.5 pl-3.5 pr-3 text-sm font-medium text-brand-dark outline-none transition-colors hover:bg-brand-dark/5 focus-visible:border-brand-dark/25"
       >
-        <span className="flex-1 text-left">Skor: {selected?.label ?? "Tümü"}</span>
+        <span className="flex-1 text-left">
+          {t("scoreRange.option", { label: selectedLabel })}
+        </span>
         <ChevronDown
           className={`size-4 shrink-0 text-brand-dark/45 transition-transform ${
             open ? "rotate-180" : ""
@@ -144,17 +161,17 @@ function ScoreRangeSelect({
       {open ? (
         <ul
           role="listbox"
-          aria-label="Skor aralığı seçenekleri"
+          aria-label={t("scoreRange.optionsAria")}
           className="absolute left-0 z-20 mt-1.5 w-max min-w-full overflow-hidden rounded-xl border border-brand-dark/10 bg-bg-light py-1.5 font-sans shadow-lg shadow-brand-dark/8"
         >
-          {SCORE_RANGE_OPTIONS.map((option) => {
-            const isActive = option.value === value;
+          {SCORE_RANGE_VALUES.map((option) => {
+            const isActive = option === value;
             return (
-              <li key={option.value} role="option" aria-selected={isActive}>
+              <li key={option} role="option" aria-selected={isActive}>
                 <button
                   type="button"
                   onClick={() => {
-                    onChange(option.value);
+                    onChange(option);
                     setOpen(false);
                   }}
                   className={`flex w-full items-center gap-2 whitespace-nowrap px-3.5 py-2 text-left text-sm transition-colors ${
@@ -169,7 +186,7 @@ function ScoreRangeSelect({
                     }`}
                     strokeWidth={2.25}
                   />
-                  Skor: {option.label}
+                  {t("scoreRange.option", { label: labelFor(option) })}
                 </button>
               </li>
             );
@@ -181,14 +198,24 @@ function ScoreRangeSelect({
 }
 
 function PostInsightCard({ analysis }: { analysis: Analysis }) {
+  const locale = toAnalysisUiLocale(useLocale());
   const thumbSrc =
-    analysis.mediaUrl || analysis.sourceUrl
-      ? `/api/dashboard/media/${analysis.id}`
-      : null;
+    analysis.previewUrl ||
+    (analysis.mediaUrl || analysis.sourceUrl
+      ? `/api/dashboard/media/${analysis.id}?size=thumb`
+      : null);
+
+  const warmDetail = () => {
+    seedCreativeMemoryDetail(analysis, locale);
+    prefetchCreativeMemoryDetail(analysis.slug, locale);
+  };
 
   return (
     <Link
       href={`/dashboard/creative-memory/${analysis.slug}`}
+      onMouseEnter={warmDetail}
+      onFocus={warmDetail}
+      onTouchStart={warmDetail}
       className="flex items-stretch gap-3.5 rounded-3xl bg-bg-light p-3.5 shadow-sm transition-colors hover:bg-bg-offwhite/70 sm:gap-4 sm:p-4"
     >
       <div className="flex w-19 shrink-0 items-center self-stretch sm:w-24">
@@ -197,6 +224,8 @@ function PostInsightCard({ analysis }: { analysis: Analysis }) {
           <img
             src={thumbSrc}
             alt=""
+            loading="lazy"
+            decoding="async"
             className="h-auto w-full rounded-2xl object-contain"
           />
         ) : (
@@ -212,7 +241,12 @@ function PostInsightCard({ analysis }: { analysis: Analysis }) {
             <p className="truncate text-sm font-semibold text-brand-dark sm:text-base">
               {analysis.title}
             </p>
-            <p className="mt-0.5 text-xs text-brand-dark/50">{analysis.date}</p>
+            <p className="mt-0.5 text-xs text-brand-dark/50">
+              {formatAnalysisDate(
+                analysis.updatedAtMs || analysis.createdAtMs,
+                locale,
+              )}
+            </p>
           </div>
           <ScoreRing score={analysis.score} size={40} stroke={3.5} />
         </div>
@@ -229,41 +263,53 @@ function PostInsightCard({ analysis }: { analysis: Analysis }) {
   );
 }
 
+type CreativeMemoryPayload = {
+  analyses: Analysis[];
+  total: number;
+  page: number;
+  totalPages: number;
+  stats?: {
+    avgScore: number;
+    monthChange: number;
+    insightCount: number;
+  };
+};
+
+function creativeMemoryCacheKey(
+  page: number,
+  query: string,
+  scoreRange: string,
+) {
+  return `dashboard:creative-memory:${page}:${query}:${scoreRange}`;
+}
+
 export default function CreativeMemoryPage() {
+  const t = useTranslations("dashboard.creativeMemory");
+  const locale = toAnalysisUiLocale(useLocale());
   const [query, setQuery] = useState("");
   const [scoreRange, setScoreRange] = useState<ScoreRangeValue>("all");
   const [page, setPage] = useState(1);
-  const [analyses, setAnalyses] = useState<Analysis[]>([]);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [overview, setOverview] = useState<DashboardOverview | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialKey = creativeMemoryCacheKey(1, "", "all");
+  const initialCached = getDashboardCache<CreativeMemoryPayload>(initialKey);
+  const [analyses, setAnalyses] = useState<Analysis[]>(
+    initialCached?.analyses ?? [],
+  );
+  const [total, setTotal] = useState(initialCached?.total ?? 0);
+  const [totalPages, setTotalPages] = useState(initialCached?.totalPages ?? 1);
+  const [stats, setStats] = useState<{
+    avgScore: number;
+    monthChange: number;
+    insightCount: number;
+  } | null>(initialCached?.stats ?? null);
+  const [loading, setLoading] = useState(!initialCached);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const controller = new AbortController();
-    const loadOverview = async () => {
-      try {
-        const response = await fetch("/api/dashboard/overview", {
-          signal: controller.signal,
-          cache: "no-store",
-        });
-        if (!response.ok) throw new Error("Overview alınamadı");
-        const data = (await response.json()) as { overview: DashboardOverview };
-        setOverview(data.overview ?? null);
-      } catch (fetchError) {
-        if ((fetchError as Error).name === "AbortError") return;
-      }
-    };
-    void loadOverview();
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
+    let cancelled = false;
+    const cacheKey = creativeMemoryCacheKey(page, query.trim(), scoreRange);
     const load = async () => {
-      setLoading(true);
       setError(null);
+      if (!getDashboardCache(cacheKey)) setLoading(true);
       try {
         const params = new URLSearchParams();
         if (query.trim()) params.set("query", query.trim());
@@ -271,83 +317,91 @@ export default function CreativeMemoryPage() {
         params.set("scoreRange", scoreRange);
         params.set("page", String(page));
         params.set("pageSize", "20");
+        params.set("includeStats", "1");
 
-        const analysesRes = await fetch(`/api/dashboard/analyses?${params.toString()}`, {
-          signal: controller.signal,
-          cache: "no-store",
+        const analysesData = await fetchDashboardCached<CreativeMemoryPayload>({
+          key: cacheKey,
+          url: `/api/dashboard/analyses?${params.toString()}`,
+          onCache: (cached) => {
+            if (cancelled) return;
+            setAnalyses(cached.analyses ?? []);
+            setTotal(cached.total ?? 0);
+            setTotalPages(Math.max(1, cached.totalPages ?? 1));
+            if (cached.stats) setStats(cached.stats);
+          },
         });
 
-        if (!analysesRes.ok) {
-          throw new Error("Veriler alınamadı");
-        }
-
-        const analysesData = (await analysesRes.json()) as {
-          analyses: Analysis[];
-          total: number;
-          page: number;
-          totalPages: number;
-        };
-
-        setAnalyses(analysesData.analyses ?? []);
+        if (cancelled) return;
+        const nextAnalyses = analysesData.analyses ?? [];
+        setAnalyses(nextAnalyses);
         setTotal(analysesData.total ?? 0);
         setTotalPages(Math.max(1, analysesData.totalPages ?? 1));
+        if (analysesData.stats) setStats(analysesData.stats);
+        for (const item of nextAnalyses) {
+          seedCreativeMemoryDetail(item, locale);
+        }
       } catch (fetchError) {
+        if (cancelled) return;
         if ((fetchError as Error).name === "AbortError") return;
-        setError("Creative Memory yüklenirken bir hata oluştu.");
+        if (!getDashboardCache(cacheKey)) {
+          setError(t("loadError"));
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     void load();
-    return () => controller.abort();
-  }, [page, query, scoreRange]);
+    return () => {
+      cancelled = true;
+    };
+  }, [page, query, scoreRange, locale, t]);
 
   const insightAnalyses = useMemo(
     () => analyses.filter(hasInsight),
     [analyses],
   );
 
-  const insightCountOnPage = insightAnalyses.length;
-
   return (
     <div className="space-y-6 px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
-          Creative Memory
+          {t("title")}
         </h1>
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-brand-dark/55">
-          Geçmiş analizlerinizden öğrenilen AI içgörüler
+          {t("subtitle")}
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
           icon={FileSearch}
-          label="Toplam Analiz"
+          label={t("kpi.totalAnalyses")}
           value={loading ? "—" : total}
         />
         <KpiCard
           icon={Sparkles}
-          label="İçgörülü İçerik"
-          value={loading ? "—" : insightCountOnPage}
+          label={t("kpi.insightfulContent")}
+          value={loading ? "—" : (stats?.insightCount ?? 0)}
         />
         <KpiCard
           icon={TrendingUp}
-          label="Ortalama Skor"
-          value={loading ? "—" : (overview?.avgScore ?? 0)}
+          label={t("kpi.avgScore")}
+          value={loading ? "—" : (stats?.avgScore ?? 0)}
         />
         <KpiCard
           icon={Bot}
-          label="Aylık Değişim"
+          label={t("kpi.monthlyChange")}
           value={
-            loading ? "—" : <ChangeBadge change={overview?.monthChange ?? 0} />
+            loading ? "—" : <ChangeBadge change={stats?.monthChange ?? 0} />
           }
         />
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg font-semibold text-brand-dark">Post İçgörüleri</h2>
+        <h2 className="text-lg font-semibold text-brand-dark">
+          {t("postInsights")}
+        </h2>
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           <label className="relative block min-w-0 sm:w-56">
             <Search
@@ -361,7 +415,7 @@ export default function CreativeMemoryPage() {
                 setQuery(event.target.value);
                 setPage(1);
               }}
-              placeholder="Başlıkta ara…"
+              placeholder={t("searchPlaceholder")}
               className="w-full rounded-xl border border-brand-dark/10 bg-bg-light py-2.5 pl-9 pr-3 text-sm text-brand-dark outline-none transition-colors placeholder:text-brand-dark/35 focus:border-brand-dark/25"
             />
           </label>
@@ -382,16 +436,16 @@ export default function CreativeMemoryPage() {
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-3xl bg-bg-light py-16 text-sm text-brand-dark/50">
           <Loader2 className="size-4 animate-spin" strokeWidth={2} />
-          İçgörüler yükleniyor…
+          {t("loading")}
         </div>
       ) : total === 0 ? (
         <Card className="py-12 text-center">
           <Sparkles className="mx-auto size-8 text-brand-dark/25" strokeWidth={1.5} />
           <p className="mt-3 text-sm font-semibold text-brand-dark">
-            Henüz kaydedilmiş içgörü yok
+            {t("empty.title")}
           </p>
           <p className="mx-auto mt-1 max-w-md text-sm text-brand-dark/55">
-            Analiz tamamlandıkça her postun AI içgörüsü burada toplanır.
+            {t("empty.body")}
           </p>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
             <Link
@@ -401,20 +455,20 @@ export default function CreativeMemoryPage() {
               )}
               className="inline-flex items-center gap-1.5 rounded-xl bg-brand-neon px-4 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
             >
-              Yeni analiz başlat
+              {t("empty.newAnalysis")}
             </Link>
             <Link
               href="/dashboard/analizler"
               className="inline-flex items-center gap-1.5 rounded-xl border border-brand-dark/10 px-4 py-2.5 text-sm font-semibold text-brand-dark transition-colors hover:bg-bg-offwhite"
             >
-              Analizlere git
+              {t("empty.goToAnalyses")}
             </Link>
           </div>
         </Card>
       ) : insightAnalyses.length === 0 ? (
         <Card className="py-10 text-center">
           <p className="text-sm font-medium text-brand-dark/70">
-            Bu filtrelerde gösterilecek içgörü bulunamadı.
+            {t("noFilterResults")}
           </p>
         </Card>
       ) : (
@@ -433,7 +487,7 @@ export default function CreativeMemoryPage() {
             onClick={() => setPage((current) => Math.max(1, current - 1))}
             className="rounded-xl border border-brand-dark/10 px-3 py-2 text-sm font-medium text-brand-dark disabled:opacity-40"
           >
-            Önceki
+            {t("prev")}
           </button>
           <span className="text-sm tabular-nums text-brand-dark/60">
             {page} / {totalPages}
@@ -444,7 +498,7 @@ export default function CreativeMemoryPage() {
             onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
             className="rounded-xl border border-brand-dark/10 px-3 py-2 text-sm font-medium text-brand-dark disabled:opacity-40"
           >
-            Sonraki
+            {t("next")}
           </button>
         </div>
       ) : null}

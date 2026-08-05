@@ -4,13 +4,13 @@ import { toast } from "sonner";
 
 const TIP_DURATION_MS = 4500;
 const TIP_GAP_MS = 700;
-const TIP_SESSION_KEY = "score-product-tips-shown";
+/** Persists across sessions so Brand DNA / Benchmark reminders show once. */
+const TIP_SHOWN_KEY = "score-product-tips-shown";
 const TIP_QUEUE_KEY = "score-product-tips-queue";
 
 export type ProductTipId =
   | "brand_dna_incomplete_on_analyze"
   | "no_competitors_on_analyze"
-  | "low_score_on_result"
   | "first_analysis_banner";
 
 type QueuedTip = {
@@ -24,8 +24,17 @@ type QueuedTip = {
 function readShownTips(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
-    const raw = sessionStorage.getItem(TIP_SESSION_KEY);
-    if (!raw) return new Set();
+    const raw = localStorage.getItem(TIP_SHOWN_KEY);
+    if (!raw) {
+      // One-time migration from sessionStorage
+      const legacy = sessionStorage.getItem("score-product-tips-shown");
+      if (legacy) {
+        localStorage.setItem(TIP_SHOWN_KEY, legacy);
+        sessionStorage.removeItem("score-product-tips-shown");
+        return readShownTips();
+      }
+      return new Set();
+    }
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return new Set();
     return new Set(parsed.filter((id): id is string => typeof id === "string"));
@@ -37,7 +46,7 @@ function readShownTips(): Set<string> {
 function writeShownTips(ids: Set<string>) {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.setItem(TIP_SESSION_KEY, JSON.stringify([...ids].slice(-40)));
+    localStorage.setItem(TIP_SHOWN_KEY, JSON.stringify([...ids].slice(-40)));
   } catch {
     // ignore quota / private mode
   }
@@ -102,7 +111,7 @@ function showTip(tip: QueuedTip) {
     ...(tip.href
       ? {
           action: {
-            label: tip.actionLabel ?? "Aç",
+            label: tip.actionLabel ?? "Git",
             onClick: () => {
               if (typeof window !== "undefined") {
                 window.location.assign(tip.href!);
@@ -155,49 +164,29 @@ async function runTipQueue() {
   }
 }
 
-/** Queue Brand DNA tip (shown later, sequentially). */
+/** Queue Brand DNA tip — once ever, only after analysis if DNA incomplete. */
 export function queueBrandDnaIncompleteTip() {
   enqueueTip({
     id: "brand_dna_incomplete_on_analyze",
     message: "Brand DNA’yı doldurursan skor daha isabetli olur",
     href: "/dashboard/brand-brain",
-    actionLabel: "Brand DNA",
+    actionLabel: "Brand DNA’ya git",
   });
 }
 
-/** Queue competitor tip (shown later, sequentially). */
+/** Queue competitor tip — once ever, only after analysis if no competitors. */
 export function queueNoCompetitorsTip() {
   enqueueTip({
     id: "no_competitors_on_analyze",
     message: "Rakip ekleyerek karşılaştırmayı güçlendirebilirsin",
     href: "/dashboard/benchmark",
-    actionLabel: "Benchmark",
+    actionLabel: "Benchmark’a git",
   });
 }
 
-/** Queue low-score tip for a specific analysis. */
-export function queueLowScoreTip(analysisId: string) {
-  enqueueTip({
-    id: `low_score_on_result:${analysisId}`,
-    message: "Brand DNA veya Benchmark’ı tamamla",
-    description: "Skorunu yükseltmene yardımcı olur.",
-    href: "/dashboard/brand-brain",
-    actionLabel: "Tamamla",
-  });
-}
-
-/** Immediate tip for empty benchmark visit (not stacked with analysis-complete). */
-export function tipNoCompetitorsOnAnalyze() {
-  return showTip({
-    id: "no_competitors_on_analyze",
-    message: "Rakip ekleyerek karşılaştırmayı güçlendirebilirsin",
-    href: "/dashboard/benchmark",
-    actionLabel: "Benchmark",
-  });
-}
-
-/** Inspect DNA + competitors and queue post-result tips. */
-export async function queuePostAnalysisProductTips(input: {
+/** Inspect DNA + competitors and queue post-result tips (one-time each). */
+/** After analysis completes: queue one-time DNA / Benchmark reminders if incomplete. */
+export async function queuePostAnalysisProductTips(_input: {
   analysisId: string;
   score: number;
 }) {
@@ -222,13 +211,7 @@ export async function queuePostAnalysisProductTips(input: {
       const competitors = benchmarkData.profile?.competitors ?? [];
       if (competitors.length === 0) queueNoCompetitorsTip();
     }
-
-    if (input.score < LOW_SCORE_TIP_THRESHOLD) {
-      queueLowScoreTip(input.analysisId);
-    }
   } catch {
     // tips are best-effort
   }
 }
-
-export const LOW_SCORE_TIP_THRESHOLD = 60;

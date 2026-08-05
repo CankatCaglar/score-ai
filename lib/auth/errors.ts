@@ -1,5 +1,10 @@
-/** Firebase Auth / session hata kodlarını kullanıcıya Türkçe mesaja çevirir. */
-export function mapAuthError(error: unknown): string {
+import type { AppLocale } from "@/i18n/routing";
+import enMessages from "@/messages/en.json";
+import trMessages from "@/messages/tr.json";
+
+export type AuthErrorKey = keyof typeof trMessages.auth.errors;
+
+function resolveAuthErrorKey(error: unknown): AuthErrorKey {
   const code =
     error && typeof error === "object" && "code" in error
       ? String((error as { code?: string }).code)
@@ -15,74 +20,86 @@ export function mapAuthError(error: unknown): string {
 
   switch (key) {
     case "auth/email-already-in-use":
-      return "Bu e-posta adresi zaten kayıtlı. Giriş yapmayı deneyin.";
+      return "emailAlreadyInUse";
     case "auth/invalid-email":
-      return "Geçerli bir e-posta adresi girin.";
+      return "invalidEmail";
     case "auth/weak-password":
-      return "Şifre en az 6 karakter olmalı.";
+      return "weakPassword";
     case "auth/user-not-found":
     case "auth/wrong-password":
     case "auth/invalid-credential":
-      return "E-posta veya şifre hatalı. Google ile kayıt olduysanız aşağıdaki Google butonunu kullanın.";
+      return "wrongCredentials";
     case "auth/too-many-requests":
-      return "Çok fazla deneme yapıldı. Lütfen biraz sonra tekrar deneyin.";
+      return "tooManyRequests";
     case "auth/popup-closed-by-user":
     case "auth/cancelled-popup-request":
-      return "Google girişi iptal edildi. İsterseniz tekrar deneyebilirsiniz.";
+      return "popupClosed";
     case "auth/popup-blocked":
-      return "Tarayıcı pop-up’ı engelledi. Pop-up’lara izin verip tekrar deneyin.";
+      return "popupBlocked";
     case "auth/unauthorized-domain":
-      return "Bu domain Firebase’de yetkili değil (Authorized domains).";
+      return "unauthorizedDomain";
     case "auth/api-key-not-valid.-please-pass-a-valid-api-key.":
     case "auth/invalid-api-key":
-      return "Firebase API key geçersiz. .env.local içindeki NEXT_PUBLIC_FIREBASE_API_KEY değerini Firebase Console’dan yenileyin.";
+      return "invalidApiKey";
     case "auth/operation-not-allowed":
-      return "Bu giriş yöntemi Firebase’de kapalı. Provider’ı etkinleştirin.";
+      return "operationNotAllowed";
     case "auth/account-exists-with-different-credential":
-      return "Bu e-posta Google ile kayıtlı. Lütfen Google ile devam edin.";
+      return "accountExistsDifferent";
     case "auth/network-request-failed":
-      return "Ağ hatası. İnternet bağlantınızı kontrol edin.";
+      return "networkFailed";
     case "auth/requires-recent-login":
-      return "Bu işlem için yeniden giriş yapmanız gerekiyor.";
+      return "requiresRecentLogin";
     case "auth/expired-action-code":
-      return "Bağlantının süresi dolmuş. Yeni bir bağlantı isteyin.";
+      return "expiredActionCode";
     case "auth/invalid-action-code":
-      return "Bağlantı geçersiz veya daha önce kullanılmış.";
+      return "invalidActionCode";
     case "auth/user-disabled":
-      return "Bu hesap devre dışı bırakılmış.";
+      return "userDisabled";
     case "INVALID_TOKEN":
     case "SESSION_FAILED":
-      return "Oturum oluşturulamadı. Firebase Admin / USER_SESSION_SECRET ayarlarını kontrol edin.";
+      return "sessionFailed";
     case "USER_SESSION_SECRET":
-      return "USER_SESSION_SECRET tanımlı değil veya çok kısa.";
+      return "sessionSecret";
     case "EMAIL_REQUIRED":
-      return "Bu hesapta e-posta adresi yok. Başka bir Google hesabı deneyin.";
+      return "emailRequired";
     case "MISSING_TOKEN":
     case "NO_USER":
-      return "Kimlik doğrulama tamamlanamadı. Lütfen tekrar deneyin.";
+      return "authIncomplete";
     case "FIREBASE_ADMIN_NOT_CONFIGURED":
-      return "Sunucu Firebase Admin ayarı eksik (.env.local).";
+      return "adminNotConfigured";
     default:
-      if (message.includes("USER_SESSION_SECRET")) {
-        return "USER_SESSION_SECRET tanımlı değil veya çok kısa.";
-      }
-      if (message.includes("FIREBASE_ADMIN")) {
-        return "Firebase Admin yapılandırması hatalı.";
-      }
-      return "Bir sorun oluştu. Lütfen tekrar deneyin.";
+      if (message.includes("USER_SESSION_SECRET")) return "sessionSecret";
+      if (message.includes("FIREBASE_ADMIN")) return "firebaseAdminBad";
+      return "generic";
   }
+}
+
+/** Firebase Auth / session hata kodlarını kullanıcı diline çevirir. */
+export function mapAuthError(
+  error: unknown,
+  locale: AppLocale | string = "tr",
+): string {
+  const key = resolveAuthErrorKey(error);
+  const dict =
+    locale === "en" ? enMessages.auth.errors : trMessages.auth.errors;
+  return dict[key] ?? dict.generic;
 }
 
 /** Kullanıcı hatası mı (form uyarısı) yoksa sistem hatası mı (toast) ayırır. */
 export function isSoftAuthFeedback(message: string): boolean {
   return (
     message.includes("E-posta veya şifre") ||
+    message.includes("Incorrect email or password") ||
     message.includes("Google ile kayıt") ||
-    message.includes("Google ile devam") ||
-    message.includes("Geçerli bir e-posta") ||
-    message.includes("Şifre en az") ||
+    message.includes("signed up with Google") ||
+    message.includes("e-posta adresi girin") ||
+    message.includes("valid email") ||
+    message.includes("en az 6 karakter") ||
+    message.includes("at least 6 characters") ||
     message.includes("zaten kayıtlı") ||
-    message.includes("iptal edildi")
+    message.includes("already registered") ||
+    message.includes("eşleşmiyor") ||
+    message.includes("do not match")
   );
 }
 

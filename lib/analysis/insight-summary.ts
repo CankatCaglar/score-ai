@@ -1,4 +1,8 @@
 import {
+  localizeCriterionLabel,
+  type AnalysisUiLocale,
+} from "@/lib/analysis/locale-labels";
+import {
   CRITERION_DEFINITIONS,
   STRATEGIC_BRAND_CRITERION_IDS,
 } from "@/lib/analysis/rubric";
@@ -19,15 +23,6 @@ export const BENCHMARK_COMMENTARY_CRITERION_IDS = [
   "competitive_positioning",
 ] as const;
 
-const BENCHMARK_LABEL_TR: Record<string, string> = {
-  value_proposition: "Marka vaadi",
-  differentiation: "Rakip ayrışması",
-  trust_building: "Güven kanıtları",
-  brand_consistency: "Marka tutarlılığı",
-  brand_memory_match: "Marka hafızası",
-  historical_performance_match: "Geçmiş içerik uyumu",
-  competitive_positioning: "Rekabetçi konum",
-};
 
 export type AiCommentarySummary = {
   strengths: string[];
@@ -51,8 +46,8 @@ export type BenchmarkCommentarySummary = {
   actions: string[];
 };
 
-function benchmarkLabel(id: string): string {
-  return BENCHMARK_LABEL_TR[id] ?? criterionLabelMap.get(id) ?? id;
+function benchmarkLabel(id: string, locale: AnalysisUiLocale = "tr"): string {
+  return localizeCriterionLabel(id, locale) || criterionLabelMap.get(id) || id;
 }
 
 export function analysisHasBenchmarkContext(
@@ -68,6 +63,7 @@ export function analysisHasBenchmarkContext(
 
 export function summarizeBenchmarkCommentary(
   analysis: Analysis | null | undefined,
+  locale: AnalysisUiLocale = "tr",
 ): BenchmarkCommentarySummary {
   const empty: BenchmarkCommentarySummary = {
     available: false,
@@ -87,7 +83,7 @@ export function summarizeBenchmarkCommentary(
       return [
         {
           id,
-          label: benchmarkLabel(id),
+          label: benchmarkLabel(id, locale),
           seviye: evaluation.seviye,
           status: evaluation.mevcut_durum?.trim() || "",
           gap: evaluation.eksiklikler?.trim() || "",
@@ -125,6 +121,7 @@ export function summarizeBenchmarkCommentary(
 
 export function summarizeAiCommentary(
   analysis: Analysis | null | undefined,
+  locale: AnalysisUiLocale = "tr",
 ): AiCommentarySummary {
   if (!analysis?.criteriaEvaluations) {
     return {
@@ -136,7 +133,7 @@ export function summarizeAiCommentary(
 
   const entries = Object.entries(analysis.criteriaEvaluations).map(([id, value]) => ({
     id,
-    label: criterionLabelMap.get(id) ?? id,
+    label: localizeCriterionLabel(id, locale),
     evaluation: value as CriterionEvaluation,
   }));
 

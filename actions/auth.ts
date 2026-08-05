@@ -14,9 +14,14 @@ import {
 } from "@/lib/user-auth";
 import {
   composeDisplayName,
+  normalizeProfileLanguage,
   splitDisplayName,
   userDocIdFromEmail,
 } from "@/lib/user-profile";
+import {
+  LOCALE_COOKIE_NAME,
+  localeCookieOptions,
+} from "@/lib/i18n/locale-cookie";
 import { claimGuestAnalysesForUser } from "@/lib/grader/claim";
 import {
   ensureUserCreditsDefaults,
@@ -39,7 +44,7 @@ async function upsertUserDoc(input: {
   photoURL?: string | null;
   emailVerified: boolean;
   provider?: string | null;
-}): Promise<{ displayName: string; photoURL: string | null }> {
+}): Promise<{ displayName: string; photoURL: string | null; language: string }> {
   const db = getAdminDb();
   const email = normalizeEmail(input.email);
   const userId = userDocIdFromEmail(email);
@@ -64,7 +69,7 @@ async function upsertUserDoc(input: {
       displayName,
       company: "",
       sector: "",
-      language: "",
+      language: "tr",
       timezone: "",
       country: "",
       photoURL: input.photoURL ?? null,
@@ -76,7 +81,7 @@ async function upsertUserDoc(input: {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    return { displayName, photoURL: input.photoURL ?? null };
+    return { displayName, photoURL: input.photoURL ?? null, language: "tr" };
   }
 
   const patch: Record<string, unknown> = {
@@ -94,12 +99,15 @@ async function upsertUserDoc(input: {
 
   await ref.set(patch, { merge: true });
 
+  const firstName =
+    typeof data?.firstName === "string" ? data.firstName.trim() : "";
+  const lastName =
+    typeof data?.lastName === "string" ? data.lastName.trim() : "";
+  // Firestore profile wins over Auth displayName (Google often resets to
+  // the provider name on each login).
   const displayName =
+    composeDisplayName(firstName, lastName) ||
     (typeof data?.displayName === "string" && data.displayName.trim()) ||
-    composeDisplayName(
-      typeof data?.firstName === "string" ? data.firstName : "",
-      typeof data?.lastName === "string" ? data.lastName : "",
-    ) ||
     input.displayName?.trim() ||
     email.split("@")[0] ||
     "Kullanıcı";
@@ -109,7 +117,21 @@ async function upsertUserDoc(input: {
     input.photoURL ||
     null;
 
-  return { displayName, photoURL };
+  const language = normalizeProfileLanguage(
+    typeof data?.language === "string" ? data.language : "",
+  );
+
+  // Keep Auth displayName aligned with the saved profile so ID tokens
+  // don't keep serving the old Google name after Settings rename.
+  if (displayName && displayName !== (input.displayName ?? "").trim()) {
+    try {
+      await getAdminAuth().updateUser(input.uid, { displayName });
+    } catch (error) {
+      console.error("[upsertUserDoc] auth displayName sync", error);
+    }
+  }
+
+  return { displayName, photoURL, language };
 }
 
 export async function createUserSession(
@@ -174,6 +196,12 @@ export async function createUserSession(
       path: "/",
       maxAge: ttlSeconds,
     });
+
+    cookieStore.set(
+      LOCALE_COOKIE_NAME,
+      normalizeProfileLanguage(profile.language),
+      localeCookieOptions(),
+    );
 
     await ensureUserCreditsDefaults(email);
     const credits = await getAnalysisCredits(email);
@@ -271,6 +299,12 @@ export async function refreshUserSession(): Promise<{
       path: "/",
       maxAge: USER_SESSION_TTL_SECONDS,
     });
+
+    cookieStore.set(
+      LOCALE_COOKIE_NAME,
+      normalizeProfileLanguage(profile.language),
+      localeCookieOptions(),
+    );
 
     return { ok: true };
   } catch {

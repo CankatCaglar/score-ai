@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Plus_Jakarta_Sans } from "next/font/google";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
   Brain,
@@ -13,43 +15,26 @@ import {
   Palette,
   UploadCloud,
 } from "lucide-react";
-import { requestNotificationsRefresh } from "@/lib/notifications/toast-analysis";
+import {
+  AnalysisWaitingScreen,
+  bindGraderWaitToSlug,
+  markGraderWaitPending,
+  markGraderWaitPreview,
+} from "@/app/[locale]/analyzer/shared";
+import "@/app/[locale]/analyzer/grader.css";
+import {
+  markAnalysisWatchActive,
+  requestNotificationsRefresh,
+} from "@/lib/notifications/toast-analysis";
 
-const features = [
-  {
-    icon: ListChecks,
-    title: "31 Mikro Kriter",
-    desc: "Tüm kriterlere göre analiz edilir.",
-  },
-  {
-    icon: Clock,
-    title: "30 sn Ortalama Süre",
-    desc: "Hızlı ve detaylı analiz.",
-  },
-  {
-    icon: Lightbulb,
-    title: "AI Önerileri",
-    desc: "Akıllı önerilerle içeriğinizi geliştirin.",
-  },
-  {
-    icon: Brain,
-    title: "Brand DNA",
-    desc: "Marka dilinizi öğrenip analize entegre eder.",
-  },
-  {
-    icon: Palette,
-    title: "Canva Entegrasyonu",
-    desc: "Sonucu Canva'da düzenleyin.",
-  },
-];
+const graderSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  display: "swap",
+});
 
-const loadingSteps = [
-  "Gorsel yukleniyor...",
-  "Icerik kaydi olusturuluyor...",
-  "AI kategori analizleri baslatiliyor...",
-  "Skorlar hesaplaniyor...",
-  "Rapor ekranina yonlendiriliyor...",
-];
+const FEATURE_ICONS = [ListChecks, Clock, Lightbulb, Brain, Palette] as const;
+const DROPZONE_CLASS =
+  "relative flex h-[250px] w-full flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed px-4 transition-colors sm:h-[290px] sm:px-6";
 
 function normalizeSourceUrl(value: string) {
   const trimmed = value.trim();
@@ -62,6 +47,9 @@ function normalizeSourceUrl(value: string) {
 }
 
 export default function YeniAnalizPage() {
+  const t = useTranslations("dashboard.newAnalysis");
+  const tAnalyzer = useTranslations("analyzer");
+  const locale = useLocale();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -70,11 +58,18 @@ export default function YeniAnalizPage() {
   const [platformType] = useState<"instagram">("instagram");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stepIndex, setStepIndex] = useState(0);
+  const [tipIndex, setTipIndex] = useState(0);
+  const loadingTips = tAnalyzer.raw("loadingTips") as string[];
   const selectedFilePreviewUrl = useMemo(
     () => (selectedFile ? URL.createObjectURL(selectedFile) : null),
     [selectedFile],
   );
+
+  const features = FEATURE_ICONS.map((icon, index) => ({
+    icon,
+    title: t(`features.${index}.title`),
+    desc: t(`features.${index}.desc`),
+  }));
 
   useEffect(() => {
     return () => {
@@ -84,23 +79,33 @@ export default function YeniAnalizPage() {
     };
   }, [selectedFilePreviewUrl]);
 
+  useEffect(() => {
+    if (!submitting) return;
+    const tipTimer = window.setInterval(() => {
+      setTipIndex((prev) => (prev + 1) % Math.max(1, loadingTips.length));
+    }, 3200);
+    return () => window.clearInterval(tipTimer);
+  }, [submitting, loadingTips.length]);
+
   const submitJob = async () => {
     setError(null);
     const normalizedUrl = normalizeSourceUrl(url);
     if (!selectedFile && !normalizedUrl) {
-      setError("Lütfen bir görsel/video seçin veya bir post linki yapıştırın.");
+      setError(t("validationEmpty"));
       return;
     }
 
     setSubmitting(true);
-    setStepIndex(0);
-    const timer = window.setInterval(() => {
-      setStepIndex((prev) => (prev < loadingSteps.length - 1 ? prev + 1 : prev));
-    }, 1400);
+    setTipIndex(0);
+    markGraderWaitPending();
+    const previewReady = selectedFile
+      ? markGraderWaitPreview(selectedFile)
+      : Promise.resolve();
 
     try {
       const formData = new FormData();
       formData.set("platformType", platformType);
+      formData.set("locale", locale === "en" ? "en" : "tr");
       if (normalizedUrl) formData.set("sourceUrl", normalizedUrl);
       if (selectedFile) formData.set("file", selectedFile);
 
@@ -115,37 +120,37 @@ export default function YeniAnalizPage() {
         message?: string;
       };
       if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Analiz baslatildi fakat isleme sirasinda hata olustu. Lutfen farkli bir gorsel deneyin.",
-        );
+        throw new Error(data.message || t("errorProcessing"));
       }
 
+      if (!data.analysisId && !data.slug) {
+        throw new Error(t("errorNoRedirect"));
+      }
+
+      markAnalysisWatchActive();
       requestNotificationsRefresh();
 
-      if (response.status === 202 || data.jobStatus === "pending" || data.jobStatus === "processing") {
-        if (data.slug) {
-          router.push(`/dashboard/analizler/${data.slug}`);
-          router.refresh();
-          return;
-        }
-        throw new Error("Analiz isleme alindi fakat yonlendirme verisi alinamadi.");
-      }
+      // Keep the same wait clock + local preview across soft navigation.
+      await previewReady;
+      const bindKey = data.slug || data.analysisId!;
+      bindGraderWaitToSlug(bindKey, {
+        analysisId: data.analysisId,
+        mediaPath: data.analysisId
+          ? `/api/dashboard/media/${data.analysisId}?size=thumb`
+          : null,
+      });
+
       const target = data.analysisId
-        ? `/dashboard/analiz-sonucu?id=${data.analysisId}`
-        : data.slug
-          ? `/dashboard/analizler/${data.slug}`
-          : "/dashboard/analizler";
-      router.push(target);
-      router.refresh();
+        ? `/dashboard/analiz-sonucu?id=${encodeURIComponent(data.analysisId)}`
+        : `/dashboard/analiz-sonucu?slug=${encodeURIComponent(data.slug!)}`;
+      router.replace(target);
+      return;
     } catch (submitError) {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Analiz baslatilirken bir hata olustu. Lutfen tekrar deneyin.",
+          : t("errorGeneric"),
       );
-    } finally {
-      window.clearInterval(timer);
       setSubmitting(false);
     }
   };
@@ -154,10 +159,10 @@ export default function YeniAnalizPage() {
     <div className="relative px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
-          İlk analizinizi oluşturalım.
+          {t("title")}
         </h1>
         <p className="mt-3 max-w-md text-base text-brand-dark/55">
-          İçeriğinizi yükleyin, Score AI saniyeler içinde analiz edip geliştirsin.
+          {t("subtitle")}
         </p>
       </div>
 
@@ -174,56 +179,54 @@ export default function YeniAnalizPage() {
             const droppedFile = e.dataTransfer.files?.[0];
             if (droppedFile) setSelectedFile(droppedFile);
           }}
-          className={`flex flex-col items-center rounded-2xl border-2 border-dashed px-6 py-10 transition-colors sm:py-12 ${
+          className={`${DROPZONE_CLASS} ${
             isDragging
               ? "border-brand-neon bg-brand-neon/5"
               : "border-brand-dark/10 bg-bg-offwhite"
           }`}
         >
           {selectedFile && selectedFilePreviewUrl ? (
-            <div className="relative w-full">
+            <>
               <button
                 type="button"
                 onClick={() => setSelectedFile(null)}
-                className="absolute right-2 top-2 z-10 inline-flex size-8 items-center justify-center rounded-full bg-brand-dark/80 text-white hover:bg-brand-dark"
-                aria-label="Seçili dosyayı kaldır"
+                className="absolute right-2.5 top-2.5 z-10 inline-flex size-8 items-center justify-center rounded-full bg-brand-dark/80 text-white hover:bg-brand-dark"
+                aria-label={t("removeFileAria")}
               >
                 <X className="size-4" strokeWidth={2} />
               </button>
-              <div className="mx-auto flex max-h-[420px] min-h-[220px] w-full items-center justify-center overflow-hidden rounded-2xl bg-white/60 p-2">
-                {selectedFile.type.startsWith("video/") ? (
-                  <video
-                    src={selectedFilePreviewUrl}
-                    controls
-                    className="max-h-[400px] w-auto max-w-full rounded-xl object-contain"
-                  />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={selectedFilePreviewUrl}
-                    alt={selectedFile.name}
-                    className="max-h-[400px] w-auto max-w-full rounded-xl object-contain"
-                  />
-                )}
-              </div>
-            </div>
+              {selectedFile.type.startsWith("video/") ? (
+                <video
+                  src={selectedFilePreviewUrl}
+                  controls
+                  className="h-full max-h-full w-full max-w-full object-contain"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={selectedFilePreviewUrl}
+                  alt={selectedFile.name}
+                  className="h-full max-h-full w-full max-w-full object-contain"
+                />
+              )}
+            </>
           ) : (
             <>
               <div className="flex size-10 items-center justify-center">
                 <UploadCloud className="size-8 text-brand-dark" strokeWidth={1.75} />
               </div>
-              <p className="mt-4 text-base font-medium text-brand-dark">
-                Görselinizi veya videonuzu yükleyin
+              <p className="mt-3 text-base font-medium text-brand-dark">
+                {t("uploadTitle")}
               </p>
               <p className="mt-1 text-xs text-brand-dark/45">
-                PNG • JPG • WEBP • MP4 • Maksimum 20 MB
+                {t("uploadFormats")}
               </p>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-dark px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-dark px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
               >
-                Dosya Seç
+                {t("selectFile")}
               </button>
             </>
           )}
@@ -241,7 +244,7 @@ export default function YeniAnalizPage() {
 
         <div className="my-4 flex items-center gap-4 sm:my-5">
           <div className="h-px flex-1 bg-brand-dark/10" />
-          <span className="text-xs font-medium text-brand-dark/40">veya</span>
+          <span className="text-xs font-medium text-brand-dark/40">{t("or")}</span>
           <div className="h-px flex-1 bg-brand-dark/10" />
         </div>
 
@@ -250,7 +253,7 @@ export default function YeniAnalizPage() {
             htmlFor="instagram-post-url"
             className="shrink-0 text-sm font-medium text-brand-dark/70"
           >
-            Instagram Post URL:
+            {t("instagramUrlLabel")}
           </label>
           <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-brand-dark/10 bg-bg-light px-3 py-2.5 transition-colors focus-within:border-brand-neon focus-within:ring-2 focus-within:ring-brand-neon/20">
             <Link2 className="size-4 shrink-0 text-brand-dark/40" strokeWidth={2} />
@@ -262,31 +265,26 @@ export default function YeniAnalizPage() {
                 setUrl(e.target.value);
                 if (e.target.value.trim()) setSelectedFile(null);
               }}
-              placeholder="https://instagram.com/p/..."
+              placeholder={t("urlPlaceholder")}
               className="w-full bg-transparent text-sm text-brand-dark placeholder:text-brand-dark/30 outline-none"
             />
           </div>
           <button
             type="button"
-            onClick={submitJob}
+            onClick={() => void submitJob()}
             disabled={submitting}
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-dark px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Analiz Isleniyor...
+                {t("processing")}
               </>
             ) : (
-              "Analizi Baslat"
+              t("startAnalysis")
             )}
           </button>
         </div>
-        {submitting && (
-          <p className="mt-3 text-center text-xs font-medium text-brand-dark/55">
-            İşlem tamamlandığında rapor ekranına otomatik yönlendirilirsiniz.
-          </p>
-        )}
         {error && <p className="mt-2 text-sm font-medium text-red-500">{error}</p>}
       </div>
 
@@ -303,27 +301,15 @@ export default function YeniAnalizPage() {
           </div>
         ))}
       </div>
-      {submitting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg-offwhite/95 backdrop-blur-xs">
-          <div className="w-[min(560px,92vw)] rounded-3xl border border-brand-dark/10 bg-bg-light p-8 text-center shadow-xl">
-            <Loader2 className="mx-auto size-10 animate-spin text-brand-dark" />
-            <p className="mt-5 text-2xl font-semibold tracking-tight text-brand-dark">
-              Analiz işleniyor
-            </p>
-            <p className="mt-2 text-sm text-brand-dark/55">
-              Lütfen sayfayı kapatmayın, sonuçlar hazırlanıyor.
-            </p>
-            <div className="mt-6 rounded-2xl bg-bg-offwhite px-4 py-4 text-left">
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-dark/45">
-                İşlem adımı
-              </p>
-              <p className="mt-2 text-base font-medium text-brand-dark">
-                {loadingSteps[stepIndex]}
-              </p>
-            </div>
-          </div>
+
+      {submitting ? (
+        <div className={graderSans.className}>
+          <AnalysisWaitingScreen
+            tipIndex={tipIndex}
+            previewUrl={selectedFilePreviewUrl}
+          />
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

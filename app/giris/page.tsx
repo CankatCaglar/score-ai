@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AuthShell } from "@/components/auth/AuthShell";
@@ -16,6 +17,7 @@ import {
 } from "@/components/auth/AuthFormFields";
 import { isSoftAuthFeedback } from "@/lib/auth/errors";
 import { signInWithEmail, signInWithGoogle } from "@/lib/auth/client";
+import { invalidateCurrentUserProfileCache } from "@/lib/dashboard/profile-cache";
 
 const RETURNING_KEY = "score_has_account";
 
@@ -35,6 +37,7 @@ function markReturningUser() {
 }
 
 function LoginForm() {
+  const t = useTranslations("auth");
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNextPath(searchParams.get("next"));
@@ -58,7 +61,8 @@ function LoginForm() {
   const finishAuth = (emailVerified: boolean) => {
     setFeedback("");
     markReturningUser();
-    toast.success("Giriş başarılı.");
+    invalidateCurrentUserProfileCache();
+    toast.success(t("login.success"));
     if (!emailVerified) {
       router.replace("/email-dogrula");
     } else {
@@ -80,7 +84,7 @@ function LoginForm() {
     e.preventDefault();
     setFeedback("");
     if (!email || !password) {
-      setFeedback("Devam etmek için e-posta ve şifrenizi girin.");
+      setFeedback(t("login.emailPasswordRequired"));
       return;
     }
     setLoading(true);
@@ -113,16 +117,16 @@ function LoginForm() {
 
   return (
     <AuthShell
-      title={returning ? "Tekrar hoş geldiniz" : "Hoş geldiniz"}
-      subtitle="Hesabınıza giriş yapın."
+      title={returning ? t("login.welcomeBack") : t("login.welcome")}
+      subtitle={t("login.subtitle")}
       footer={
         <p className="text-center text-sm text-brand-dark/55">
-          Hesabınız yok mu?{" "}
+          {t("login.noAccount")}{" "}
           <Link
             href={`/kayit${next !== "/dashboard" ? `?next=${encodeURIComponent(next)}` : ""}`}
             className="font-semibold text-brand-dark underline-offset-2 hover:underline"
           >
-            Kayıt Ol
+            {t("login.signupLink")}
           </Link>
         </p>
       }
@@ -130,19 +134,19 @@ function LoginForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <AuthTextField
           id="login-email"
-          label="E-posta"
+          label={t("login.email")}
           type="email"
           value={email}
           onChange={(value) => {
             setEmail(value);
             if (feedback) setFeedback("");
           }}
-          placeholder="ornek@sirket.com"
+          placeholder={t("login.emailPlaceholder")}
           autoComplete="email"
         />
         <AuthPasswordField
           id="login-password"
-          label="Şifre"
+          label={t("login.password")}
           value={password}
           onChange={(value) => {
             setPassword(value);
@@ -156,18 +160,18 @@ function LoginForm() {
             id="remember-me"
             checked={rememberMe}
             onChange={setRememberMe}
-            label="Beni hatırla"
+            label={t("login.rememberMe")}
           />
           <Link
             href="/sifremi-unuttum"
             className="text-sm font-medium text-brand-dark/60 transition hover:text-brand-dark"
           >
-            Şifremi unuttum?
+            {t("login.forgotPassword")}
           </Link>
         </div>
 
         <AuthFeedback message={feedback} />
-        <AuthSubmitButton loading={loading}>Giriş Yap</AuthSubmitButton>
+        <AuthSubmitButton loading={loading}>{t("login.submit")}</AuthSubmitButton>
       </form>
 
       <div className="mt-5 space-y-5">
@@ -179,10 +183,12 @@ function LoginForm() {
 }
 
 export default function GirisPage() {
+  const t = useTranslations("auth");
+
   return (
     <Suspense
       fallback={
-        <AuthShell title="Hoş geldiniz" subtitle="Yükleniyor…">
+        <AuthShell title={t("login.welcome")} subtitle={t("login.loading")}>
           <div className="h-40 animate-pulse rounded-2xl bg-brand-dark/5" />
         </AuthShell>
       }

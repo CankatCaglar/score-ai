@@ -19,6 +19,7 @@ import {
 import {
   PROFILE_COUNTRIES,
   PROFILE_LANGUAGES,
+  normalizeProfileLanguage,
   PROFILE_SECTORS,
   PROFILE_TIMEZONES,
   composeDisplayName,
@@ -26,6 +27,10 @@ import {
   userDocIdFromEmail,
   type UserProfile,
 } from "@/lib/user-profile";
+import {
+  LOCALE_COOKIE_NAME,
+  localeCookieOptions,
+} from "@/lib/i18n/locale-cookie";
 
 const ALLOWED_PHOTO_MIME_TYPES = new Set([
   "image/jpeg",
@@ -132,11 +137,19 @@ function mapUserDoc(
   },
 ): UserProfile {
   const fromAuth = splitDisplayName(fallback?.displayName);
-  const firstName = asString(data?.firstName) || fromAuth.firstName;
-  const lastName = asString(data?.lastName) || fromAuth.lastName;
+  const storedFirst = asString(data?.firstName);
+  const storedLast = asString(data?.lastName);
+  // Prefer Firestore name fields over Auth/session — Auth (e.g. Google)
+  // can still say "Jack" after the user renamed themselves in Settings.
+  const firstName = storedFirst || fromAuth.firstName;
+  const lastName = storedLast || fromAuth.lastName;
   const displayName =
+    composeDisplayName(storedFirst, storedLast) ||
     asString(data?.displayName) ||
     composeDisplayName(firstName, lastName) ||
+    (typeof fallback?.displayName === "string"
+      ? fallback.displayName.trim()
+      : "") ||
     email.split("@")[0] ||
     "Kullanıcı";
 
@@ -148,7 +161,7 @@ function mapUserDoc(
     displayName,
     company: asString(data?.company),
     sector: asString(data?.sector),
-    language: asString(data?.language),
+    language: normalizeProfileLanguage(asString(data?.language)),
     timezone: asString(data?.timezone),
     country: asString(data?.country),
     photoURL:
@@ -210,7 +223,7 @@ export async function updateCurrentUserProfile(
   const lastName = input.lastName.trim();
   const company = input.company.trim();
   const sector = input.sector.trim();
-  const language = input.language.trim();
+  const language = normalizeProfileLanguage(input.language);
   const timezone = input.timezone.trim();
   const country = input.country.trim();
 
@@ -220,7 +233,7 @@ export async function updateCurrentUserProfile(
   if (!isAllowedOption(sector, PROFILE_SECTORS)) {
     return { ok: false, error: "Geçersiz sektör seçimi." };
   }
-  if (!isAllowedOption(language, PROFILE_LANGUAGES)) {
+  if (!PROFILE_LANGUAGES.includes(language)) {
     return { ok: false, error: "Geçersiz dil seçimi." };
   }
   if (!isAllowedOption(timezone, PROFILE_TIMEZONES)) {
@@ -280,6 +293,9 @@ export async function updateCurrentUserProfile(
     path: "/",
     maxAge: USER_SESSION_TTL_SECONDS,
   });
+
+  // Drive dashboard/auth UI locale (unprefixed routes) from profile language.
+  cookieStore.set(LOCALE_COOKIE_NAME, language, localeCookieOptions());
 
   return { ok: true, profile };
 }

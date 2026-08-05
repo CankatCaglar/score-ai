@@ -2,7 +2,18 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Plus_Jakarta_Sans } from "next/font/google";
+import { useLocale, useTranslations } from "next-intl";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  analysisCompletedNotification,
+  getDisplaySummary,
+  toAnalysisUiLocale,
+} from "@/lib/analysis/display-copy";
+import {
+  rubricModeFromVersion,
+  RUBRIC_VERSION_BASE,
+} from "@/lib/analysis/rubric";
 import {
   AlertTriangle,
   ArrowRight,
@@ -17,6 +28,11 @@ import {
   Target,
   Type,
 } from "lucide-react";
+import {
+  AnalysisWaitingScreen,
+  resolveWaitPreviewUrl,
+} from "@/app/[locale]/analyzer/shared";
+import "@/app/[locale]/analyzer/grader.css";
 import { PotentialResultModal } from "@/components/analysis/PotentialResultModal";
 import { SocialShareMenu } from "@/components/dashboard/SocialShareMenu";
 import { assessPotentialImageEligibility } from "@/lib/analysis/edge-cases";
@@ -25,14 +41,33 @@ import type { Analysis } from "@/lib/analysis/types";
 import { useRegisterDashboardBack } from "@/components/dashboard/DashboardBackContext";
 import { withReturnTo } from "@/lib/dashboard/return-navigation";
 import { queuePostAnalysisProductTips } from "@/lib/notifications/product-tips";
-import { requestNotificationsRefresh } from "@/lib/notifications/toast-analysis";
+import {
+  fetchDashboardCached,
+  getDashboardCache,
+  invalidateDashboardCache,
+  resultCacheKey,
+  setDashboardCache,
+} from "@/lib/dashboard/client-cache";
+import {
+  isAnalysisWatchActive,
+  markAnalysisWatchActive,
+  markAnalysisWatchIdle,
+  requestNotificationsRefresh,
+  toastAnalysisCompletedIfAllowed,
+} from "@/lib/notifications/toast-analysis";
+import { clientAllowsInstantNotify } from "@/lib/notifications/client-preferences";
+
+const graderSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  display: "swap",
+});
 
 const CANVA_MAGIC_LAYERS_URL = "https://www.canva.com/?highlight=magicLayers";
 
 async function triggerDownload(url: string, fileName: string) {
   try {
     const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) throw new Error("İndirme başarısız");
+    if (!response.ok) throw new Error("download-failed");
     const blob = await response.blob();
     const objectUrl = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -73,14 +108,28 @@ function titleToFileSlug(title: string): string {
   );
 }
 
+const METRIC_IDS = [
+  "attention",
+  "clarity",
+  "emotionalImpact",
+  "engagementPotential",
+] as const;
+
+type MetricId = (typeof METRIC_IDS)[number];
+
 const metricIcons = {
-  "Dikkat Çekicilik": Eye,
-  Netlik: Type,
-  "Duygusal Etki": Heart,
-  "Etkileşim Potansiyeli": Target,
+  attention: Eye,
+  clarity: Type,
+  emotionalImpact: Heart,
+  engagementPotential: Target,
 } as const;
 
-type MetricLabel = keyof typeof metricIcons;
+const metricCategoryMap: Record<MetricId, string[]> = {
+  attention: ["visual_intelligence"],
+  clarity: ["content_intelligence"],
+  emotionalImpact: ["brand_intelligence"],
+  engagementPotential: ["channel_intelligence", "business_intelligence"],
+};
 
 type ResultPayload = {
   analysis: Analysis;
@@ -96,13 +145,6 @@ type ResultPayload = {
   } | null;
 };
 
-const metricCategoryMap: Record<MetricLabel, string[]> = {
-  "Dikkat Çekicilik": ["visual_intelligence"],
-  Netlik: ["content_intelligence"],
-  "Duygusal Etki": ["brand_intelligence"],
-  "Etkileşim Potansiyeli": ["channel_intelligence", "business_intelligence"],
-};
-
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
@@ -110,24 +152,14 @@ function clamp(value: number, min: number, max: number) {
 function buildMetricsFromAnalysis(
   analysis: Analysis | null,
 ): {
-  current: Array<{ label: MetricLabel; value: number }>;
-  potential: Array<{ label: MetricLabel; value: number }>;
+  current: Array<{ id: MetricId; value: number }>;
+  potential: Array<{ id: MetricId; value: number }>;
 } {
   const fallback = analysis?.score ?? 0;
   if (!analysis) {
     return {
-      current: [
-        { label: "Dikkat Çekicilik", value: fallback },
-        { label: "Netlik", value: fallback },
-        { label: "Duygusal Etki", value: fallback },
-        { label: "Etkileşim Potansiyeli", value: fallback },
-      ],
-      potential: [
-        { label: "Dikkat Çekicilik", value: fallback },
-        { label: "Netlik", value: fallback },
-        { label: "Duygusal Etki", value: fallback },
-        { label: "Etkileşim Potansiyeli", value: fallback },
-      ],
+      current: METRIC_IDS.map((id) => ({ id, value: fallback })),
+      potential: METRIC_IDS.map((id) => ({ id, value: fallback })),
     };
   }
 
@@ -136,8 +168,8 @@ function buildMetricsFromAnalysis(
       ? 0
       : clamp((analysis.potentialScore - analysis.score) / (100 - analysis.score), 0, 1);
 
-  const current = (Object.keys(metricCategoryMap) as MetricLabel[]).map((label) => {
-    const ids = metricCategoryMap[label];
+  const current = METRIC_IDS.map((id) => {
+    const ids = metricCategoryMap[id];
     const matched = analysis.categories.filter((category) => ids.includes(category.id));
     const value =
       matched.length > 0
@@ -145,11 +177,11 @@ function buildMetricsFromAnalysis(
             matched.reduce((sum, category) => sum + category.value, 0) / matched.length,
           )
         : fallback;
-    return { label, value };
+    return { id, value };
   });
 
   const potential = current.map((item) => ({
-    label: item.label,
+    id: item.id,
     value: Math.round(item.value + (100 - item.value) * gainRatio),
   }));
 
@@ -158,27 +190,30 @@ function buildMetricsFromAnalysis(
 
 function buildPreviewUrl(analysis: Analysis | undefined) {
   if (!analysis) return undefined;
+  // Prefer pre-signed thumb from the result API (no auth hop).
+  if (analysis.previewUrl) return analysis.previewUrl;
   if (analysis.mediaUrl || analysis.sourceUrl) {
-    return `/api/dashboard/media/${analysis.id}`;
+    return `/api/dashboard/media/${analysis.id}?size=thumb`;
   }
   return undefined;
 }
 
 function MetricRow({
-  label,
+  id,
   value,
   improved,
 }: {
-  label: MetricLabel;
+  id: MetricId;
   value: number;
   improved?: boolean;
 }) {
-  const Icon = metricIcons[label];
+  const t = useTranslations("dashboard.analysisResult.metrics");
+  const Icon = metricIcons[id];
   return (
     <div className="flex min-w-0 items-center justify-between gap-2 py-2">
       <div className="flex min-w-0 items-center gap-2 text-xs text-brand-dark/70 sm:text-sm">
         <Icon className="size-4 shrink-0 text-brand-dark/40" strokeWidth={1.75} />
-        <span className="truncate">{label}</span>
+        <span className="truncate">{t(id)}</span>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <span className="font-semibold tabular-nums text-brand-dark">
@@ -194,67 +229,132 @@ function MetricRow({
 }
 
 function AnalizSonucuPageContent() {
+  const t = useTranslations("dashboard.analysisResult");
+  const tNotifications = useTranslations("dashboard.notifications");
+  const locale = toAnalysisUiLocale(useLocale());
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const slug = searchParams.get("slug");
   const focusSonuc = searchParams.get("focus") === "sonuc";
-  const [loading, setLoading] = useState(true);
+  const initialCacheKey = id ? resultCacheKey(id, locale) : null;
+  const initialCached = initialCacheKey
+    ? getDashboardCache<ResultPayload>(initialCacheKey)
+    : null;
+  const [loading, setLoading] = useState(!initialCached?.analysis);
   const [error, setError] = useState<string | null>(null);
-  const [payload, setPayload] = useState<ResultPayload | null>(null);
+  const [payload, setPayload] = useState<ResultPayload | null>(
+    initialCached ?? null,
+  );
   const [generatingPotential, setGeneratingPotential] = useState(false);
   const [potentialError, setPotentialError] = useState<string | null>(null);
   const [showPotentialModal, setShowPotentialModal] = useState(false);
   const [openingCanva, setOpeningCanva] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [canvaError, setCanvaError] = useState<string | null>(null);
-  const previousJobStatusRef = useRef<string | null>(null);
+  const [tipIndex, setTipIndex] = useState(0);
+  const previousJobStatusRef = useRef<string | null>(
+    initialCached?.analysis?.jobStatus ?? null,
+  );
+  const tAnalyzer = useTranslations("analyzer");
+  const loadingTips = tAnalyzer.raw("loadingTips") as string[];
 
   useEffect(() => {
-    const controller = new AbortController();
+    let cancelled = false;
     let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
     const load = async (isPoll = false) => {
       if (!isPoll) {
-        setLoading(true);
         setError(null);
+        if (!(id && getDashboardCache(resultCacheKey(id, locale)))) {
+          setLoading(true);
+        }
       }
       try {
-        const qs = id ? `?id=${encodeURIComponent(id)}` : "";
-        const response = await fetch(`/api/dashboard/result${qs}`, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          throw new Error("Sonuç alınamadı");
+        const qs = new URLSearchParams();
+        if (id) qs.set("id", id);
+        else if (slug) qs.set("slug", slug);
+        qs.set("locale", locale);
+        const url = `/api/dashboard/result?${qs}`;
+        const cacheKey = id
+          ? resultCacheKey(id, locale)
+          : `dashboard:result:${locale}:slug:${slug ?? "latest"}`;
+
+        let data: ResultPayload;
+        if (isPoll) {
+          const response = await fetch(url, { cache: "no-store" });
+          if (!response.ok) throw new Error(t("fetchError"));
+          data = (await response.json()) as ResultPayload;
+        } else {
+          const cachedHit = getDashboardCache<ResultPayload>(cacheKey);
+          const cachedStatus = cachedHit?.analysis?.jobStatus;
+          data = await fetchDashboardCached<ResultPayload>({
+            key: cacheKey,
+            url,
+            force:
+              cachedStatus === "pending" || cachedStatus === "processing",
+            onCache: (hit) => {
+              if (cancelled || !hit.analysis) return;
+              setPayload(hit);
+              setLoading(false);
+            },
+          });
         }
-        const data = (await response.json()) as ResultPayload;
+
+        if (cancelled) return;
+        if (data.analysis?.id) {
+          setDashboardCache(resultCacheKey(data.analysis.id, locale), data);
+        }
         setPayload(data);
         const status = data.analysis?.jobStatus ?? null;
         const previous = previousJobStatusRef.current;
         previousJobStatusRef.current = status;
-        if (
-          status === "completed" &&
-          (previous === "pending" || previous === "processing")
-        ) {
-          requestNotificationsRefresh();
-        }
         if (status === "pending" || status === "processing") {
+          markAnalysisWatchActive();
           pollTimer = setTimeout(() => {
             void load(true);
           }, 2500);
+        } else if (status === "completed" || status === "failed") {
+          const watched = isAnalysisWatchActive();
+          markAnalysisWatchIdle();
+          invalidateDashboardCache("dashboard:overview");
+          const justFinished =
+            previous === "pending" ||
+            previous === "processing" ||
+            (previous === null && watched);
+          if (status === "completed" && justFinished && data.analysis) {
+            const copy = analysisCompletedNotification(
+              data.analysis.title,
+              data.analysis.score,
+              locale,
+            );
+            const resultHref = `/dashboard/analiz-sonucu?id=${encodeURIComponent(data.analysis.id)}`;
+            await toastAnalysisCompletedIfAllowed({
+              id: data.analysis.id,
+              analysisId: data.analysis.id,
+              slug: data.analysis.slug,
+              title: copy.title,
+              body: copy.body,
+              href: resultHref,
+              viewLabel: tNotifications("viewAction"),
+            });
+            requestNotificationsRefresh();
+          } else if (justFinished) {
+            requestNotificationsRefresh();
+          }
         }
       } catch (fetchError) {
         if ((fetchError as Error).name === "AbortError") return;
-        if (!isPoll) setError("Analiz sonucu yüklenemedi.");
+        if (!isPoll && !cancelled) setError(t("loadError"));
       } finally {
-        if (!isPoll) setLoading(false);
+        if (!isPoll && !cancelled) setLoading(false);
       }
     };
     void load();
     return () => {
-      controller.abort();
+      cancelled = true;
       if (pollTimer) clearTimeout(pollTimer);
     };
-  }, [id]);
+  }, [id, slug, locale, t, tNotifications]);
 
   const revision = payload?.revision;
   const metricSnapshot = useMemo(
@@ -282,9 +382,16 @@ function AnalizSonucuPageContent() {
   }, [payload?.analysis]);
   const potentialBlocked = !edgeEligibility.eligible;
   const aiSummary = useMemo(
-    () => summarizeAiCommentary(payload?.analysis ?? null),
-    [payload?.analysis],
+    () => summarizeAiCommentary(payload?.analysis ?? null, locale),
+    [payload?.analysis, locale],
   );
+  const displaySummary = useMemo(() => {
+    if (!payload?.analysis) return null;
+    const mode = rubricModeFromVersion(
+      payload.analysis.rubricVersion || RUBRIC_VERSION_BASE,
+    );
+    return getDisplaySummary(payload.analysis, locale, mode);
+  }, [payload?.analysis, locale]);
   const jobStatus = payload?.analysis?.jobStatus;
   const isCompleted = jobStatus === "completed";
   const detailHref = payload?.analysis?.slug
@@ -295,10 +402,23 @@ function AnalizSonucuPageContent() {
     payload?.analysis?.slug
       ? {
           href: `/dashboard/analizler/${payload.analysis.slug}`,
-          label: "Analiz",
+          label: t("backLabel"),
         }
       : null,
   );
+
+  useEffect(() => {
+    const waiting =
+      loading ||
+      (!!payload?.analysis &&
+        payload.analysis.jobStatus !== "completed" &&
+        payload.analysis.jobStatus !== "failed");
+    if (!waiting) return;
+    const tipTimer = window.setInterval(() => {
+      setTipIndex((prev) => (prev + 1) % Math.max(1, loadingTips.length));
+    }, 3200);
+    return () => window.clearInterval(tipTimer);
+  }, [loading, payload?.analysis?.jobStatus, loadingTips.length]);
 
   useEffect(() => {
     if (!focusSonuc || loading || !isCompleted) return;
@@ -314,14 +434,36 @@ function AnalizSonucuPageContent() {
     return () => window.clearTimeout(timer);
   }, [focusSonuc, loading, isCompleted, payload?.analysis?.potentialImageUrl]);
 
-  // Queue product tips while on result; flush only after leaving this page
-  // so they never stack on top of the "analiz tamamlandı" toast.
+  // Defer tip network until the report has painted (idle), so brand-dna/benchmark
+  // don't compete with the result API / media.
   useEffect(() => {
     if (loading || !isCompleted || !payload?.analysis?.id) return;
-    void queuePostAnalysisProductTips({
-      analysisId: payload.analysis.id,
-      score: payload.analysis.score,
-    });
+    const analysisId = payload.analysis.id;
+    const score = payload.analysis.score;
+    let cancelled = false;
+    let idleId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const run = () => {
+      void clientAllowsInstantNotify().then((allowed) => {
+        if (cancelled || !allowed) return;
+        void queuePostAnalysisProductTips({ analysisId, score });
+      });
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      idleId = window.requestIdleCallback(run, { timeout: 4_000 });
+    } else {
+      timeoutId = setTimeout(run, 2_000);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId != null && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [loading, isCompleted, payload?.analysis?.id, payload?.analysis?.score]);
 
   const openInCanva = () => {
@@ -332,12 +474,19 @@ function AnalizSonucuPageContent() {
   };
 
   const handleDownloadImage = async () => {
-    const downloadUrl = potentialPreviewUrl ?? previewUrl;
+    // Full-res via media routes (not the display thumb).
+    const downloadUrl = potentialPreviewUrl
+      ? potentialPreviewUrl
+      : payload?.analysis?.id
+        ? `/api/dashboard/media/${payload.analysis.id}`
+        : previewUrl;
     if (!downloadUrl || downloading) return;
     setDownloading(true);
     try {
       const title = payload?.analysis?.title ?? "score-ai";
-      const suffix = potentialPreviewUrl ? "potansiyel" : "orijinal";
+      const suffix = potentialPreviewUrl
+        ? t("fileSuffixPotential")
+        : t("fileSuffixOriginal");
       await triggerDownload(
         downloadUrl,
         `${titleToFileSlug(title)}-${suffix}.png`,
@@ -380,10 +529,10 @@ function AnalizSonucuPageContent() {
               : current,
           );
         }
-        throw new Error(data.message || "Potansiyel gorsel uretilemedi.");
+        throw new Error(data.message || t("potentialGenerateError"));
       }
       if (!data.analysis) {
-        throw new Error("Guncel analiz verisi alinamadi.");
+        throw new Error(t("analysisDataMissing"));
       }
       setPayload((current) =>
         current
@@ -399,31 +548,31 @@ function AnalizSonucuPageContent() {
       setPotentialError(
         generationError instanceof Error
           ? generationError.message
-          : "Potansiyel gorsel uretimi basarisiz oldu.",
+          : t("potentialGenerateFailed"),
       );
     } finally {
       setGeneratingPotential(false);
     }
   };
 
-  if (!loading && payload?.analysis && !isCompleted) {
-    const isFailed = jobStatus === "failed";
+  const isJobInFlight =
+    !!payload?.analysis &&
+    payload.analysis.jobStatus !== "completed" &&
+    payload.analysis.jobStatus !== "failed";
+  // Only from jobStatus — never sessionStorage (causes SSR/client hydration mismatch).
+  const showWaitingScreen = isJobInFlight;
+
+  if (!loading && payload?.analysis && jobStatus === "failed") {
     return (
       <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
         <div className="rounded-2xl border border-brand-dark/10 bg-bg-light p-5">
           <div className="flex items-start gap-3">
-            {!isFailed ? (
-              <Loader2 className="mt-0.5 size-5 shrink-0 animate-spin text-brand-dark/55" />
-            ) : null}
             <div className="min-w-0">
               <p className="text-lg font-semibold text-brand-dark">
-                {isFailed ? "Analiz tamamlanamadı" : "Analiz işleniyor…"}
+                {t("processing.failedTitle")}
               </p>
               <p className="mt-2 text-sm text-brand-dark/65">
-                {isFailed
-                  ? payload.analysis.insight ||
-                    "Yüklenen dosya formatı veya içerik işleme adımında bir sorun oluştu."
-                  : "İşlem tamamlandığında skor ve AI detayları otomatik olarak güncellenecek."}
+                {payload.analysis.insight || t("processing.failedBody")}
               </p>
             </div>
           </div>
@@ -432,14 +581,14 @@ function AnalizSonucuPageContent() {
               href={detailHref}
               className="rounded-lg bg-brand-dark px-3.5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
-              Analiz Detayına Git
+              {t("processing.goToDetail")}
             </Link>
             <button
               type="button"
               onClick={() => window.location.reload()}
               className="rounded-lg border border-brand-dark/10 px-3.5 py-2 text-sm font-medium text-brand-dark/70 hover:bg-brand-dark/5"
             >
-              Yenile
+              {t("processing.refresh")}
             </button>
           </div>
         </div>
@@ -447,16 +596,54 @@ function AnalizSonucuPageContent() {
     );
   }
 
+  if (showWaitingScreen) {
+    const waitKey = id || slug || payload?.analysis?.id || null;
+    const networkPreview = payload?.analysis?.id
+      ? `/api/dashboard/media/${payload.analysis.id}?size=thumb`
+      : null;
+    // Sticky data-URL / bound preview first — avoids image swap mid-wait.
+    const waitingPreview = resolveWaitPreviewUrl(waitKey, networkPreview);
+    return (
+      <div className={graderSans.className}>
+        <AnalysisWaitingScreen
+          tipIndex={tipIndex}
+          previewUrl={waitingPreview}
+          waitKey={waitKey}
+        />
+      </div>
+    );
+  }
+
+  if (loading && !payload?.analysis) {
+    return (
+      <div className="flex items-center justify-center gap-2 px-4 py-24 text-sm text-brand-dark/55 sm:px-6 lg:px-8">
+        <Loader2 className="size-4 animate-spin" strokeWidth={2} />
+        {t("updating")}
+      </div>
+    );
+  }
+
+  if (error && !payload?.analysis) {
+    return (
+      <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
+        <p className="rounded-xl bg-bg-light px-4 py-3 text-sm text-red-500">
+          {error}
+        </p>
+      </div>
+    );
+  }
+
+  const contentTitle = payload?.analysis?.title ?? t("contentAlt");
+
   return (
     <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight text-brand-dark sm:text-3xl">
-            Analiz tamamlandı! <span className="align-middle">🎉</span>
+            {t("title")} <span className="align-middle">🎉</span>
           </h1>
           <p className="mt-1 text-sm text-brand-dark/55">
-            İçeriğiniz {payload?.analysis.criteriaCount ?? 31} mikro kritere göre analiz
-            edildi.
+            {t("subtitle", { count: payload?.analysis.criteriaCount ?? 31 })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -473,10 +660,10 @@ function AnalizSonucuPageContent() {
             ) : (
               <Download className="size-4" strokeWidth={2} />
             )}
-            İndir
+            {t("download")}
           </button>
           <SocialShareMenu
-            title={payload?.analysis?.title ?? "Score AI Analizi"}
+            title={payload?.analysis?.title ?? t("shareTitleFallback")}
             buttonClassName="flex items-center gap-1.5 rounded-lg border border-brand-dark/10 px-3 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 sm:px-3.5"
           />
           <button
@@ -486,8 +673,8 @@ function AnalizSonucuPageContent() {
             onClick={openInCanva}
             title={
               alreadyGenerated
-                ? "Canva Sihirli Katmanlar sayfasını aç"
-                : "Önce potansiyel görseli üretin"
+                ? t("canvaTitleReady")
+                : t("canvaTitleNeedImage")
             }
           >
             {openingCanva ? (
@@ -501,7 +688,7 @@ function AnalizSonucuPageContent() {
                 decoding="async"
               />
             )}
-            Canva&apos;da Aç
+            {t("openInCanva")}
           </button>
         </div>
       </div>
@@ -510,7 +697,7 @@ function AnalizSonucuPageContent() {
         <div className="@container min-w-0 rounded-3xl border-2 border-red-100 bg-bg-light p-4 shadow-sm sm:p-6">
           <div className="flex items-start justify-between gap-2 sm:gap-3">
             <span className="inline-block max-w-[65%] text-[10px] font-bold uppercase tracking-wide text-red-500 sm:text-xs">
-              Mevcut İçeriğiniz
+              {t("currentContent")}
             </span>
             <div className="flex shrink-0 items-baseline">
               <span className="text-3xl font-bold text-red-500 sm:text-4xl">{oldScore}</span>
@@ -523,19 +710,21 @@ function AnalizSonucuPageContent() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={previewUrl}
-                  alt={payload?.analysis?.title ?? "İçerik önizleme"}
+                  alt={payload?.analysis?.title ?? t("previewAlt")}
                   className="block h-auto max-h-64 w-auto max-w-full @[26rem]:max-h-52 @[26rem]:max-w-[11.5rem]"
+                  fetchPriority="high"
+                  decoding="async"
                 />
               ) : null}
             </div>
             <div className="w-full min-w-0 flex-1 divide-y divide-brand-dark/5 @[26rem]:flex @[26rem]:flex-col @[26rem]:justify-center @[26rem]:self-stretch">
               {oldMetrics.map((m) => (
-                <MetricRow key={m.label} label={m.label} value={m.value} />
+                <MetricRow key={m.id} id={m.id} value={m.value} />
               ))}
             </div>
           </div>
           <p className="mt-4 text-xs leading-snug text-red-600">
-            {aiSummary.weaknesses[0] ?? "Geliştirilebilecek alanlar kriter analizinde listelendi."}
+            {aiSummary.weaknesses[0] ?? t("weaknessFallback")}
           </p>
         </div>
 
@@ -550,7 +739,7 @@ function AnalizSonucuPageContent() {
             {scoreDiff >= 0 ? "+" : ""}
             {scoreDiff}
           </span>
-          <span className="text-sm font-semibold text-brand-dark">Potansiyel</span>
+          <span className="text-sm font-semibold text-brand-dark">{t("potential")}</span>
         </div>
 
         <div
@@ -560,7 +749,7 @@ function AnalizSonucuPageContent() {
           <div className="flex items-start justify-between gap-2 sm:gap-3">
             <span className="inline-flex max-w-[65%] items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-brand-dark sm:text-xs">
               <Sparkles className="size-3.5 shrink-0" strokeWidth={2} />
-              <span className="truncate">Potansiyel Hedef (Score AI)</span>
+              <span className="truncate">{t("potentialTarget")}</span>
             </span>
             <div className="flex shrink-0 items-baseline">
               <span className="text-3xl font-bold text-brand-dark sm:text-4xl">{newScore}</span>
@@ -573,37 +762,41 @@ function AnalizSonucuPageContent() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={potentialPreviewUrl}
-                  alt={`${payload?.analysis?.title ?? "İçerik"} potansiyel`}
+                  alt={t("potentialAlt", { title: contentTitle })}
                   className="block h-auto max-h-64 w-auto max-w-full @[26rem]:max-h-52 @[26rem]:max-w-[11.5rem]"
+                  fetchPriority="high"
+                  decoding="async"
                 />
               ) : previewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={previewUrl}
-                  alt={`${payload?.analysis?.title ?? "İçerik"} potansiyel`}
+                  alt={t("potentialAlt", { title: contentTitle })}
                   className="block h-auto max-h-64 w-auto max-w-full opacity-75 @[26rem]:max-h-52 @[26rem]:max-w-[11.5rem]"
+                  fetchPriority="high"
+                  decoding="async"
                 />
               ) : null}
               <span className="absolute bottom-2 left-2 rounded-md bg-brand-neon px-2 py-0.5 text-[10px] font-bold text-brand-dark">
-                Potansiyel
+                {t("potential")}
               </span>
             </div>
             <div className="w-full min-w-0 flex-1 divide-y divide-brand-dark/5 @[26rem]:flex @[26rem]:flex-col @[26rem]:justify-center @[26rem]:self-stretch">
               {newMetrics.map((m) => (
-                <MetricRow key={m.label} label={m.label} value={m.value} improved />
+                <MetricRow key={m.id} id={m.id} value={m.value} improved />
               ))}
             </div>
           </div>
           <p className="mt-4 text-xs leading-snug text-brand-dark">
             {aiSummary.actions[0] ??
               revision?.summary ??
-              "Bu skor, mevcut eksiklerin optimize edilmesiyle ulaşılabilecek potansiyel seviyeyi temsil eder."}
+              t("actionFallback")}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {potentialBlocked && !alreadyGenerated ? (
               <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
                 <Info className="size-3.5 shrink-0" strokeWidth={2} />
-                Potansiyel üretim uygun değil
+                {t("potentialNotEligible")}
               </span>
             ) : (
               <button
@@ -615,17 +808,17 @@ function AnalizSonucuPageContent() {
                 {alreadyGenerated ? (
                   <>
                     <Sparkles className="size-3.5" strokeWidth={2} />
-                    Potansiyel gorsel bir kez uretildi
+                    {t("potentialGeneratedOnce")}
                   </>
                 ) : potentialBusy ? (
                   <>
                     <Loader2 className="size-3.5 animate-spin" strokeWidth={2} />
-                    Potansiyel gorsel uretiliyor...
+                    {t("potentialGenerating")}
                   </>
                 ) : (
                   <>
                     <Sparkles className="size-3.5" strokeWidth={2} />
-                    Potansiyel Gorsel Uret
+                    {t("potentialGenerate")}
                   </>
                 )}
               </button>
@@ -636,7 +829,7 @@ function AnalizSonucuPageContent() {
                 onClick={() => setShowPotentialModal(true)}
                 className="inline-flex items-center gap-1 rounded-lg border border-brand-dark/10 px-3 py-2 text-xs font-medium text-brand-dark/70 hover:bg-brand-dark/5"
               >
-                Sonucu Gör
+                {t("viewResult")}
               </button>
             )}
           </div>
@@ -664,7 +857,9 @@ function AnalizSonucuPageContent() {
                       {issue.detail}
                     </p>
                     <p className="mt-1.5 text-[11px] leading-relaxed text-brand-dark/70">
-                      <span className="font-semibold text-brand-dark">Tekrar deneyin:</span>{" "}
+                      <span className="font-semibold text-brand-dark">
+                        {t("retryLabel")}
+                      </span>{" "}
                       {issue.retryHint}
                     </p>
                   </li>
@@ -677,7 +872,7 @@ function AnalizSonucuPageContent() {
                 )}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand-dark px-3 py-2 text-xs font-semibold text-brand-neon transition-opacity hover:opacity-90"
               >
-                Yeni analiz başlat
+                {t("newAnalysis")}
                 <ArrowRight className="size-3.5" strokeWidth={2} />
               </Link>
             </div>
@@ -685,7 +880,7 @@ function AnalizSonucuPageContent() {
           {payload?.analysis?.potentialImageStatus === "failed" && (
             <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs text-red-600">
               <AlertTriangle className="size-3.5" strokeWidth={2} />
-              {payload.analysis.potentialImageError || "Uretim adimi basarisiz oldu."}
+              {payload.analysis.potentialImageError || t("generationFailed")}
             </p>
           )}
           {potentialError && !potentialBlocked && (
@@ -699,14 +894,17 @@ function AnalizSonucuPageContent() {
           <Bot className="size-5 text-brand-neon" strokeWidth={1.75} />
         </div>
         <div>
-          <p className="text-sm font-semibold text-brand-neon">Score AI Yorumu</p>
+          <p className="text-sm font-semibold text-brand-neon">{t("aiComment")}</p>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/80">
-            {payload?.analysis.insight ?? revision?.summary ?? "Detaylı AI yorumu oluşturuluyor."}
+            {displaySummary?.insight ??
+              payload?.analysis.insight ??
+              revision?.summary ??
+              t("aiCommentFallback")}
           </p>
           <div className="mt-3 space-y-3 text-xs text-white/75">
             {aiSummary.strengths.length > 0 && (
               <div>
-                <p className="font-semibold text-brand-neon">Güçlü yönler</p>
+                <p className="font-semibold text-brand-neon">{t("strengths")}</p>
                 <ul className="mt-1 list-disc space-y-1 pl-5">
                   {aiSummary.strengths.map((item) => (
                     <li key={item}>{item}</li>
@@ -716,7 +914,7 @@ function AnalizSonucuPageContent() {
             )}
             {aiSummary.weaknesses.length > 0 && (
               <div>
-                <p className="font-semibold text-brand-neon">Eksikler</p>
+                <p className="font-semibold text-brand-neon">{t("weaknesses")}</p>
                 <ul className="mt-1 list-disc space-y-1 pl-5">
                   {aiSummary.weaknesses.map((item) => (
                     <li key={item}>{item}</li>
@@ -726,7 +924,7 @@ function AnalizSonucuPageContent() {
             )}
             {aiSummary.actions.length > 0 && (
               <div>
-                <p className="font-semibold text-brand-neon">Öncelikli aksiyonlar</p>
+                <p className="font-semibold text-brand-neon">{t("actions")}</p>
                 <ul className="mt-1 list-disc space-y-1 pl-5">
                   {aiSummary.actions.map((item) => (
                     <li key={item}>{item}</li>
@@ -739,13 +937,13 @@ function AnalizSonucuPageContent() {
       </div>
       {(loading || error) && (
         <p className={`mt-4 text-sm ${error ? "text-red-500" : "text-brand-dark/60"}`}>
-          {error ?? "Sonuç verileri güncelleniyor..."}
+          {error ?? t("updating")}
         </p>
       )}
 
       <PotentialResultModal
         open={showPotentialModal}
-        title={payload?.analysis?.title ?? "Analiz"}
+        title={payload?.analysis?.title ?? t("analysisFallback")}
         currentScore={oldScore}
         potentialScore={newScore}
         previewUrl={potentialPreviewUrl}
@@ -759,11 +957,12 @@ function AnalizSonucuPageContent() {
 }
 
 export default function AnalizSonucuPage() {
+  const t = useTranslations("dashboard.analysisResult");
   return (
     <Suspense
       fallback={
         <div className="px-4 pb-8 pt-2 text-sm text-brand-dark/60 sm:px-6 lg:px-8 lg:pt-4">
-          Sonuç verileri güncelleniyor...
+          {t("updating")}
         </div>
       }
     >

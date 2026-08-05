@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { deleteAnalysesByIds, listAnalysesByUser } from "@/lib/analysis/repository";
+import {
+  computeAnalysesListStats,
+  deleteAnalysesByIds,
+  listAnalysesByUser,
+} from "@/lib/analysis/repository";
+import { attachSignedPreviewUrls } from "@/lib/analysis/media-thumb";
 import { getDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
 
 type DateRange = "7d" | "30d" | "90d" | "all";
@@ -67,7 +72,11 @@ export async function GET(request: Request) {
   const pageSize = PAGE_SIZE_OPTIONS.has(requestedPageSize) ? requestedPageSize : 10;
   const dateThreshold = getDateThreshold(dateRange);
 
-  const allAnalyses = await listAnalysesByUser(ownerEmail, query);
+  const includeStats = searchParams.get("includeStats") === "1";
+  // Preview signing is no longer on the critical path; proxy URLs are always attached.
+  const allAnalyses = await listAnalysesByUser(ownerEmail, query, {
+    mode: "list",
+  });
   const filtered = allAnalyses.filter((analysis) => {
     const updatedAtMs = analysis.updatedAtMs || analysis.createdAtMs;
     if (dateThreshold && updatedAtMs < dateThreshold) return false;
@@ -80,12 +89,17 @@ export async function GET(request: Request) {
   const offset = (safePage - 1) * pageSize;
   const analyses = filtered.slice(offset, offset + pageSize);
 
+  await attachSignedPreviewUrls(analyses);
+
   return NextResponse.json({
     analyses,
     total,
     page: safePage,
     pageSize,
     totalPages,
+    ...(includeStats
+      ? { stats: computeAnalysesListStats(allAnalyses) }
+      : {}),
   });
 }
 

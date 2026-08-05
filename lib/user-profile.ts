@@ -1,3 +1,5 @@
+import type { AppLocale } from "@/i18n/routing";
+
 export type UserProfile = {
   email: string;
   emailVerified: boolean;
@@ -6,6 +8,7 @@ export type UserProfile = {
   displayName: string;
   company: string;
   sector: string;
+  /** App UI locale code: `tr` | `en` (legacy labels normalized on read). */
   language: string;
   timezone: string;
   country: string;
@@ -23,7 +26,23 @@ export const PROFILE_SECTORS = [
   "Diğer",
 ] as const;
 
-export const PROFILE_LANGUAGES = ["Türkçe", "English", "Deutsch"] as const;
+/** Stored profile language values (locale codes). */
+export const PROFILE_LANGUAGES = ["tr", "en"] as const;
+export type ProfileLanguage = (typeof PROFILE_LANGUAGES)[number];
+
+export const PROFILE_LANGUAGE_LABELS: Record<ProfileLanguage, string> = {
+  tr: "Türkçe",
+  en: "English",
+};
+
+/** Map Firestore / legacy labels to a supported app locale. */
+export function normalizeProfileLanguage(
+  value: string | null | undefined,
+): AppLocale {
+  const v = (value ?? "").trim();
+  if (v === "en" || v === "English") return "en";
+  return "tr";
+}
 
 export const PROFILE_TIMEZONES = [
   "(GMT+03:00) İstanbul",

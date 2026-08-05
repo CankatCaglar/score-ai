@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { ChevronLeft } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useDashboardBackOverride } from "@/components/dashboard/DashboardBackContext";
@@ -27,6 +28,7 @@ function BackLink({ href, label }: { href: string; label: string }) {
  * 4) Mobile logo fallback
  */
 export function DashboardHeaderBack() {
+  const t = useTranslations("shell.nav");
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const backCtx = useDashboardBackOverride();
@@ -48,17 +50,17 @@ export function DashboardHeaderBack() {
   const isAnalizSonucu = pathname.startsWith("/dashboard/analiz-sonucu");
 
   if (isAnalysisDetail) {
-    return <BackLink href="/dashboard/analizler" label="Analizler" />;
+    return <BackLink href="/dashboard/analizler" label={t("analyses")} />;
   }
 
   if (isCreativeMemoryDetail) {
     return (
-      <BackLink href="/dashboard/creative-memory" label="Creative Memory" />
+      <BackLink href="/dashboard/creative-memory" label={t("creativeMemory")} />
     );
   }
 
   if (isAnalizSonucu) {
-    return <BackLink href="/dashboard/analizler" label="Analizler" />;
+    return <BackLink href="/dashboard/analizler" label={t("analyses")} />;
   }
 
   return (

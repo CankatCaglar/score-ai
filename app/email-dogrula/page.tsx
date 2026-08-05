@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { MailCheck } from "lucide-react";
 import { onAuthStateChanged, reload } from "firebase/auth";
@@ -12,6 +13,7 @@ import { auth } from "@/lib/firebase";
 import { resendVerificationEmail } from "@/lib/auth/client";
 
 export default function EmailDogrulaPage() {
+  const t = useTranslations("auth");
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,7 +34,7 @@ export default function EmailDogrulaPage() {
         toast.error(result.error);
         return;
       }
-      toast.success("Doğrulama e-postası yeniden gönderildi.");
+      toast.success(t("verify.resendSuccess"));
     } finally {
       setLoading(false);
     }
@@ -43,23 +45,23 @@ export default function EmailDogrulaPage() {
     try {
       const user = auth.currentUser;
       if (!user) {
-        toast.error("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
+        toast.error(t("verify.sessionMissing"));
         router.replace("/giris");
         return;
       }
       await reload(user);
       if (!user.emailVerified) {
-        toast.message("Henüz doğrulanmadı", {
-          description: "E-postadaki bağlantıya tıkladıktan sonra tekrar deneyin.",
+        toast.message(t("verify.notVerifiedTitle"), {
+          description: t("verify.notVerifiedDescription"),
         });
         return;
       }
       await refreshUserSession();
-      toast.success("E-posta doğrulandı.");
+      toast.success(t("verify.verifiedSuccess"));
       router.replace("/dashboard");
       router.refresh();
     } catch {
-      toast.error("Doğrulama kontrolü başarısız.");
+      toast.error(t("verify.checkFailed"));
     } finally {
       setChecking(false);
     }
@@ -74,8 +76,8 @@ export default function EmailDogrulaPage() {
 
   return (
     <AuthShell
-      title="E-postanızı doğrulayın"
-      subtitle="Hesabınızı güvence altına almak için e-posta adresinizi doğrulamanız gerekiyor."
+      title={t("verify.title")}
+      subtitle={t("verify.subtitle")}
       variant="simple"
     >
       <div className="rounded-2xl border border-brand-dark/8 bg-white p-5 shadow-sm">
@@ -83,18 +85,14 @@ export default function EmailDogrulaPage() {
           <MailCheck className="size-5" strokeWidth={1.75} />
         </div>
         <p className="mt-4 text-sm leading-relaxed text-brand-dark/70">
-          {email ? (
-            <>
-              <span className="font-semibold text-brand-dark">{email}</span>{" "}
-              adresine bir doğrulama bağlantısı gönderdik. Bağlantıya tıkladıktan
-              sonra aşağıdaki butonla devam edin.
-            </>
-          ) : (
-            <>
-              Doğrulama e-postasını kontrol edin. Bağlantıya tıkladıktan sonra
-              buradan devam edebilirsiniz.
-            </>
-          )}
+          {email
+            ? t.rich("verify.bodyWithEmail", {
+                address: email,
+                highlight: (chunks) => (
+                  <span className="font-semibold text-brand-dark">{chunks}</span>
+                ),
+              })
+            : t("verify.bodyWithoutEmail")}
         </p>
 
         <div className="mt-5 space-y-3">
@@ -104,7 +102,7 @@ export default function EmailDogrulaPage() {
             disabled={checking}
             className="flex h-11 w-full cursor-pointer items-center justify-center rounded-xl bg-brand-dark text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {checking ? "Kontrol ediliyor…" : "Doğruladım, devam et"}
+            {checking ? t("verify.checking") : t("verify.continue")}
           </button>
           <button
             type="button"
@@ -112,7 +110,7 @@ export default function EmailDogrulaPage() {
             disabled={loading}
             className="flex h-11 w-full cursor-pointer items-center justify-center rounded-xl border border-brand-dark/12 bg-white text-sm font-semibold text-brand-dark transition hover:bg-brand-dark/3 disabled:opacity-50"
           >
-            {loading ? "Gönderiliyor…" : "E-postayı yeniden gönder"}
+            {loading ? t("verify.resending") : t("verify.resend")}
           </button>
         </div>
       </div>
@@ -123,13 +121,13 @@ export default function EmailDogrulaPage() {
           onClick={handleLogout}
           className="font-medium text-brand-dark/50 transition hover:text-brand-dark"
         >
-          Çıkış yap
+          {t("verify.logout")}
         </button>
         <Link
           href="/giris"
           className="font-semibold text-brand-dark underline-offset-2 hover:underline"
         >
-          Girişe dön
+          {t("verify.backToLogin")}
         </Link>
       </div>
     </AuthShell>

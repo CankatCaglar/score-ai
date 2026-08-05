@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
+
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
   // Native modules must stay external to the bundler.
@@ -25,8 +28,19 @@ const nextConfig: NextConfig = {
         destination: "/analyzer/:path*",
         permanent: true,
       },
+      // Constrain locale so `/api/grader/*` is not rewritten as locale=`api`.
+      {
+        source: "/:locale(tr|en)/grader",
+        destination: "/:locale/analyzer",
+        permanent: true,
+      },
+      {
+        source: "/:locale(tr|en)/grader/:path*",
+        destination: "/:locale/analyzer/:path*",
+        permanent: true,
+      },
     ];
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

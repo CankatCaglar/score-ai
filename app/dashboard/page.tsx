@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import {
+  formatAnalysisDate,
+  toAnalysisUiLocale,
+} from "@/lib/analysis/display-copy";
+import { localizeCategoryLabel } from "@/lib/analysis/locale-labels";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -17,24 +23,19 @@ import {
 import { FaInstagram, FaLinkedinIn } from "react-icons/fa6";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { Analysis, DashboardOverview } from "@/lib/analysis/types";
+import {
+  fetchDashboardCached,
+  getDashboardCache,
+} from "@/lib/dashboard/client-cache";
 import { withReturnTo } from "@/lib/dashboard/return-navigation";
 import {
   hasShownProductTip,
   markProductTipShown,
 } from "@/lib/notifications/product-tips";
 
-const BRAND_DARK = "#00272c";
+const OVERVIEW_CACHE_KEY = "dashboard:overview";
 
-const quickActions = [
-  {
-    label: "Yeni Analiz Başlat",
-    href: withReturnTo("/dashboard/yeni-analiz", "/dashboard"),
-    icon: UploadCloud,
-  },
-  { label: "Brand DNA'yı Güncelle", href: "/dashboard/brand-brain", icon: Brain },
-  { label: "Benchmark Karşılaştır", href: "/dashboard/benchmark", icon: Target },
-  { label: "Creative Memory", href: "/dashboard/creative-memory", icon: Sparkles },
-];
+const BRAND_DARK = "#00272c";
 
 function Card({
   children,
@@ -51,6 +52,7 @@ function Card({
 }
 
 function ChangeBadge({ change }: { change: number }) {
+  const t = useTranslations("dashboard.overview");
   const positive = change >= 0;
   return (
     <span
@@ -64,12 +66,13 @@ function ChangeBadge({ change }: { change: number }) {
         <ArrowDownRight className="size-3.5 shrink-0" strokeWidth={2.25} />
       )}
       {positive ? "+" : ""}
-      {change} puan
+      {change} {t("points")}
     </span>
   );
 }
 
 function PotentialGainBadge({ gain }: { gain: number }) {
+  const t = useTranslations("dashboard.overview");
   const positive = gain > 0;
   return (
     <span
@@ -86,10 +89,10 @@ function PotentialGainBadge({ gain }: { gain: number }) {
         {positive ? (
           <>
             +{gain}
-            <span className="hidden @[13rem]:inline"> puan</span>
+            <span className="hidden @[13rem]:inline"> {t("points")}</span>
           </>
         ) : (
-          "Sabit"
+          t("stable")
         )}
       </span>
     </span>
@@ -106,25 +109,34 @@ function scoreToneClass(score: number): string {
 const RECENT_CARD_TEXT_TOP = "20px";
 
 function RecentAnalysisCard({ item }: { item: Analysis }) {
+  const t = useTranslations("dashboard.overview");
+  const locale = toAnalysisUiLocale(useLocale());
   const isInstagram = item.platformType === "instagram";
   const platformLabel = isInstagram ? "Instagram" : "LinkedIn";
   const potentialGain = Math.max(0, item.potentialScore - item.score);
-  const hasMedia = Boolean(item.mediaUrl || item.sourceUrl);
+  const previewSrc =
+    item.previewUrl ||
+    (item.mediaUrl || item.sourceUrl
+      ? `/api/dashboard/media/${item.id}?size=thumb`
+      : null);
 
   return (
     <div className="@container flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-brand-dark/8 bg-white p-3 transition-colors hover:border-brand-dark/16 sm:p-3.5 xl:p-3">
       <div className="flex min-h-0 min-w-0 flex-1 items-start gap-3 @[16rem]:gap-4">
         <div className="flex aspect-4/5 w-[50%] max-w-32 min-w-18 shrink-0 items-center justify-center self-start overflow-hidden rounded-2xl bg-white @[18rem]:max-w-32 @[22rem]:max-w-36">
-          {hasMedia ? (
+          {previewSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={`/api/dashboard/media/${item.id}`}
+              src={previewSrc}
               alt={item.title}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
               className="max-h-full max-w-full rounded-2xl object-contain"
             />
           ) : (
             <div className="flex size-full items-center justify-center text-[11px] text-brand-dark/30">
-              Görsel yok
+              {t("noImage")}
             </div>
           )}
         </div>
@@ -168,13 +180,13 @@ function RecentAnalysisCard({ item }: { item: Analysis }) {
 
       <div className="mt-2.5 flex min-w-0 shrink-0 items-center justify-between gap-2 @[15rem]:mt-3">
         <span className="min-w-0 truncate py-0.5 text-[10px] leading-snug text-brand-dark/40 @[15rem]:text-[11px]">
-          {item.date}
+          {formatAnalysisDate(item.updatedAtMs || item.createdAtMs, locale)}
         </span>
         <Link
           href={`/dashboard/analizler/${item.slug}`}
           className="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-brand-dark/12 bg-white px-2 py-1 text-[11px] font-semibold text-brand-dark transition-colors hover:border-brand-dark/25 hover:bg-bg-offwhite @[15rem]:gap-1 @[15rem]:px-2.5 @[15rem]:py-1.5 @[15rem]:text-xs"
         >
-          Detay
+          {t("detail")}
           <ChevronRight className="size-3 @[15rem]:size-3.5" strokeWidth={2} />
         </Link>
       </div>
@@ -182,15 +194,19 @@ function RecentAnalysisCard({ item }: { item: Analysis }) {
   );
 }
 
-function getTimeGreeting(date = new Date()): string {
+function getTimeGreeting(
+  t: (key: string) => string,
+  date = new Date(),
+): string {
   const hour = date.getHours();
-  if (hour >= 5 && hour < 12) return "Günaydın";
-  if (hour >= 12 && hour < 18) return "İyi Günler";
-  if (hour >= 18 && hour < 22) return "İyi Akşamlar";
-  return "İyi Geceler";
+  if (hour >= 5 && hour < 12) return t("greetings.morning");
+  if (hour >= 12 && hour < 18) return t("greetings.afternoon");
+  if (hour >= 18 && hour < 22) return t("greetings.evening");
+  return t("greetings.night");
 }
 
 function ExpandableInsightText({ text }: { text: string }) {
+  const t = useTranslations("dashboard.overview");
   const [expanded, setExpanded] = useState(false);
   const shouldTruncate = text.trim().length > 170;
 
@@ -218,7 +234,7 @@ function ExpandableInsightText({ text }: { text: string }) {
       }}
       role={shouldTruncate ? "button" : undefined}
       tabIndex={shouldTruncate ? 0 : undefined}
-      aria-label={shouldTruncate ? "AI içgörüsü metnini genişlet veya daralt" : undefined}
+      aria-label={shouldTruncate ? t("aiInsightExpandAria") : undefined}
       className={shouldTruncate ? "cursor-pointer" : ""}
     >
       <p
@@ -236,26 +252,70 @@ function ExpandableInsightText({ text }: { text: string }) {
 
 
 export default function DashboardPage() {
-  const [overview, setOverview] = useState<DashboardOverview | null>(null);
-  const [loading, setLoading] = useState(true);
+  const t = useTranslations("dashboard.overview");
+  const locale = toAnalysisUiLocale(useLocale());
+  const cachedOverview = getDashboardCache<{ overview: DashboardOverview }>(
+    OVERVIEW_CACHE_KEY,
+  )?.overview;
+  const [overview, setOverview] = useState<DashboardOverview | null>(
+    cachedOverview ?? null,
+  );
+  const [loading, setLoading] = useState(!cachedOverview);
   const [error, setError] = useState<string | null>(null);
   const [showFirstAnalysisBanner, setShowFirstAnalysisBanner] = useState(false);
-  const greeting = getTimeGreeting();
+  const greeting = getTimeGreeting(t);
+
+  const localizedAiInsight = useMemo(() => {
+    const categories = overview?.topCategories ?? [];
+    if (!overview || overview.analysisCount === 0) {
+      return t("aiInsightEmpty");
+    }
+    const sorted = [...categories].sort((a, b) => b.value - a.value);
+    const top = sorted[0];
+    const weak = [...sorted].sort((a, b) => a.value - b.value)[0];
+    if (top && weak && top.label !== weak.label) {
+      return t("aiInsightCompare", {
+        top: localizeCategoryLabel(top.label, locale),
+        weak: localizeCategoryLabel(weak.label, locale),
+      });
+    }
+    if (top) {
+      return t("aiInsightTopOnly", {
+        top: localizeCategoryLabel(top.label, locale),
+      });
+    }
+    return t("aiInsightFallback");
+  }, [overview, locale, t]);
+
+  const quickActions = [
+    {
+      label: t("quickActionNewAnalysis"),
+      href: withReturnTo("/dashboard/yeni-analiz", "/dashboard"),
+      icon: UploadCloud,
+    },
+    { label: t("quickActionBrandDna"), href: "/dashboard/brand-brain", icon: Brain },
+    { label: t("quickActionBenchmark"), href: "/dashboard/benchmark", icon: Target },
+    {
+      label: t("quickActionCreativeMemory"),
+      href: "/dashboard/creative-memory",
+      icon: Sparkles,
+    },
+  ];
 
   useEffect(() => {
-    const controller = new AbortController();
+    let cancelled = false;
     const load = async () => {
-      setLoading(true);
       setError(null);
+      if (!getDashboardCache(OVERVIEW_CACHE_KEY)) setLoading(true);
       try {
-        const response = await fetch("/api/dashboard/overview", {
-          cache: "no-store",
-          signal: controller.signal,
+        const data = await fetchDashboardCached<{ overview: DashboardOverview }>({
+          key: OVERVIEW_CACHE_KEY,
+          url: "/api/dashboard/overview",
+          onCache: (cached) => {
+            if (!cancelled && cached.overview) setOverview(cached.overview);
+          },
         });
-        if (!response.ok) {
-          throw new Error("Overview alınamadı");
-        }
-        const data = (await response.json()) as { overview: DashboardOverview };
+        if (cancelled) return;
         setOverview(data.overview);
         if (
           (data.overview.analysisCount ?? 0) === 0 &&
@@ -264,15 +324,20 @@ export default function DashboardPage() {
           setShowFirstAnalysisBanner(true);
         }
       } catch (fetchError) {
+        if (cancelled) return;
         if ((fetchError as Error).name === "AbortError") return;
-        setError("Dashboard verileri yüklenemedi.");
+        if (!getDashboardCache(OVERVIEW_CACHE_KEY)) {
+          setError(t("loadError"));
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     void load();
-    return () => controller.abort();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
 
   const dismissFirstAnalysisBanner = () => {
     markProductTipShown("first_analysis_banner");
@@ -289,12 +354,11 @@ export default function DashboardPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
-            {greeting} {overview?.greetingName ?? "Kullanıcı"}{" "}
+            {greeting} {overview?.greetingName ?? t("defaultUserName")}{" "}
             <span className="align-middle">👋</span>
           </h1>
           <p className="mt-1 text-sm text-brand-dark/55">
-            Son analizinden bu yana içerik skorun {overview?.avgScoreChange ?? 0} puan
-            değişti.
+            {t("scoreChangeSubtitle", { change: overview?.avgScoreChange ?? 0 })}
           </p>
         </div>
         <Link
@@ -302,25 +366,25 @@ export default function DashboardPage() {
           className="inline-flex shrink-0 items-center gap-2 self-start rounded-lg bg-brand-neon px-4 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
         >
           <Plus className="size-4" strokeWidth={2.25} />
-          Yeni Analiz
+          {t("newAnalysis")}
         </Link>
       </div>
 
       {showFirstAnalysisBanner ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-dark/10 bg-bg-light px-4 py-3.5 shadow-sm sm:px-5">
           <p className="text-sm text-brand-dark/75">
-            Henüz analiziniz yok.{" "}
-            <span className="font-semibold text-brand-dark">
-              İlk analizinizi başlatın.
-            </span>{" "}
-            Score AI içerik skorunuzu saniyeler içinde çıkarır.
+            {t.rich("firstAnalysisBanner", {
+              bold: (chunks) => (
+                <span className="font-semibold text-brand-dark">{chunks}</span>
+              ),
+            })}
           </p>
           <div className="flex items-center gap-2">
             <Link
               href={withReturnTo("/dashboard/yeni-analiz", "/dashboard")}
               className="inline-flex items-center gap-1.5 rounded-xl bg-brand-dark px-3.5 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
             >
-              Analiz Başlat
+              {t("startAnalysis")}
               <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
             </Link>
             <button
@@ -328,7 +392,7 @@ export default function DashboardPage() {
               onClick={dismissFirstAnalysisBanner}
               className="rounded-lg px-2.5 py-2 text-xs font-medium text-brand-dark/45 transition-colors hover:bg-brand-dark/5 hover:text-brand-dark"
             >
-              Kapat
+              {t("dismiss")}
             </button>
           </div>
         </div>
@@ -341,7 +405,7 @@ export default function DashboardPage() {
               <TrendingUp className="size-[18px] text-brand-dark" strokeWidth={1.75} />
             </div>
             <h2 className="text-sm font-medium text-brand-dark/60">
-              Ortalama Score
+              {t("avgScore")}
             </h2>
           </div>
           <div className="mt-6 flex shrink-0 items-baseline">
@@ -352,13 +416,13 @@ export default function DashboardPage() {
           </div>
           <div className="mt-auto flex items-center gap-1.5 pt-3">
             <ChangeBadge change={overview?.avgScoreChange ?? 0} />
-            <span className="text-xs leading-none text-brand-dark/40">bu ay</span>
+            <span className="text-xs leading-none text-brand-dark/40">{t("thisMonth")}</span>
           </div>
         </Card>
 
         <Card className="flex h-full min-h-0 flex-col">
           <h2 className="shrink-0 text-sm font-medium text-brand-dark/60">
-            Son 7 Gün
+            {t("last7Days")}
           </h2>
           <div className="relative min-h-[110px] w-full flex-1">
             <div className="absolute inset-0 outline-none select-none [&_.recharts-wrapper]:outline-none [&_.recharts-surface]:outline-none [&_svg]:outline-none [&_*]:outline-none">
@@ -389,7 +453,7 @@ export default function DashboardPage() {
                       strokeDasharray: "4 4",
                     }}
                     labelFormatter={(label) => String(label)}
-                    formatter={(value) => [`${value}`, "Ort. Score"]}
+                    formatter={(value) => [`${value}`, t("avgScoreTooltip")]}
                   />
                   <Area
                     type="monotone"
@@ -417,7 +481,7 @@ export default function DashboardPage() {
           <div className="flex shrink-0 items-center gap-1.5 pt-2">
             <ChangeBadge change={overview?.monthChange ?? 0} />
             <span className="text-xs leading-none text-brand-dark/40">
-              Geçen 7 güne göre
+              {t("vsPrevious7Days")}
             </span>
           </div>
         </Card>
@@ -427,31 +491,28 @@ export default function DashboardPage() {
             <div className="flex size-9 items-center justify-center rounded-full bg-brand-neon/90">
               <Bot className="size-[18px] text-brand-dark" strokeWidth={1.75} />
             </div>
-            <h2 className="text-sm font-medium text-brand-dark/60">AI İçgörüsü</h2>
+            <h2 className="text-sm font-medium text-brand-dark/60">{t("aiInsight")}</h2>
           </div>
           <ExpandableInsightText
-            text={
-              overview?.aiInsight ??
-              "İlk analizinizi tamamladıktan sonra kişiselleştirilmiş içgörüler burada görünecek."
-            }
+            text={overview ? localizedAiInsight : t("aiInsightDefault")}
           />
           <Link
             href="/dashboard/creative-memory"
             className="mt-auto inline-flex items-center gap-1 self-end pt-3 text-sm font-semibold text-brand-dark hover:underline hover:underline-offset-4"
           >
-            Tüm içgörüleri gör
+            {t("viewAllInsights")}
             <ChevronRight className="size-4" strokeWidth={2} />
           </Link>
         </Card>
       </div>
       <Card>
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-brand-dark">Son Analizler</h2>
+          <h2 className="text-base font-semibold text-brand-dark">{t("recentAnalyses")}</h2>
           <Link
             href="/dashboard/analizler"
             className="inline-flex items-center gap-1 text-sm font-semibold text-brand-dark hover:underline"
           >
-            Tümünü Gör
+            {t("viewAll")}
             <ChevronRight className="size-4" strokeWidth={2} />
           </Link>
         </div>
@@ -461,8 +522,7 @@ export default function DashboardPage() {
           ))}
           {!loading && recentAnalyses.length === 0 && (
             <div className="rounded-2xl border border-brand-dark/8 p-4 text-sm text-brand-dark/60 sm:col-span-2 xl:col-span-4">
-              Henüz analiz bulunmuyor. İlk analizi başlatmak için “Yeni Analiz”e
-              tıklayın.
+              {t("recentEmpty")}
             </div>
           )}
         </div>
@@ -471,13 +531,15 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
         <Card className="flex h-full min-h-0 flex-col">
           <h2 className="shrink-0 text-base font-semibold text-brand-dark">
-            En Güçlü Kategoriler
+            {t("topCategories")}
           </h2>
           <div className="mt-5 flex flex-1 flex-col justify-between gap-3">
             {topCategories.map((cat) => (
               <div key={cat.label} className="flex flex-1 flex-col justify-center">
                 <div className="flex items-center justify-between text-[15px]">
-                  <span className="text-brand-dark/70">{cat.label}</span>
+                  <span className="text-brand-dark/70">
+                    {localizeCategoryLabel(cat.label, locale)}
+                  </span>
                   <span className="font-semibold tabular-nums text-brand-dark">
                     {cat.value}
                   </span>
@@ -492,7 +554,7 @@ export default function DashboardPage() {
             ))}
             {!loading && topCategories.length === 0 && (
               <p className="text-sm text-brand-dark/55">
-                Kategori performansı ilk sonuçlarla birlikte oluşacak.
+                {t("topCategoriesEmpty")}
               </p>
             )}
           </div>
@@ -500,7 +562,7 @@ export default function DashboardPage() {
 
         <Card className="flex h-full min-h-0 flex-col">
           <h2 className="shrink-0 text-base font-semibold text-brand-dark">
-            En Çok Gelişim Gösteren Alanlar
+            {t("mostImproved")}
           </h2>
           <div className="mt-5 flex flex-1 flex-col divide-y divide-brand-dark/5">
             {mostImproved.map((item) => (
@@ -508,7 +570,9 @@ export default function DashboardPage() {
                 key={item.label}
                 className="flex flex-1 items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
               >
-                <span className="text-[15px] text-brand-dark/70">{item.label}</span>
+                <span className="text-[15px] text-brand-dark/70">
+                  {localizeCategoryLabel(item.label, locale)}
+                </span>
                 <span
                   className={`inline-flex items-center gap-0.5 text-sm font-semibold ${
                     item.change >= 0 ? "text-brand-dark" : "text-red-500"
@@ -520,13 +584,13 @@ export default function DashboardPage() {
                     <ArrowDownRight className="size-4" strokeWidth={2.25} />
                   )}
                   {item.change >= 0 ? "+" : ""}
-                  {item.change} puan
+                  {item.change} {t("points")}
                 </span>
               </div>
             ))}
             {!loading && mostImproved.length === 0 && (
               <p className="py-2 text-sm text-brand-dark/55">
-                Gelişim alanları henüz hesaplanmadı.
+                {t("mostImprovedEmpty")}
               </p>
             )}
           </div>
@@ -534,7 +598,7 @@ export default function DashboardPage() {
 
         <Card className="flex h-full min-h-0 min-w-0 flex-col">
           <h2 className="shrink-0 text-base font-semibold text-brand-dark">
-            Hızlı Aksiyonlar
+            {t("quickActions")}
           </h2>
           <div className="mt-5 grid min-h-0 min-w-0 flex-1 grid-cols-2 gap-2 sm:gap-2.5">
             {quickActions.map(({ label, href, icon: Icon }) => (
@@ -562,11 +626,10 @@ export default function DashboardPage() {
           </div>
           <div>
             <p className="text-sm font-semibold text-brand-neon">
-              Score AI Bu Hafta
+              {t("scoreAiThisWeek")}
             </p>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-white/75">
-              {overview?.aiInsight ??
-                "Analizler tamamlandıkça haftalık AI özeti burada görüntülenir."}
+              {overview ? localizedAiInsight : t("weeklyInsightDefault")}
             </p>
           </div>
         </div>
@@ -574,7 +637,7 @@ export default function DashboardPage() {
           href="/dashboard/creative-memory"
           className="inline-flex shrink-0 items-center gap-1 self-end rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15 sm:self-auto"
         >
-          Tüm raporu görüntüle
+          {t("viewFullReport")}
           <ChevronRight className="size-4" strokeWidth={2} />
         </Link>
       </div>

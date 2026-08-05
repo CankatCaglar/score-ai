@@ -1,57 +1,21 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { NextIntlClientProvider, useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "@/i18n/navigation";
 import {
   readCookieConsent,
   writeCookieConsent,
   type CookieConsent,
 } from "@/lib/cookie-consent";
+import type { AppLocale } from "@/i18n/routing";
+import enMessages from "@/messages/en.json";
+import trMessages from "@/messages/tr.json";
 
-type Locale = "tr" | "en";
-
-const COPY = {
-  tr: {
-    body: "Web sitemizi çalıştırmak, hizmet kullanımını analiz etmek, tercihlerinizi yönetmek ve deneyimi kişiselleştirmek için çerezler kullanıyoruz. Çerezleri kabul ederek ilgili içerik, sosyal özellikler ve geliştirilmiş bir gezinme deneyimi elde edersiniz. Tercihlerinizi yönetmek için “Çerez Ayarları”na tıklayın. Daha fazla bilgi için",
-    policy: "Gizlilik Politikası",
-    policyHref: "/gizlilik-politikasi",
-    allowAll: "Tüm çerezlere izin ver",
-    denyAll: "Tümünü reddet",
-    settings: "Çerez ayarları",
-    save: "Tercihleri kaydet",
-    back: "Geri",
-    settingsTitle: "Çerez tercihleri",
-    analyticsTitle: "Analitik",
-    analyticsDesc: "Trafiği ve kullanım davranışını anlamamıza yardımcı olur.",
-    marketingTitle: "Pazarlama",
-    marketingDesc: "İlgili içerik ve reklam deneyimini kişiselleştirmek için kullanılır.",
-    dialogLabel: "Çerez onayı",
-  },
-  en: {
-    body: "We use cookies to run our website, analyze your use of our services, manage your preferences, and personalize your experience. By accepting cookies, you’ll get relevant content, social features, and an enhanced browsing experience. To manage your choices, click “Cookie Settings.” Necessary cookies are required for core functionality and cannot be rejected. For more information, see our",
-    policy: "Privacy Policy",
-    policyHref: "/privacy",
-    allowAll: "Allow all cookies",
-    denyAll: "Deny all",
-    settings: "Cookie settings",
-    save: "Save preferences",
-    back: "Back",
-    settingsTitle: "Cookie preferences",
-    analyticsTitle: "Analytics",
-    analyticsDesc: "Helps us understand traffic and how the product is used.",
-    marketingTitle: "Marketing",
-    marketingDesc: "Used to personalize relevant content and ad experiences.",
-    dialogLabel: "Cookie consent",
-  },
-} as const;
-
-function getLocale(): Locale {
-  if (typeof window === "undefined") return "tr";
-  const saved = window.localStorage.getItem("scoreai_locale");
-  if (saved === "tr" || saved === "en") return saved;
-  const htmlLang = document.documentElement.lang?.toLowerCase();
-  if (htmlLang?.startsWith("en")) return "en";
-  return window.navigator.language.toLowerCase().startsWith("en") ? "en" : "tr";
+function resolveBannerLocale(pathname: string): AppLocale {
+  const match = pathname.match(/^\/(tr|en)(?=\/|$)/);
+  return match?.[1] === "en" ? "en" : "tr";
 }
 
 function Toggle({
@@ -86,8 +50,8 @@ function Toggle({
   );
 }
 
-export function CookieConsentBanner() {
-  const [locale, setLocale] = useState<Locale>("tr");
+function CookieConsentBannerInner({ locale }: { locale: AppLocale }) {
+  const t = useTranslations("cookie");
   const [ready, setReady] = useState(false);
   const [visible, setVisible] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -97,7 +61,6 @@ export function CookieConsentBanner() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const existing = readCookieConsent();
-      setLocale(getLocale());
       if (!existing) {
         setVisible(true);
       } else {
@@ -108,22 +71,6 @@ export function CookieConsentBanner() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    const syncLocale = () => setLocale(getLocale());
-    window.addEventListener("storage", syncLocale);
-    const observer = new MutationObserver(syncLocale);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["lang"],
-    });
-    return () => {
-      window.removeEventListener("storage", syncLocale);
-      observer.disconnect();
-    };
-  }, []);
-
-  const copy = COPY[locale];
 
   const persist = (next: Pick<CookieConsent, "analytics" | "marketing">) => {
     writeCookieConsent(next);
@@ -137,8 +84,9 @@ export function CookieConsentBanner() {
 
   return (
     <div
+      key={locale}
       role="dialog"
-      aria-label={copy.dialogLabel}
+      aria-label={t("dialogLabel")}
       aria-live="polite"
       className="fixed bottom-4 left-1/2 z-70 w-[min(100vw-1.5rem,46rem)] -translate-x-1/2 sm:bottom-6 sm:w-[min(100vw-3rem,48rem)]"
     >
@@ -146,37 +94,38 @@ export function CookieConsentBanner() {
         {!showSettings ? (
           <>
             <p className="text-[13px] leading-relaxed text-brand-dark/70 sm:text-sm">
-              {copy.body}{" "}
+              {t("body")}{" "}
               <Link
-                href={copy.policyHref}
+                href="/privacy"
+                locale={locale}
                 className="cursor-pointer font-medium text-brand-dark underline decoration-brand-dark/30 underline-offset-2 transition hover:decoration-brand-dark"
               >
-                {copy.policy}
+                {t("policy")}
               </Link>
               .
             </p>
 
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5 sm:mt-5 sm:gap-3">
+            <div className="mt-4 flex flex-col gap-2.5 sm:mt-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-3">
               <button
                 type="button"
                 onClick={() => persist({ analytics: true, marketing: true })}
-                className="inline-flex h-10 cursor-pointer items-center justify-center rounded-xl bg-brand-dark px-4 text-sm font-semibold text-white transition hover:opacity-90"
+                className="inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-xl bg-brand-dark px-4 text-sm font-semibold whitespace-nowrap text-white transition hover:opacity-90 sm:h-10 sm:w-auto"
               >
-                {copy.allowAll}
+                {t("allowAll")}
               </button>
               <button
                 type="button"
                 onClick={() => persist({ analytics: false, marketing: false })}
-                className="inline-flex h-10 cursor-pointer items-center justify-center rounded-xl border border-brand-dark/15 bg-white px-4 text-sm font-semibold text-brand-dark transition hover:bg-brand-dark/5"
+                className="inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-xl border border-brand-dark/15 bg-white px-4 text-sm font-semibold whitespace-nowrap text-brand-dark transition hover:bg-brand-dark/5 sm:h-10 sm:w-auto"
               >
-                {copy.denyAll}
+                {t("denyAll")}
               </button>
               <button
                 type="button"
                 onClick={() => setShowSettings(true)}
-                className="cursor-pointer px-1 text-sm font-medium text-brand-dark underline decoration-brand-dark/30 underline-offset-2 transition hover:decoration-brand-dark"
+                className="cursor-pointer self-center px-1 text-sm font-medium text-brand-dark underline decoration-brand-dark/30 underline-offset-4 transition hover:decoration-brand-dark"
               >
-                {copy.settings}
+                {t("settings")}
               </button>
             </div>
           </>
@@ -184,43 +133,47 @@ export function CookieConsentBanner() {
           <>
             <div className="flex items-start justify-between gap-3">
               <h2 className="text-base font-semibold tracking-tight text-brand-dark">
-                {copy.settingsTitle}
+                {t("settingsTitle")}
               </h2>
               <button
                 type="button"
                 onClick={() => setShowSettings(false)}
                 className="cursor-pointer text-sm font-medium text-brand-dark/55 transition hover:text-brand-dark"
               >
-                {copy.back}
+                {t("back")}
               </button>
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="flex items-start justify-between gap-3 rounded-xl border border-brand-dark/8 bg-white px-3.5 py-3 sm:flex-col sm:gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-brand-dark">{copy.analyticsTitle}</p>
+                  <p className="text-sm font-semibold text-brand-dark">
+                    {t("analyticsTitle")}
+                  </p>
                   <p className="mt-0.5 text-xs leading-relaxed text-brand-dark/55">
-                    {copy.analyticsDesc}
+                    {t("analyticsDesc")}
                   </p>
                 </div>
                 <Toggle
                   checked={analytics}
                   onChange={setAnalytics}
-                  label={copy.analyticsTitle}
+                  label={t("analyticsTitle")}
                 />
               </div>
 
               <div className="flex items-start justify-between gap-3 rounded-xl border border-brand-dark/8 bg-white px-3.5 py-3 sm:flex-col sm:gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-brand-dark">{copy.marketingTitle}</p>
+                  <p className="text-sm font-semibold text-brand-dark">
+                    {t("marketingTitle")}
+                  </p>
                   <p className="mt-0.5 text-xs leading-relaxed text-brand-dark/55">
-                    {copy.marketingDesc}
+                    {t("marketingDesc")}
                   </p>
                 </div>
                 <Toggle
                   checked={marketing}
                   onChange={setMarketing}
-                  label={copy.marketingTitle}
+                  label={t("marketingTitle")}
                 />
               </div>
             </div>
@@ -231,19 +184,36 @@ export function CookieConsentBanner() {
                 onClick={() => persist({ analytics, marketing })}
                 className="inline-flex h-10 cursor-pointer items-center justify-center rounded-xl bg-brand-dark px-4 text-sm font-semibold text-white transition hover:opacity-90"
               >
-                {copy.save}
+                {t("save")}
               </button>
               <button
                 type="button"
                 onClick={() => persist({ analytics: true, marketing: true })}
                 className="inline-flex h-10 cursor-pointer items-center justify-center rounded-xl border border-brand-dark/15 bg-white px-4 text-sm font-semibold text-brand-dark transition hover:bg-brand-dark/5"
               >
-                {copy.allowAll}
+                {t("allowAll")}
               </button>
             </div>
           </>
         )}
       </div>
     </div>
+  );
+}
+
+export function CookieConsentBanner() {
+  const pathname = usePathname();
+  const locale = resolveBannerLocale(pathname);
+  const messages = useMemo(
+    () => ({
+      cookie: (locale === "en" ? enMessages : trMessages).cookie,
+    }),
+    [locale],
+  );
+
+  return (
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      <CookieConsentBannerInner locale={locale} />
+    </NextIntlClientProvider>
   );
 }

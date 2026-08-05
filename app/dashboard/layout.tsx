@@ -3,7 +3,10 @@ import { getCurrentUserProfile } from "@/actions/profile";
 import { getCurrentDashboardUserEmail } from "@/lib/analysis/auth";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { touchUserActivity } from "@/lib/mail/engagement";
-import { initialsFromProfile } from "@/lib/user-profile";
+import {
+  composeDisplayName,
+  initialsFromProfile,
+} from "@/lib/user-profile";
 
 export default async function DashboardLayout({
   children,
@@ -19,7 +22,10 @@ export default async function DashboardLayout({
   const email =
     profile?.email ?? session?.email ?? fallbackEmail ?? "kullanici@score.local";
   const name =
-    profile?.displayName?.trim() ||
+    (profile
+      ? composeDisplayName(profile.firstName, profile.lastName) ||
+        profile.displayName.trim()
+      : "") ||
     session?.name?.trim() ||
     email.split("@")[0] ||
     "Kullanıcı";

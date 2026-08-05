@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   AlertCircle,
   ArrowDown,
@@ -34,9 +35,16 @@ import {
   type TrustProof,
 } from "@/lib/brand-intelligence/types";
 import { getCatalogSectorPostingAverage } from "@/lib/benchmark/sector-posting";
+import {
+  fetchDashboardCached,
+  invalidateDashboardCache,
+} from "@/lib/dashboard/client-cache";
 import { withReturnTo } from "@/lib/dashboard/return-navigation";
-import { tipNoCompetitorsOnAnalyze } from "@/lib/notifications/product-tips";
 import { requestNotificationsRefresh } from "@/lib/notifications/toast-analysis";
+
+const BENCHMARK_CACHE_KEY = "dashboard:benchmark";
+const BENCHMARK_MONTHLY_ANALYSES_KEY =
+  "dashboard:analyses:dateRange=30d&scoreRange=all&page=1&pageSize=50&includePreview=0";
 
 type PublicProfile = BrandIntelligenceProfile & {
   completion: BrandIntelligenceCompletion;
@@ -112,35 +120,39 @@ function emptyProfile(): PublicProfile {
   };
 }
 
-function postingPerformance(userPosts: number, sectorAvg: number) {
+function postingPerformance(
+  userPosts: number,
+  sectorAvg: number,
+  labels: Record<"idle" | "up" | "flat" | "down", { label: string; hint: string }>,
+) {
   if (userPosts <= 0) {
     return {
       tone: "idle" as const,
-      label: "Başlangıç",
-      hint: "Hadi ilk analizinle ritmini başlat.",
+      label: labels.idle.label,
+      hint: labels.idle.hint,
       Icon: Minus,
     };
   }
   if (userPosts > sectorAvg) {
     return {
       tone: "up" as const,
-      label: "Sektörün üstünde",
-      hint: "Güçlü tempo. Yeni analizle ivmeyi koru.",
+      label: labels.up.label,
+      hint: labels.up.hint,
       Icon: ArrowUp,
     };
   }
   if (userPosts === sectorAvg) {
     return {
       tone: "flat" as const,
-      label: "Sektörle aynı",
-      hint: "Dengedesin. Bir analiz daha ile öne geç.",
+      label: labels.flat.label,
+      hint: labels.flat.hint,
       Icon: Minus,
     };
   }
   return {
     tone: "down" as const,
-    label: "Sektörün altında",
-    hint: "Hadi yeni analiz yap, sektör ritmine yetiş.",
+    label: labels.down.label,
+    hint: labels.down.hint,
     Icon: ArrowDown,
   };
 }
@@ -166,8 +178,17 @@ function PostingBar({
 }
 
 export default function BenchmarkPageClient() {
+  const t = useTranslations("dashboard.benchmark");
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const statusLabel = (status: string) => {
+    if (status === "Tamamlandı" || status === "Eksik" || status === "Opsiyonel") {
+      return t(`status.${status}`);
+    }
+    return status;
+  };
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<PublicProfile>(emptyProfile);
@@ -190,6 +211,24 @@ export default function BenchmarkPageClient() {
     const performance = postingPerformance(
       monthlyPostCount,
       sectorPostingAverage,
+      {
+        idle: {
+          label: t("performance.idle.label"),
+          hint: t("performance.idle.hint"),
+        },
+        up: {
+          label: t("performance.up.label"),
+          hint: t("performance.up.hint"),
+        },
+        flat: {
+          label: t("performance.flat.label"),
+          hint: t("performance.flat.hint"),
+        },
+        down: {
+          label: t("performance.down.label"),
+          hint: t("performance.down.hint"),
+        },
+      },
     );
     const chartMax = Math.max(sectorPostingAverage, monthlyPostCount, 1);
     const toneStyles = {
@@ -219,7 +258,7 @@ export default function BenchmarkPageClient() {
       },
     }[performance.tone];
     return { performance, chartMax, toneStyles };
-  }, [monthlyPostCount, sectorPostingAverage]);
+  }, [monthlyPostCount, sectorPostingAverage, t]);
 
   const igConnected =
     integrations?.instagram.connected || profile.brandAccount.instagram.connected;
@@ -262,12 +301,15 @@ export default function BenchmarkPageClient() {
   };
 
   const reloadProfile = async () => {
-    const res = await fetch("/api/dashboard/benchmark");
-    if (!res.ok) throw new Error("load failed");
-    const data = (await res.json()) as {
+    invalidateDashboardCache(BENCHMARK_CACHE_KEY);
+    const data = await fetchDashboardCached<{
       profile: PublicProfile;
       integrations: IntegrationsPublic;
-    };
+    }>({
+      key: BENCHMARK_CACHE_KEY,
+      url: "/api/dashboard/benchmark",
+      force: true,
+    });
     applyProfile(data.profile);
     setIntegrations(data.integrations);
     return data.profile;
@@ -275,31 +317,35 @@ export default function BenchmarkPageClient() {
 
   useEffect(() => {
     let cancelled = false;
-    const controller = new AbortController();
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/dashboard/benchmark", {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error("load failed");
-        const data = (await res.json()) as {
+        const data = await fetchDashboardCached<{
           profile: PublicProfile;
           integrations: IntegrationsPublic;
-        };
+        }>({
+          key: BENCHMARK_CACHE_KEY,
+          url: "/api/dashboard/benchmark",
+          onCache: (cached) => {
+            if (cancelled || !cached.profile) return;
+            setProfile(cached.profile);
+            setBrandPromise(cached.profile.brandPromise);
+            setWebsiteUrl(cached.profile.brandAccount.websiteUrl ?? "");
+            lastSavedPromise.current = cached.profile.brandPromise;
+            setIntegrations(cached.integrations);
+            setLoading(false);
+          },
+        });
         if (cancelled) return;
         setProfile(data.profile);
         setBrandPromise(data.profile.brandPromise);
         setWebsiteUrl(data.profile.brandAccount.websiteUrl ?? "");
         lastSavedPromise.current = data.profile.brandPromise;
         setIntegrations(data.integrations);
-        if ((data.profile.competitors?.length ?? 0) === 0) {
-          tipNoCompetitorsOnAnalyze();
-        }
       } catch (error) {
-        if ((error as Error).name === "AbortError" || cancelled) return;
-        toast.error("Benchmark verileri yüklenemedi");
+        if (cancelled) return;
+        if ((error as Error).name === "AbortError") return;
+        toast.error(t("toasts.loadError"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -307,22 +353,19 @@ export default function BenchmarkPageClient() {
     void load();
     return () => {
       cancelled = true;
-      controller.abort();
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch(
-          "/api/dashboard/analyses?dateRange=30d&scoreRange=all&pageSize=50&page=1",
-        );
-        if (!res.ok) return;
-        const data = (await res.json()) as {
+        const data = await fetchDashboardCached<{
           analyses?: Array<{ createdAtMs?: number; updatedAtMs?: number }>;
-          total?: number;
-        };
+        }>({
+          key: BENCHMARK_MONTHLY_ANALYSES_KEY,
+          url: "/api/dashboard/analyses?dateRange=30d&scoreRange=all&pageSize=50&page=1&includePreview=0",
+        });
         if (cancelled) return;
 
         const monthStart = new Date();
@@ -355,22 +398,21 @@ export default function BenchmarkPageClient() {
       if (postsWarning === "low" || (posts > 0 && posts < MIN_HISTORICAL_MEDIA)) {
         toast.message(
           igUser
-            ? `@${igUser} bağlandı · ${posts} içerik alındı`
-            : `Instagram bağlandı · ${posts} içerik alındı`,
+            ? t("toasts.igConnectedWithUser", { user: igUser, posts })
+            : t("toasts.igConnectedWithPosts", { posts }),
           {
-            description: `Analiz için en az ${MIN_HISTORICAL_MEDIA} içerik önerilir. Eksik kalanları manuel yükleyebilirsin.`,
+            description: t("toasts.igLowPostsDesc", { min: MIN_HISTORICAL_MEDIA }),
           },
         );
       } else if (postsWarning === "none" || posts === 0) {
-        toast.message("Instagram hesabı bağlandı", {
-          description:
-            "Henüz içerik çekilemedi. En fazla 6 görsel/video manuel yükleyebilirsin.",
+        toast.message(t("toasts.igConnectedNoPosts"), {
+          description: t("toasts.igConnectedNoPostsDesc"),
         });
       } else {
         toast.success(
           igUser
-            ? `@${igUser} bağlandı · ${posts} içerik alındı`
-            : `Instagram bağlandı · ${posts} içerik alındı`,
+            ? t("toasts.igConnectedWithUser", { user: igUser, posts })
+            : t("toasts.igConnectedWithPosts", { posts }),
         );
       }
       const controller = new AbortController();
@@ -397,16 +439,16 @@ export default function BenchmarkPageClient() {
       router.replace("/dashboard/benchmark", { scroll: false });
       return () => controller.abort();
     }
-    if (flag === "denied") toast.error("Instagram bağlantısı iptal edildi");
+    if (flag === "denied") toast.error(t("toasts.igDenied"));
     if (flag === "error") {
       const reason = searchParams.get("reason");
       toast.error(
         reason === "INSTAGRAM_OAUTH_NOT_CONFIGURED"
-          ? "Instagram Login henüz yapılandırılmamış"
-          : "Instagram bağlantısı başarısız",
+          ? t("toasts.igNotConfigured")
+          : t("toasts.igConnectFailed"),
       );
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, t]);
 
   useEffect(() => {
     const hasPending = profile.competitors.some((c) => c.status === "pending");
@@ -478,14 +520,14 @@ export default function BenchmarkPageClient() {
       if (!res.ok) throw new Error("save failed");
       const data = (await res.json()) as { profile: PublicProfile };
       applyProfile(data.profile);
-      toast.success("Kaydedildi");
+      toast.success(t("toasts.saved"));
       if (andContinue) {
         router.push(
           withReturnTo("/dashboard/yeni-analiz", "/dashboard/benchmark"),
         );
       }
     } catch {
-      toast.error("Kaydedilemedi");
+      toast.error(t("toasts.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -504,23 +546,21 @@ export default function BenchmarkPageClient() {
       const data = (await res.json()) as { profile?: PublicProfile; error?: string };
       if (!res.ok) {
         if (data.error === "OWN_BRAND_AS_COMPETITOR") {
-          throw new Error(
-            "Bağlı marka hesabını rakip olarak ekleyemezsin. Rakipler için başka bir hesap/site kullan.",
-          );
+          throw new Error(t("toasts.competitorOwnBrand"));
         }
         if (data.error === "DUPLICATE_COMPETITOR") {
-          throw new Error("Bu rakip zaten listede.");
+          throw new Error(t("toasts.competitorDuplicate"));
         }
         if (data.error === "MAX_COMPETITORS") {
-          throw new Error(`En fazla ${MAX_COMPETITORS} rakip ekleyebilirsin.`);
+          throw new Error(t("toasts.competitorMax", { max: MAX_COMPETITORS }));
         }
         throw new Error(data.error || "failed");
       }
       if (data.profile) applyProfile(data.profile);
       setCompetitorInput("");
-      toast.success("Rakip eklendi, içerikler çekiliyor");
+      toast.success(t("toasts.competitorAdded"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Rakip eklenemedi");
+      toast.error(error instanceof Error ? error.message : t("toasts.competitorAddFailed"));
     } finally {
       setBusyAction(null);
     }
@@ -536,7 +576,7 @@ export default function BenchmarkPageClient() {
       if (!res.ok) throw new Error("failed");
       if (data.profile) applyProfile(data.profile);
     } catch {
-      toast.error("Rakip silinemedi");
+      toast.error(t("toasts.competitorRemoveFailed"));
     } finally {
       setBusyAction(null);
     }
@@ -553,9 +593,9 @@ export default function BenchmarkPageClient() {
       const data = (await res.json()) as { profile?: PublicProfile };
       if (!res.ok) throw new Error("failed");
       if (data.profile) applyProfile(data.profile);
-      toast.message("Rakip içerikleri yenileniyor");
+      toast.message(t("toasts.competitorRefreshing"));
     } catch {
-      toast.error("Yenileme başlatılamadı");
+      toast.error(t("toasts.competitorRefreshFailed"));
     } finally {
       setBusyAction(null);
     }
@@ -563,7 +603,7 @@ export default function BenchmarkPageClient() {
 
   const addManualPost = async (competitor: Competitor) => {
     const postUrl = window.prompt(
-      `${competitor.input} için Instagram post URL’si yapıştırın`,
+      t("competitors.manualPostPrompt", { input: competitor.input }),
     );
     if (!postUrl?.trim()) return;
     setBusyAction(`mp-${competitor.id}`);
@@ -579,9 +619,9 @@ export default function BenchmarkPageClient() {
       const data = (await res.json()) as { profile?: PublicProfile; error?: string };
       if (!res.ok) throw new Error(data.error || "failed");
       if (data.profile) applyProfile(data.profile);
-      toast.success("Post eklendi");
+      toast.success(t("toasts.postAdded"));
     } catch {
-      toast.error("Post eklenemedi");
+      toast.error(t("toasts.postAddFailed"));
     } finally {
       setBusyAction(null);
     }
@@ -596,7 +636,7 @@ export default function BenchmarkPageClient() {
         });
         if (!res.ok) throw new Error("failed");
         await reloadProfile();
-        toast.success("Instagram bağlantısı kaldırıldı");
+        toast.success(t("toasts.igDisconnected"));
         return;
       }
 
@@ -614,15 +654,12 @@ export default function BenchmarkPageClient() {
         message?: string;
       };
       if (!res.ok || !data.authorizeUrl) {
-        toast.error(
-          data.message ||
-            "Instagram Login yapılandırılmamış. Şimdilik manuel içerik yükleyebilirsin.",
-        );
+        toast.error(data.message || t("toasts.igLoginNotConfigured"));
         return;
       }
       window.location.assign(data.authorizeUrl);
     } catch {
-      toast.error("Instagram bağlanamadı");
+      toast.error(t("toasts.igConnectError"));
     } finally {
       setBusyAction(null);
     }
@@ -631,7 +668,7 @@ export default function BenchmarkPageClient() {
   const scanWebsite = async () => {
     const url = websiteUrl.trim();
     if (!url) {
-      toast.error("Web sitesi URL’si girin");
+      toast.error(t("toasts.websiteRequired"));
       return;
     }
     setBusyAction("scan");
@@ -648,9 +685,9 @@ export default function BenchmarkPageClient() {
       };
       if (!res.ok) throw new Error(data.error || "scan failed");
       if (data.profile) applyProfile(data.profile);
-      toast.success(`${data.scanned ?? 0} görsel tarandı`);
+      toast.success(t("toasts.scannedImages", { count: data.scanned ?? 0 }));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Tarama başarısız");
+      toast.error(error instanceof Error ? error.message : t("toasts.scanFailed"));
     } finally {
       setBusyAction(null);
     }
@@ -674,9 +711,9 @@ export default function BenchmarkPageClient() {
         if (!res.ok) throw new Error(data.error || "upload");
         if (data.profile) applyProfile(data.profile);
       }
-      toast.success("Güven kanıtı yüklendi");
+      toast.success(t("toasts.trustUploaded"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Yükleme başarısız");
+      toast.error(error instanceof Error ? error.message : t("toasts.uploadFailed"));
     } finally {
       setBusyAction(null);
       if (trustInputRef.current) trustInputRef.current.value = "";
@@ -694,7 +731,7 @@ export default function BenchmarkPageClient() {
       if (!res.ok) throw new Error("failed");
       if (data.profile) applyProfile(data.profile);
     } catch {
-      toast.error("Silinemedi");
+      toast.error(t("toasts.deleteFailed"));
     } finally {
       setBusyAction(null);
     }
@@ -716,9 +753,9 @@ export default function BenchmarkPageClient() {
       };
       if (!res.ok) throw new Error(data.error || "upload");
       if (data.profile) applyProfile(data.profile);
-      toast.success("İçerikler yüklendi");
+      toast.success(t("toasts.mediaUploaded"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Yükleme başarısız");
+      toast.error(error instanceof Error ? error.message : t("toasts.uploadFailed"));
     } finally {
       setBusyAction(null);
       if (historicalInputRef.current) historicalInputRef.current.value = "";
@@ -748,7 +785,7 @@ export default function BenchmarkPageClient() {
   if (loading) {
     return (
       <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
-        <p className="text-sm text-brand-dark/50">Yükleniyor…</p>
+        <p className="text-sm text-brand-dark/50">{t("loading")}</p>
       </div>
     );
   }
@@ -759,7 +796,7 @@ export default function BenchmarkPageClient() {
         <div className="min-w-0">
           <div className="flex min-w-0 items-start gap-2">
             <h1 className="min-w-0 break-words text-2xl font-semibold tracking-tight text-brand-dark sm:text-3xl">
-              Stratejik Marka Bilgileri
+              {t("title")}
             </h1>
             <span
               ref={infoRef}
@@ -780,7 +817,7 @@ export default function BenchmarkPageClient() {
                 }}
                 aria-expanded={infoOpen}
                 aria-controls="benchmark-info-tooltip"
-                aria-label="Stratejik Marka Bilgileri hakkında"
+                aria-label={t("infoAria")}
                 className="inline-flex items-center justify-center text-brand-dark/40 transition-colors hover:text-brand-dark/70"
               >
                 <Info className="size-4" strokeWidth={2} />
@@ -791,14 +828,13 @@ export default function BenchmarkPageClient() {
                   role="tooltip"
                   className="absolute right-0 top-full z-40 mt-2 w-64 max-w-[min(16rem,calc(100vw-2.5rem))] rounded-xl border border-brand-dark/10 bg-brand-dark px-3 py-2 text-left text-[11px] leading-relaxed text-white shadow-lg sm:left-1/2 sm:right-auto sm:-translate-x-1/2"
                 >
-                  Bu sayfa Brand DNA değildir. Marka vaadi, rakipler, geçmiş içerikler
-                  ve güven kanıtlarını toplayarak Brand Intelligence analizini güçlendirir.
+                  {t("infoTooltip")}
                 </span>
               ) : null}
             </span>
           </div>
           <p className="mt-1 max-w-xl text-sm text-brand-dark/55">
-            Brand Intelligence analizini güçlendirmek için eksik kaynakları tamamlayın.
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -809,14 +845,14 @@ export default function BenchmarkPageClient() {
             className="inline-flex items-center gap-2 rounded-xl bg-[#2F9E44] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#278A3A] disabled:opacity-60"
           >
             <Check className="size-4" />
-            Kaydet ve Devam Et
+            {t("saveAndContinue")}
           </button>
           <button
             type="button"
             onClick={() => router.push("/dashboard")}
             className="rounded-xl border border-brand-dark/15 px-4 py-2.5 text-sm font-semibold text-brand-dark hover:bg-brand-dark/[0.03]"
           >
-            Atla
+            {t("skip")}
           </button>
         </div>
       </div>
@@ -824,7 +860,7 @@ export default function BenchmarkPageClient() {
       <div className="grid min-w-0 grid-cols-1 items-stretch gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="flex min-h-0 flex-col gap-4 xl:h-full">
           <section className="shrink-0 rounded-2xl border border-brand-dark/8 bg-white p-4">
-            <p className="text-sm font-semibold text-brand-dark">Tamamlanma Durumu</p>
+            <p className="text-sm font-semibold text-brand-dark">{t("completionTitle")}</p>
             <div className="mt-5 flex flex-col items-center">
               <div className="relative size-36">
                 <svg className="size-36 -rotate-90" viewBox="0 0 120 120">
@@ -852,26 +888,26 @@ export default function BenchmarkPageClient() {
                   <p className="text-3xl font-semibold tracking-tight text-brand-dark">
                     {score}
                   </p>
-                  <p className="text-xs text-brand-dark/40">/ 100</p>
+                  <p className="text-xs text-brand-dark/40">{t("scoreOutOf")}</p>
                 </div>
               </div>
             </div>
             <ul className="mt-6 space-y-4">
               {(
                 [
-                  ["Marka Vaadi", completion.sections.brandPromise],
-                  ["Rakip Kaynakları", completion.sections.competitors],
-                  ["Geçmiş İçerikler", completion.sections.historical],
-                  ["Güven Kanıtları", completion.sections.trustProofs],
+                  ["brandPromise", completion.sections.brandPromise],
+                  ["competitors", completion.sections.competitors],
+                  ["historical", completion.sections.historical],
+                  ["trustProofs", completion.sections.trustProofs],
                 ] as const
-              ).map(([label, status]) => (
+              ).map(([key, status]) => (
                 <li
-                  key={label}
+                  key={key}
                   className="flex items-center justify-between gap-2 text-sm"
                 >
-                  <span className="text-brand-dark/75">{label}</span>
+                  <span className="text-brand-dark/75">{t(`sectionLabels.${key}`)}</span>
                   <span className="inline-flex items-center gap-1.5 text-brand-dark/55">
-                    {status}
+                    {statusLabel(status)}
                     <StatusIcon status={status} />
                   </span>
                 </li>
@@ -883,11 +919,9 @@ export default function BenchmarkPageClient() {
             <div className="flex items-start gap-2.5">
               <Lightbulb className="mt-0.5 size-4 shrink-0 text-[#2F9E44]" />
               <div className="min-w-0">
-                <p className="text-m font-semibold text-brand-dark">Neden gerekli?</p>
+                <p className="text-m font-semibold text-brand-dark">{t("whyNeededTitle")}</p>
                 <p className="mt-1.5 text-sm leading-relaxed text-brand-dark/60">
-                  Bu girdiler Brand Tone, Value Proposition, Differentiation ve Trust
-                  Building analizlerini daha isabetli hale getirir. Brand DNA’dan farklı
-                  olarak burada rekabet, geçmiş iletişim ve güven kanıtları toplanır.
+                  {t("whyNeededBody")}
                 </p>
               </div>
             </div>
@@ -896,8 +930,8 @@ export default function BenchmarkPageClient() {
 
         <div className="grid min-w-0 h-full grid-cols-1 items-stretch gap-4 md:grid-cols-2">
           <SectionCard
-            title="Marka Vaadi"
-            subtitle="Markanı farklılaştıran ana değeri tek cümleyle yaz."
+            title={t("brandPromise.title")}
+            subtitle={t("brandPromise.subtitle")}
           >
             <textarea
               value={brandPromise}
@@ -905,12 +939,12 @@ export default function BenchmarkPageClient() {
                 setBrandPromise(e.target.value.slice(0, BRAND_PROMISE_MAX_LENGTH))
               }
               rows={5}
-              placeholder="Doğal içerikleri bilimsel testlerle birleştirerek güvenilir cilt bakımı sunar."
+              placeholder={t("brandPromise.placeholder")}
               className="w-full resize-none rounded-xl border border-brand-dark/10 bg-[#FAFBFA] px-3 py-2.5 text-sm leading-relaxed text-brand-dark outline-none focus:border-[#42B24D]/50"
             />
             <div className="mt-2 flex min-w-0 items-start justify-between gap-3 text-[11px] text-brand-dark/40">
               <span className="min-w-0 break-words">
-                Value Proposition · Differentiation · Brand Tone
+                {t("brandPromise.tags")}
               </span>
               <span className="shrink-0 tabular-nums">
                 {brandPromise.length} / {BRAND_PROMISE_MAX_LENGTH}
@@ -919,8 +953,8 @@ export default function BenchmarkPageClient() {
           </SectionCard>
 
           <SectionCard
-            title="Rakip Kaynakları"
-            subtitle="Rakip Instagram hesabı veya web sitesi URL’si ekleyin. Instagram’da son paylaşımlar, sitede ise ana sayfa görselleri incelenir."
+            title={t("competitors.title")}
+            subtitle={t("competitors.subtitle")}
           >
             <div className="flex gap-2">
               <input
@@ -932,7 +966,7 @@ export default function BenchmarkPageClient() {
                     void addCompetitor();
                   }
                 }}
-                placeholder="@rakiphesap veya https://..."
+                placeholder={t("competitors.placeholder")}
                 className="min-w-0 flex-1 rounded-xl border border-brand-dark/10 bg-[#FAFBFA] px-3 py-2 text-sm outline-none focus:border-[#42B24D]/50"
               />
               <button
@@ -970,18 +1004,18 @@ export default function BenchmarkPageClient() {
                     title={
                       c.status === "ready"
                         ? c.type === "instagram"
-                          ? `${c.posts.length} paylaşım alındı`
-                          : `${c.posts.length} site görseli alındı`
+                          ? t("competitors.titleReadyIg", { count: c.posts.length })
+                          : t("competitors.titleReadyWeb", { count: c.posts.length })
                         : c.status === "failed"
-                          ? c.errorMessage || "Çekim başarısız"
-                          : "İçerikler çekiliyor"
+                          ? c.errorMessage || t("competitors.titleFailed")
+                          : t("competitors.titlePending")
                     }
                   >
                     {c.status === "ready"
-                      ? `${c.posts.length} görsel`
+                      ? t("competitors.postsCount", { count: c.posts.length })
                       : c.status === "failed"
-                        ? "Hata"
-                        : "…"}
+                        ? t("competitors.error")
+                        : t("competitors.pending")}
                   </span>
                   {c.status === "failed" ? (
                     <button
@@ -989,17 +1023,17 @@ export default function BenchmarkPageClient() {
                       className="text-[10px] font-semibold text-brand-dark/50 hover:text-brand-dark"
                       onClick={() => void refreshCompetitor(c.id)}
                     >
-                      Yenile
+                      {t("competitors.refresh")}
                     </button>
                   ) : null}
                   {c.status === "failed" || c.status === "ready" ? (
                     <button
                       type="button"
                       className="text-[10px] font-semibold text-brand-dark/50 hover:text-brand-dark"
-                      title="Manuel Instagram post URL’si ekle"
+                      title={t("competitors.manualUrlTitle")}
                       onClick={() => void addManualPost(c)}
                     >
-                      URL
+                      {t("competitors.manualUrl")}
                     </button>
                   ) : null}
                   <button
@@ -1014,18 +1048,18 @@ export default function BenchmarkPageClient() {
               ))}
             </div>
             <p className="mt-3 text-[11px] text-brand-dark/40">
-              Differentiation analizi için kullanılır. Yeşil sayı = çekilen görsel
-              adedi.
+              {t("competitors.hint")}
               <br />
-              En fazla {MAX_COMPETITORS} rakip (
-              {profile.competitors.length}/{MAX_COMPETITORS}). Bağlı marka hesabını
-              rakip olarak ekleyemezsin.
+              {t("competitors.limitHint", {
+                max: MAX_COMPETITORS,
+                current: profile.competitors.length,
+              })}
             </p>
           </SectionCard>
 
           <SectionCard
-            title="Marka Hesabı Bağla"
-            subtitle="Kendi Instagram’ını bağla, kendi web siteni tara veya geçmiş içeriklerini manuel yükle."
+            title={t("brandAccount.title")}
+            subtitle={t("brandAccount.subtitle")}
           >
             <div className="flex h-full min-h-0 flex-col gap-2">
               <button
@@ -1036,20 +1070,21 @@ export default function BenchmarkPageClient() {
               >
                 <FaInstagram className="size-4 text-[#D62976]" />
                 {igConnected
-                  ? `Bağlı${igUsername ? ` @${igUsername}` : ""} · Kopar`
-                  : "Instagram Hesabını Bağla"}
+                  ? t("brandAccount.connected", {
+                      username: igUsername ? ` @${igUsername}` : "",
+                    })
+                  : t("brandAccount.connectIg")}
               </button>
               {!igConnected ? (
                 <p className="text-[11px] leading-snug text-brand-dark/40">
-                  Instagram’a giriş yapıp hesabını doğrularsın; başkasının
-                  kullanıcı adını yazarak bağlanamazsın.
+                  {t("brandAccount.igHint")}
                 </p>
               ) : null}
               <div className="flex shrink-0 gap-2">
                 <input
                   value={websiteUrl}
                   onChange={(e) => setWebsiteUrl(e.target.value)}
-                  placeholder="https://www.marka.com"
+                  placeholder={t("brandAccount.websitePlaceholder")}
                   className="min-w-0 flex-1 rounded-xl border border-brand-dark/10 bg-[#FAFBFA] px-3 py-2 text-sm outline-none focus:border-[#42B24D]/50"
                 />
                 <button
@@ -1059,11 +1094,11 @@ export default function BenchmarkPageClient() {
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-brand-dark/10 bg-white px-3 py-2 text-xs font-semibold text-brand-dark hover:bg-brand-dark/[0.03] disabled:opacity-60"
                 >
                   <Globe className="size-3.5" />
-                  Tara
+                  {t("brandAccount.scan")}
                 </button>
               </div>
               <div className="relative shrink-0 py-1 text-center text-[11px] text-brand-dark/35">
-                <span className="relative z-10 bg-white px-2">veya manuel yükle</span>
+                <span className="relative z-10 bg-white px-2">{t("brandAccount.orManual")}</span>
                 <span className="absolute inset-x-0 top-1/2 h-px bg-brand-dark/8" />
               </div>
               <input
@@ -1081,22 +1116,22 @@ export default function BenchmarkPageClient() {
                 className="flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-dark/[0.04] px-3 py-2.5 text-sm font-medium text-brand-dark hover:bg-brand-dark/[0.07] disabled:opacity-60"
               >
                 <Upload className="size-4" />
-                Görsel / Video Yükle
+                {t("brandAccount.uploadMedia")}
               </button>
               <p className="mt-auto pt-1 text-[11px] leading-relaxed text-brand-dark/40">
-                Tara: kendi sitenin ana sayfasındaki görselleri geçmiş içerik olarak kaydeder
-                (Brand Consistency / Memory). Instagram bağlamak istemezsen son 6 içeriği
-                aşağıdan manuel yükleyebilirsin.
+                {t("brandAccount.hint")}
                 {profile.brandAccount.historicalMedia.length > 0
-                  ? ` · ${profile.brandAccount.historicalMedia.length} içerik kayıtlı`
+                  ? t("brandAccount.mediaCount", {
+                      count: profile.brandAccount.historicalMedia.length,
+                    })
                   : ""}
               </p>
             </div>
           </SectionCard>
 
           <SectionCard
-            title="Güven Kanıtları"
-            subtitle="Sertifika, test sonucu, müşteri yorumu veya garanti belgesi yükleyin."
+            title={t("trustProofs.title")}
+            subtitle={t("trustProofs.subtitle")}
           >
             <div className="flex h-full min-h-0 flex-col">
               <input
@@ -1115,10 +1150,10 @@ export default function BenchmarkPageClient() {
               >
                 <FileText className="size-6 text-brand-dark/35" />
                 <span className="text-sm font-medium text-brand-dark/70">
-                  PDF, PNG, JPG veya WEBP yükle
+                  {t("trustProofs.uploadLabel")}
                 </span>
                 <span className="text-[11px] text-brand-dark/40">
-                  Dermatolojik test, ISO/GMP, müşteri yorumu · max 10 dosya, 10 MB
+                  {t("trustProofs.uploadHint")}
                 </span>
               </button>
               {profile.trustProofs.length > 0 ? (
@@ -1141,7 +1176,7 @@ export default function BenchmarkPageClient() {
                 </ul>
               ) : null}
               <p className="mt-auto pt-3 text-left text-[11px] text-brand-dark/40">
-                Trust Building · Conversion Potential
+                {t("trustProofs.tags")}
               </p>
             </div>
           </SectionCard>
@@ -1160,10 +1195,10 @@ export default function BenchmarkPageClient() {
               />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-brand-dark">
-                  Paylaşım Ortalamanız
+                  {t("posting.title")}
                 </p>
                 <p className="mt-0.5 text-xs text-brand-dark/45">
-                  Bu ay analiz ettiğiniz içerikler
+                  {t("posting.subtitle")}
                 </p>
               </div>
             </div>
@@ -1179,13 +1214,13 @@ export default function BenchmarkPageClient() {
             <p className="text-4xl font-semibold tracking-tight text-brand-dark sm:text-5xl">
               {monthlyPostCount}
             </p>
-            <p className="mb-1 text-sm font-semibold text-brand-dark/40">/ ay</p>
+            <p className="mb-1 text-sm font-semibold text-brand-dark/40">{t("posting.perMonth")}</p>
           </div>
 
           <div className="mt-4 space-y-2">
             <div className="flex items-center justify-between text-[11px] font-medium text-brand-dark/45">
-              <span>Sizin ritminiz</span>
-              <span>{monthlyPostCount} paylaşım</span>
+              <span>{t("posting.yourRhythm")}</span>
+              <span>{t("posting.postsCount", { count: monthlyPostCount })}</span>
             </div>
             <PostingBar
               value={monthlyPostCount}
@@ -1194,8 +1229,8 @@ export default function BenchmarkPageClient() {
             />
             {/* Sağ karttaki "Siz X / Y" satırıyla aynı yüksekliği koru */}
             <div className="flex items-center justify-between pt-1 text-[11px] font-medium text-transparent select-none" aria-hidden>
-              <span>Siz</span>
-              <span>0 / 0</span>
+              <span>{t("posting.you")}</span>
+              <span>{t("posting.spacer")}</span>
             </div>
           </div>
 
@@ -1222,15 +1257,15 @@ export default function BenchmarkPageClient() {
               />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-brand-dark">
-                  Sektör Paylaşım Ortalaması
+                  {t("sectorAvg.title")}
                 </p>
                 <p className="mt-0.5 text-xs text-brand-dark/45">
-                  Sektör aylık analiz ortalaması
+                  {t("sectorAvg.subtitle")}
                 </p>
               </div>
             </div>
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-dark/6 px-2.5 py-1 text-xs font-semibold text-brand-dark/65">
-              Katalog ortalama
+              {t("sectorAvg.badge")}
             </span>
           </div>
 
@@ -1238,13 +1273,13 @@ export default function BenchmarkPageClient() {
             <p className="text-4xl font-semibold tracking-tight text-brand-dark sm:text-5xl">
               {sectorPostingAverage}
             </p>
-            <p className="mb-1 text-sm font-semibold text-brand-dark/40">/ ay</p>
+            <p className="mb-1 text-sm font-semibold text-brand-dark/40">{t("sectorAvg.perMonth")}</p>
           </div>
 
           <div className="mt-4 space-y-2">
             <div className="flex items-center justify-between text-[11px] font-medium text-brand-dark/45">
-              <span>Sektör referansı</span>
-              <span>{sectorPostingAverage} paylaşım</span>
+              <span>{t("sectorAvg.reference")}</span>
+              <span>{t("sectorAvg.postsCount", { count: sectorPostingAverage })}</span>
             </div>
             <PostingBar
               value={sectorPostingAverage}
@@ -1252,7 +1287,7 @@ export default function BenchmarkPageClient() {
               fillClass="bg-brand-dark/70"
             />
             <div className="flex items-center justify-between pt-1 text-[11px] font-medium text-brand-dark/40">
-              <span>Siz</span>
+              <span>{t("sectorAvg.you")}</span>
               <span
                 className={
                   postingStats.performance.tone === "up"
@@ -1268,7 +1303,7 @@ export default function BenchmarkPageClient() {
           </div>
 
           <p className="mt-auto pt-4 text-sm font-semibold text-brand-dark/70">
-            Sektör ritmi bu. Hadi yeni analiz yap, kendi çizgini ölç.
+            {t("sectorAvg.footer")}
           </p>
         </div>
       </div>
@@ -1276,15 +1311,14 @@ export default function BenchmarkPageClient() {
       <div className="mt-2 rounded-2xl border border-[#42B24D]/15 bg-[#EAF6EC] px-4 py-3 sm:px-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs leading-relaxed text-brand-dark/60 md:text-sm">
-            Brand Intelligence için daha güçlü analiz hazır. Kaynakları tamamladıkça
-            analiz güven seviyesi artar.
+            {t("cta.body")}
           </p>
           <Link
             href={withReturnTo("/dashboard/yeni-analiz", "/dashboard/benchmark")}
             onClick={() => void save(false)}
             className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-[#1D4D28] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#163B1F] sm:ml-auto sm:w-auto"
           >
-            Analize Dön
+            {t("cta.backToAnalysis")}
             <ArrowRight className="size-4" />
           </Link>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Eye, EyeOff, Lock, Mail, type LucideIcon } from "lucide-react";
 
 const inputClassName =
@@ -31,7 +32,6 @@ export function AuthTextField({
   autoComplete?: string;
   icon?: LucideIcon;
   compact?: boolean;
-
 }) {
   return (
     <div>
@@ -67,7 +67,7 @@ export function AuthPasswordField({
   label,
   value,
   onChange,
-  placeholder = "Şifre",
+  placeholder,
   autoComplete = "current-password",
   compact,
 }: {
@@ -79,7 +79,9 @@ export function AuthPasswordField({
   autoComplete?: string;
   compact?: boolean;
 }) {
+  const t = useTranslations("auth");
   const [show, setShow] = useState(false);
+  const resolvedPlaceholder = placeholder ?? t("fields.password");
 
   return (
     <div>
@@ -98,14 +100,14 @@ export function AuthPasswordField({
           type={show ? "text" : "password"}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           autoComplete={autoComplete}
           className={`${fieldInputClass(compact)} pr-11`}
         />
         <button
           type="button"
           onClick={() => setShow((v) => !v)}
-          aria-label={show ? "Şifreyi gizle" : "Şifreyi göster"}
+          aria-label={show ? t("fields.hidePassword") : t("fields.showPassword")}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-dark/40 transition hover:text-brand-dark"
         >
           {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -126,6 +128,8 @@ export function AuthSubmitButton({
   disabled?: boolean;
   compact?: boolean;
 }) {
+  const t = useTranslations("auth");
+
   return (
     <button
       type="submit"
@@ -134,16 +138,19 @@ export function AuthSubmitButton({
         compact ? "h-11" : "h-12"
       }`}
     >
-      {loading ? "Lütfen bekleyin…" : children}
+      {loading ? t("fields.pleaseWait") : children}
     </button>
   );
 }
 
-export function AuthDivider({ label = "veya" }: { label?: string }) {
+export function AuthDivider({ label }: { label?: string }) {
+  const t = useTranslations("auth");
+  const resolvedLabel = label ?? t("login.orContinueWith");
+
   return (
     <div className="flex items-center gap-3">
       <div className="h-px flex-1 bg-brand-dark/10" />
-      <span className="text-xs text-brand-dark/40">{label}</span>
+      <span className="text-xs text-brand-dark/40">{resolvedLabel}</span>
       <div className="h-px flex-1 bg-brand-dark/10" />
     </div>
   );
@@ -152,7 +159,7 @@ export function AuthDivider({ label = "veya" }: { label?: string }) {
 export function GoogleSignInButton({
   onClick,
   loading,
-  label = "Google ile devam et",
+  label,
   compact,
 }: {
   onClick: () => void;
@@ -160,6 +167,9 @@ export function GoogleSignInButton({
   label?: string;
   compact?: boolean;
 }) {
+  const t = useTranslations("auth");
+  const resolvedLabel = label ?? t("google");
+
   return (
     <button
       type="button"
@@ -187,7 +197,7 @@ export function GoogleSignInButton({
           d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
         />
       </svg>
-      {loading ? "Google bağlanıyor…" : label}
+      {loading ? t("fields.googleConnecting") : resolvedLabel}
     </button>
   );
 }
@@ -233,15 +243,16 @@ export function AuthCheckbox({
 }
 
 export function PasswordRuleList({ password }: { password: string }) {
+  const t = useTranslations("auth");
   const rules = [
-    { ok: password.length >= 8, label: "En az 8 karakter" },
+    { ok: password.length >= 8, label: t("fields.ruleMinLength") },
     {
       ok: /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password),
-      label: "Büyük harf, küçük harf ve rakam içermeli",
+      label: t("fields.ruleMixed"),
     },
     {
       ok: /[^A-Za-z0-9]/.test(password),
-      label: "Özel karakter içermeli (!@#$%^&*)",
+      label: t("fields.ruleSpecial"),
     },
   ];
 

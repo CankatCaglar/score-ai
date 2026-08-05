@@ -17,34 +17,56 @@ import {
   User,
 } from "lucide-react";
 import { onAuthStateChanged } from "firebase/auth";
+import { useTranslations } from "next-intl";
 import { FaInstagram, FaLinkedinIn } from "react-icons/fa6";
 import { toast } from "sonner";
 import {
-  getCurrentUserProfile,
   updateCurrentUserPhoto,
   updateCurrentUserProfile,
 } from "@/actions/profile";
 import { changePassword } from "@/lib/auth/client";
+import { invalidateDashboardCache } from "@/lib/dashboard/client-cache";
+import {
+  invalidateClientNotificationPreferences,
+  setClientNotificationPreferences,
+} from "@/lib/notifications/client-preferences";
+import type { NotificationPreferences } from "@/lib/notifications/types";
+import {
+  loadCurrentUserProfileCached,
+  setCurrentUserProfileCache,
+} from "@/lib/dashboard/profile-cache";
 import { auth } from "@/lib/firebase";
 import {
   PROFILE_COUNTRIES,
+  PROFILE_LANGUAGE_LABELS,
   PROFILE_LANGUAGES,
   PROFILE_SECTORS,
   PROFILE_TIMEZONES,
   initialsFromProfile,
+  normalizeProfileLanguage,
   type UserProfile,
 } from "@/lib/user-profile";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useRouter } from "next/navigation";
 
+type SelectOption = string | { value: string; label: string };
+
+function normalizeSelectOptions(
+  options: SelectOption[],
+): { value: string; label: string }[] {
+  return options.map((opt) =>
+    typeof opt === "string" ? { value: opt, label: opt } : opt,
+  );
+}
+
 type Tab = "profil" | "guvenlik" | "bildirimler" | "entegrasyonlar" | "fatura";
 
-const tabs: { id: Tab; label: string; icon: typeof User }[] = [
-  { id: "profil", label: "Profil", icon: User },
-  { id: "guvenlik", label: "Güvenlik", icon: Lock },
-  { id: "bildirimler", label: "Bildirimler", icon: Bell },
-  { id: "entegrasyonlar", label: "Entegrasyonlar", icon: Link2 },
-  { id: "fatura", label: "Fatura ve Plan", icon: CreditCard },
+const tabs: { id: Tab; icon: typeof User }[] = [
+  { id: "profil", icon: User },
+  { id: "guvenlik", icon: Lock },
+  { id: "bildirimler", icon: Bell },
+  { id: "entegrasyonlar", icon: Link2 },
+  { id: "fatura", icon: CreditCard },
 ];
 
 // ─── Custom Select ────────────────────────────────────────────────────────────
@@ -54,16 +76,19 @@ function SelectField({
   value,
   onChange,
   options,
-  placeholder = "Seçin",
+  placeholder = "",
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  options: string[];
+  options: SelectOption[];
   placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const normalized = normalizeSelectOptions(options);
+  const selectedLabel =
+    normalized.find((opt) => opt.value === value)?.label ?? value;
   useClickOutside(ref, () => setOpen(false));
 
   useEffect(() => {
@@ -82,7 +107,7 @@ function SelectField({
           className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-brand-dark/12 bg-white px-3.5 py-2.5 text-sm text-brand-dark transition-colors hover:border-brand-dark/25 focus:outline-none"
         >
           <span className={value ? "text-brand-dark" : "text-brand-dark/35"}>
-            {value || placeholder}
+            {value ? selectedLabel : placeholder}
           </span>
           <ChevronDown
             className={`size-4 shrink-0 text-brand-dark/40 transition-transform duration-150 ${open ? "rotate-180" : ""}`}
@@ -102,22 +127,22 @@ function SelectField({
             >
               {placeholder}
             </button>
-            {options.map((opt) => (
+            {normalized.map((opt) => (
               <button
-                key={opt}
+                key={opt.value}
                 type="button"
                 onClick={() => {
-                  onChange(opt);
+                  onChange(opt.value);
                   setOpen(false);
                 }}
                 className={`flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-brand-dark/5 ${
-                  value === opt
+                  value === opt.value
                     ? "bg-brand-dark/4 font-medium text-brand-dark"
                     : "text-brand-dark/70"
                 }`}
               >
-                <span className="flex-1">{opt}</span>
-                {value === opt && (
+                <span className="flex-1">{opt.label}</span>
+                {value === opt.value && (
                   <Check className="size-3.5 shrink-0 text-brand-dark" strokeWidth={2.5} />
                 )}
               </button>
@@ -177,11 +202,17 @@ function PasswordField({
   value,
   onChange,
   autoComplete,
+  showStrength,
+  strongLabel,
+  mediumLabel,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   autoComplete?: string;
+  showStrength?: boolean;
+  strongLabel?: string;
+  mediumLabel?: string;
 }) {
   const [show, setShow] = useState(false);
 
@@ -214,7 +245,7 @@ function PasswordField({
           )}
         </button>
       </div>
-      {label === "Yeni Şifre" && value.length > 4 && (
+      {showStrength && value.length > 4 && (
         <div className="flex flex-col gap-1">
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-brand-dark/10">
             <div
@@ -224,9 +255,7 @@ function PasswordField({
             />
           </div>
           <p className={`text-xs ${isStrong ? "text-green-600" : "text-brand-dark/50"}`}>
-            {isStrong
-              ? "Güçlü şifre: büyük harf, sayı ve sembol içeriyor"
-              : "Orta güç: daha güvenli bir şifre oluşturun"}
+            {isStrong ? strongLabel : mediumLabel}
           </p>
         </div>
       )}
@@ -271,6 +300,7 @@ function Toggle({
 // ─── Profil Tab ───────────────────────────────────────────────────────────────
 
 function ProfilTab() {
+  const t = useTranslations("settings");
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
@@ -291,10 +321,11 @@ function ProfilTab() {
     let cancelled = false;
     (async () => {
       try {
-        const data = await getCurrentUserProfile();
+        // Force refresh on mount so a prior stale cache can't empty the form.
+        const data = await loadCurrentUserProfileCached();
         if (cancelled) return;
         if (!data) {
-          toast.error("Profil yüklenemedi. Lütfen tekrar giriş yapın.");
+          toast.error(t("loadError"));
           return;
         }
         setProfile(data);
@@ -302,11 +333,11 @@ function ProfilTab() {
         setLastName(data.lastName);
         setCompany(data.company);
         setSector(data.sector);
-        setLanguage(data.language);
+        setLanguage(normalizeProfileLanguage(data.language));
         setTimezone(data.timezone);
         setCountry(data.country);
       } catch {
-        if (!cancelled) toast.error("Profil yüklenirken bir hata oluştu.");
+        if (!cancelled) toast.error(t("loadFailed"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -314,7 +345,7 @@ function ProfilTab() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     return () => {
@@ -352,11 +383,11 @@ function ProfilTab() {
       /^image\/(jpeg|jpg|png|webp|gif)$/i.test(file.type) ||
       /\.(jpe?g|png|webp|gif)$/i.test(file.name);
     if (!allowed) {
-      toast.error("Yalnızca PNG, JPEG, JPG, WEBP veya GIF yükleyebilirsiniz.");
+      toast.error(t("photoTypeError"));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("Görsel en fazla 5 MB olabilir.");
+      toast.error(t("photoSizeError"));
       return;
     }
 
@@ -369,16 +400,21 @@ function ProfilTab() {
 
   const handleSave = async () => {
     setSaving(true);
+    const previousLanguage = profile
+      ? normalizeProfileLanguage(profile.language)
+      : null;
+    const nextLanguage = normalizeProfileLanguage(language);
     try {
       if (photoFile) {
         const formData = new FormData();
         formData.append("photo", photoFile);
         const photoResult = await updateCurrentUserPhoto(formData);
         if (!photoResult.ok || !photoResult.profile) {
-          toast.error(photoResult.error ?? "Profil fotoğrafı kaydedilemedi.");
+          toast.error(photoResult.error ?? t("photoSaveError"));
           return;
         }
         setProfile(photoResult.profile);
+        setCurrentUserProfileCache(photoResult.profile);
         if (photoPreview?.startsWith("blob:")) {
           URL.revokeObjectURL(photoPreview);
         }
@@ -391,19 +427,26 @@ function ProfilTab() {
         lastName,
         company,
         sector,
-        language,
+        language: nextLanguage,
         timezone,
         country,
       });
       if (!result.ok || !result.profile) {
-        toast.error(result.error ?? "Profil kaydedilemedi.");
+        toast.error(result.error ?? t("profileSaveError"));
         return;
       }
       setProfile(result.profile);
-      toast.success("Profil bilgileriniz kaydedildi.");
+      setLanguage(normalizeProfileLanguage(result.profile.language));
+      setCurrentUserProfileCache(result.profile);
+      toast.success(t("saved"));
+      if (previousLanguage && previousLanguage !== nextLanguage) {
+        // Drop locale-specific analysis commentary caches (Creative Memory, etc.).
+        invalidateDashboardCache("dashboard:");
+        toast.success(t("languageUpdated"));
+      }
       router.refresh();
     } catch {
-      toast.error("Profil kaydedilirken bir hata oluştu.");
+      toast.error(t("profileSaveFailed"));
     } finally {
       setSaving(false);
     }
@@ -422,9 +465,9 @@ function ProfilTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-brand-dark">Profil Bilgileri</h2>
+        <h2 className="text-lg font-semibold text-brand-dark">{t("profileTitle")}</h2>
         <p className="mt-0.5 text-sm text-brand-dark/50">
-          Hesabınızı ve marka bilgilerinizi güncelleyin.
+          {t("profileSubtitle")}
         </p>
       </div>
 
@@ -448,7 +491,7 @@ function ProfilTab() {
             type="button"
             onClick={handlePhotoPick}
             className="absolute -bottom-1 -right-1 flex size-6 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-brand-dark text-white transition-colors hover:bg-brand-dark/80"
-            aria-label="Profil fotoğrafı değiştir"
+            aria-label={t("photoChangeAria")}
           >
             <Camera className="size-3" strokeWidth={2} />
           </button>
@@ -460,14 +503,14 @@ function ProfilTab() {
             className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-brand-dark/15 bg-white px-4 py-2 text-sm font-medium text-brand-dark transition-colors hover:bg-brand-dark/5"
           >
             <Camera className="size-4 shrink-0" strokeWidth={1.75} />
-            <span>Fotoğraf Değiştir</span>
+            <span>{t("photoChange")}</span>
           </button>
           <p className="text-xs text-brand-dark/45">
-            PNG, JPEG, JPG veya WEBP · en fazla 5 MB
+            {t("photoHint")}
           </p>
           {photoFile && (
             <p className="text-xs text-brand-dark/55">
-              Yeni fotoğraf seçildi — kaydettikten sonra kalıcı olur.
+              {t("photoSelected")}
             </p>
           )}
         </div>
@@ -482,69 +525,72 @@ function ProfilTab() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <InputField
-          label="Ad"
+          label={t("firstName")}
           value={firstName}
           onChange={setFirstName}
-          placeholder="Adınız"
+          placeholder={t("firstNamePlaceholder")}
         />
         <InputField
-          label="Soyad"
+          label={t("lastName")}
           value={lastName}
           onChange={setLastName}
-          placeholder="Soyadınız"
+          placeholder={t("lastNamePlaceholder")}
         />
         <div className="sm:col-span-2">
           <InputField
-            label="E-posta"
+            label={t("email")}
             value={profile?.email ?? ""}
             readOnly
             hint={
               profile?.emailVerified
-                ? "E-posta adresiniz doğrulandı"
+                ? t("emailVerified")
                 : undefined
             }
           />
           {profile && !profile.emailVerified && (
             <p className="mt-1 text-xs text-amber-600">
-              E-posta adresiniz henüz doğrulanmadı.
+              {t("emailUnverified")}
             </p>
           )}
         </div>
         <div className="sm:col-span-2">
           <InputField
-            label="Şirket"
+            label={t("company")}
             value={company}
             onChange={setCompany}
-            placeholder="Şirket veya marka adı"
+            placeholder={t("companyPlaceholder")}
           />
         </div>
         <SelectField
-          label="Sektör"
+          label={t("sector")}
           value={sector}
           onChange={setSector}
           options={[...PROFILE_SECTORS]}
-          placeholder="Sektör seçin"
+          placeholder={t("sectorPlaceholder")}
         />
         <SelectField
-          label="Dil"
+          label={t("language")}
           value={language}
           onChange={setLanguage}
-          options={[...PROFILE_LANGUAGES]}
-          placeholder="Dil seçin"
+          options={PROFILE_LANGUAGES.map((code) => ({
+            value: code,
+            label: PROFILE_LANGUAGE_LABELS[code],
+          }))}
+          placeholder={t("languagePlaceholder")}
         />
         <SelectField
-          label="Saat Dilimi"
+          label={t("timezone")}
           value={timezone}
           onChange={setTimezone}
           options={[...PROFILE_TIMEZONES]}
-          placeholder="Saat dilimi seçin"
+          placeholder={t("timezonePlaceholder")}
         />
         <SelectField
-          label="Ülke"
+          label={t("country")}
           value={country}
           onChange={setCountry}
           options={[...PROFILE_COUNTRIES]}
-          placeholder="Ülke seçin"
+          placeholder={t("countryPlaceholder")}
         />
       </div>
 
@@ -555,7 +601,7 @@ function ProfilTab() {
           disabled={saving}
           className="cursor-pointer rounded-xl bg-brand-neon px-5 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {saving ? "Kaydediliyor…" : "Değişiklikleri Kaydet"}
+          {saving ? t("saving") : t("save")}
         </button>
       </div>
     </div>
@@ -565,6 +611,7 @@ function ProfilTab() {
 // ─── Güvenlik Tab ─────────────────────────────────────────────────────────────
 
 function ChangePasswordSection() {
+  const t = useTranslations("settings");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -587,15 +634,15 @@ function ChangePasswordSection() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPassword || !newPassword) {
-      toast.error("Mevcut ve yeni şifre gerekli.");
+      toast.error(t("passwordRequired"));
       return;
     }
     if (newPassword.length < 6) {
-      toast.error("Yeni şifre en az 6 karakter olmalı.");
+      toast.error(t("passwordMinLength"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error("Yeni şifreler eşleşmiyor.");
+      toast.error(t("passwordMismatch"));
       return;
     }
 
@@ -612,7 +659,7 @@ function ChangePasswordSection() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      toast.success("Şifreniz güncellendi.");
+      toast.success(t("passwordUpdated"));
     } finally {
       setLoading(false);
     }
@@ -621,10 +668,9 @@ function ChangePasswordSection() {
   if (!isPasswordUser) {
     return (
       <div className="rounded-2xl border border-brand-dark/8 bg-white p-5">
-        <h3 className="font-semibold text-brand-dark">Şifre Değiştir</h3>
+        <h3 className="font-semibold text-brand-dark">{t("changePassword")}</h3>
         <p className="mt-2 text-sm text-brand-dark/55">
-          Bu hesap Google ile bağlandı. Şifre yönetimi Google hesabınız
-          üzerinden yapılır.
+          {t("changePasswordGoogle")}
         </p>
       </div>
     );
@@ -634,41 +680,48 @@ function ChangePasswordSection() {
     <div className="rounded-2xl border border-brand-dark/8 bg-white p-5">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h3 className="font-semibold text-brand-dark">Şifre Değiştir</h3>
+          <h3 className="font-semibold text-brand-dark">{t("changePassword")}</h3>
           <p className="mt-0.5 text-xs text-brand-dark/50">
-            Güvenliğiniz için mevcut şifrenizi doğrulayın.
+            {t("changePasswordHint")}
           </p>
         </div>
         <span className="shrink-0 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
-          Aktif
+          {t("active")}
         </span>
       </div>
       <form onSubmit={handleSubmit} className="space-y-3.5">
-        <PasswordField
-          label="Mevcut Şifre"
-          value={currentPassword}
-          onChange={setCurrentPassword}
-          autoComplete="current-password"
-        />
-        <PasswordField
-          label="Yeni Şifre"
-          value={newPassword}
-          onChange={setNewPassword}
-          autoComplete="new-password"
-        />
-        <PasswordField
-          label="Yeni Şifre Tekrarı"
-          value={confirmPassword}
-          onChange={setConfirmPassword}
-          autoComplete="new-password"
-        />
+        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
+          <PasswordField
+            label={t("currentPassword")}
+            value={currentPassword}
+            onChange={setCurrentPassword}
+            autoComplete="current-password"
+          />
+          <PasswordField
+            label={t("newPassword")}
+            value={newPassword}
+            onChange={setNewPassword}
+            autoComplete="new-password"
+            showStrength
+            strongLabel={t("passwordStrong")}
+            mediumLabel={t("passwordMedium")}
+          />
+          <div className="lg:col-span-2">
+            <PasswordField
+              label={t("confirmPassword")}
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              autoComplete="new-password"
+            />
+          </div>
+        </div>
         <div className="flex justify-end pt-1">
           <button
             type="submit"
             disabled={loading}
             className="cursor-pointer rounded-xl bg-brand-neon px-5 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {loading ? "Güncelleniyor…" : "Şifreyi Güncelle"}
+            {loading ? t("passwordUpdating") : t("passwordUpdate")}
           </button>
         </div>
       </form>
@@ -677,18 +730,17 @@ function ChangePasswordSection() {
 }
 
 function GuvenlikTab() {
+  const t = useTranslations("settings");
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-brand-dark">Güvenlik Ayarları</h2>
+        <h2 className="text-lg font-semibold text-brand-dark">{t("securityTitle")}</h2>
         <p className="mt-0.5 text-sm text-brand-dark/50">
-          Şifrenizi güncelleyin ve hesap güvenliğinizi yönetin.
+          {t("securitySubtitle")}
         </p>
       </div>
 
-      <div className="max-w-lg">
-        <ChangePasswordSection />
-      </div>
+      <ChangePasswordSection />
     </div>
   );
 }
@@ -751,6 +803,7 @@ function NotifRow({
 }
 
 function BildirimlerTab() {
+  const t = useTranslations("settings");
   const [prefs, setPrefs] = useState<NotifPrefsState>(DEFAULT_NOTIF_PREFS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -763,7 +816,19 @@ function BildirimlerTab() {
         if (!res.ok) return;
         const data = (await res.json()) as { preferences?: NotifPrefsState };
         if (!cancelled && data.preferences) {
-          setPrefs({ ...DEFAULT_NOTIF_PREFS, ...data.preferences });
+          const loaded = { ...DEFAULT_NOTIF_PREFS, ...data.preferences };
+          // If every child is off, master must be off too.
+          setPrefs({
+            ...loaded,
+            emailEnabled:
+              loaded.emailAnalysisResults || loaded.emailReminders
+                ? loaded.emailEnabled
+                : false,
+            appEnabled:
+              loaded.appInstant || loaded.appAnalysisStatus
+                ? loaded.appEnabled
+                : false,
+          });
         }
       } catch {
         // keep defaults
@@ -777,7 +842,34 @@ function BildirimlerTab() {
   }, []);
 
   const toggle = (key: keyof NotifPrefsState) =>
-    setPrefs((prev) => ({ ...prev, [key]: !prev[key] }));
+    setPrefs((prev) => {
+      const next: NotifPrefsState = { ...prev, [key]: !prev[key] };
+
+      // Children drive the master: all off → master off; any on → master on.
+      if (key === "emailAnalysisResults" || key === "emailReminders") {
+        next.emailEnabled =
+          next.emailAnalysisResults || next.emailReminders;
+      }
+      if (key === "appInstant" || key === "appAnalysisStatus") {
+        next.appEnabled = next.appInstant || next.appAnalysisStatus;
+      }
+
+      // Master on with nothing selected → turn children back on.
+      if (key === "emailEnabled" && next.emailEnabled) {
+        if (!next.emailAnalysisResults && !next.emailReminders) {
+          next.emailAnalysisResults = true;
+          next.emailReminders = true;
+        }
+      }
+      if (key === "appEnabled" && next.appEnabled) {
+        if (!next.appInstant && !next.appAnalysisStatus) {
+          next.appInstant = true;
+          next.appAnalysisStatus = true;
+        }
+      }
+
+      return next;
+    });
 
   const save = async () => {
     setSaving(true);
@@ -790,11 +882,15 @@ function BildirimlerTab() {
       if (!res.ok) throw new Error("save failed");
       const data = (await res.json()) as { preferences?: NotifPrefsState };
       if (data.preferences) {
-        setPrefs({ ...DEFAULT_NOTIF_PREFS, ...data.preferences });
+        const next = { ...DEFAULT_NOTIF_PREFS, ...data.preferences };
+        setPrefs(next);
+        setClientNotificationPreferences(next as NotificationPreferences);
+      } else {
+        invalidateClientNotificationPreferences();
       }
-      toast.success("Bildirim tercihleri kaydedildi");
+      toast.success(t("notifSaved"));
     } catch {
-      toast.error("Bildirim tercihleri kaydedilemedi");
+      toast.error(t("notifSaveFailed"));
     } finally {
       setSaving(false);
     }
@@ -803,9 +899,9 @@ function BildirimlerTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-brand-dark">Bildirim Ayarları</h2>
+        <h2 className="text-lg font-semibold text-brand-dark">{t("notificationsTitle")}</h2>
         <p className="mt-0.5 text-sm text-brand-dark/50">
-          E-posta, hatırlatma ve uygulama bildirim tercihlerinizi yönetin.
+          {t("notificationsSubtitle")}
         </p>
       </div>
 
@@ -813,9 +909,9 @@ function BildirimlerTab() {
         <div className="rounded-2xl border border-brand-dark/8 bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-brand-dark">E-posta Bildirimleri</h3>
+              <h3 className="font-semibold text-brand-dark">{t("emailNotifications")}</h3>
               <p className="mt-0.5 text-xs text-brand-dark/50">
-                Önemli güncellemeler e-posta adresinize gönderilir.
+                {t("emailNotificationsDesc")}
               </p>
             </div>
             <Toggle
@@ -827,10 +923,18 @@ function BildirimlerTab() {
           <div className="space-y-3">
             <NotifRow
               icon={Mail}
-              label="Analiz sonuçları"
-              desc="Rapor hazır olduğunda e-posta gönderilir."
+              label={t("analysisResults")}
+              desc={t("analysisResultsDesc")}
               enabled={prefs.emailAnalysisResults}
               onChange={() => toggle("emailAnalysisResults")}
+              disabled={loading || !prefs.emailEnabled}
+            />
+            <NotifRow
+              icon={Clock}
+              label={t("emailReminders")}
+              desc={t("emailRemindersDesc")}
+              enabled={prefs.emailReminders}
+              onChange={() => toggle("emailReminders")}
               disabled={loading || !prefs.emailEnabled}
             />
           </div>
@@ -839,9 +943,9 @@ function BildirimlerTab() {
         <div className="rounded-2xl border border-brand-dark/8 bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-brand-dark">Uygulama Bildirimleri</h3>
+              <h3 className="font-semibold text-brand-dark">{t("appNotifications")}</h3>
               <p className="mt-0.5 text-xs text-brand-dark/50">
-                Sağ üstteki zil ikonunda görünür.
+                {t("appNotificationsDesc")}
               </p>
             </div>
             <Toggle
@@ -853,51 +957,18 @@ function BildirimlerTab() {
           <div className="space-y-3">
             <NotifRow
               icon={Bell}
-              label="Anlık uyarılar"
-              desc="Hatırlatmalar ve önemli gelişmeler uygulama içinde görünür."
+              label={t("instantAlerts")}
+              desc={t("instantAlertsDesc")}
               enabled={prefs.appInstant}
               onChange={() => toggle("appInstant")}
               disabled={loading || !prefs.appEnabled}
             />
             <NotifRow
               icon={MessageSquare}
-              label="Analiz durumu"
-              desc="Analiz tamamlandığında bildirim ve popup gösterilir."
+              label={t("analysisStatus")}
+              desc={t("analysisStatusDesc")}
               enabled={prefs.appAnalysisStatus}
               onChange={() => toggle("appAnalysisStatus")}
-              disabled={loading || !prefs.appEnabled}
-            />
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-brand-dark/8 bg-white p-5 lg:col-span-2">
-          <div className="mb-4 flex items-start gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-dark/8">
-              <Clock className="size-4 text-brand-dark/60" strokeWidth={1.75} />
-            </div>
-            <div>
-              <h3 className="font-semibold text-brand-dark">Hatırlatmalar</h3>
-              <p className="mt-0.5 text-xs text-brand-dark/50">
-                Uzun süredir giriş yapmadığınızda veya analiziniz yarım kaldığında
-                hatırlatma alın.
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <NotifRow
-              icon={Mail}
-              label="E-posta hatırlatmaları"
-              desc="3 gün giriş yoksa veya analiz yarım kaldıysa mail gönderilir."
-              enabled={prefs.emailReminders}
-              onChange={() => toggle("emailReminders")}
-              disabled={loading || !prefs.emailEnabled}
-            />
-            <NotifRow
-              icon={Bell}
-              label="Uygulama hatırlatmaları"
-              desc="Aynı hatırlatmalar sağ üst bildirimlerde de görünür."
-              enabled={prefs.appInstant}
-              onChange={() => toggle("appInstant")}
               disabled={loading || !prefs.appEnabled}
             />
           </div>
@@ -911,7 +982,7 @@ function BildirimlerTab() {
           disabled={loading || saving}
           className="cursor-pointer rounded-xl bg-brand-neon px-5 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          {saving ? "Kaydediliyor…" : "Bildirimleri Kaydet"}
+          {saving ? t("saving") : t("saveNotifications")}
         </button>
       </div>
     </div>
@@ -925,9 +996,7 @@ type IntegrationId = "instagram" | "linkedin";
 type Integration = {
   id: IntegrationId;
   name: string;
-  desc: string;
   connected: boolean;
-  meta: string;
   comingSoon?: boolean;
 };
 
@@ -956,26 +1025,14 @@ function IntegrationIcon({ id }: { id: IntegrationId }) {
   );
 }
 
-const integrations: Integration[] = [
-  {
-    id: "instagram",
-    name: "Instagram",
-    desc: "Gönderi ve Reels içerikleri için skor takibi yapın.",
-    connected: false,
-    meta: "Business/Creator · Facebook gerekmez",
-  },
-  {
-    id: "linkedin",
-    name: "LinkedIn",
-    desc: "Şirket sayfası içeriklerini puanlayın ve iyileştirin.",
-    connected: false,
-    meta: "Entegrasyon yakında kullanıma açılacak",
-    comingSoon: true,
-  },
+const INTEGRATION_DEFAULTS: Integration[] = [
+  { id: "instagram", name: "Instagram", connected: false },
+  { id: "linkedin", name: "LinkedIn", connected: false, comingSoon: true },
 ];
 
 function EntegrasyonlarTab() {
-  const [items, setItems] = useState(integrations);
+  const t = useTranslations("settings");
+  const [items, setItems] = useState<Integration[]>(INTEGRATION_DEFAULTS);
   const [instagramConnected, setInstagramConnected] = useState(false);
   const [instagramUsername, setInstagramUsername] = useState<string | null>(null);
   const [instagramConfigured, setInstagramConfigured] = useState(false);
@@ -1031,7 +1088,7 @@ function EntegrasyonlarTab() {
         if (!res.ok) throw new Error("disconnect failed");
         setInstagramConnected(false);
         setInstagramUsername(null);
-        toast.success("Instagram bağlantısı kaldırıldı");
+        toast.success(t("instagramDisconnected"));
         return;
       }
 
@@ -1049,35 +1106,40 @@ function EntegrasyonlarTab() {
         message?: string;
       };
       if (!res.ok || !data.authorizeUrl) {
-        toast.error(
-          data.message ||
-            "Instagram Login yapılandırılmamış. Env / Meta App ayarlarını kontrol et.",
-        );
+        toast.error(data.message || t("instagramConfigError"));
         return;
       }
       window.location.assign(data.authorizeUrl);
     } catch {
-      toast.error("Instagram bağlantısı güncellenemedi");
+      toast.error(t("instagramUpdateFailed"));
     } finally {
       setInstagramBusy(false);
     }
   };
 
+  const integrationCopy: Record<
+    IntegrationId,
+    { desc: string; meta: string }
+  > = {
+    instagram: { desc: t("instagramDesc"), meta: t("instagramMeta") },
+    linkedin: { desc: t("linkedinDesc"), meta: t("linkedinMeta") },
+  };
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-brand-dark">Entegrasyonlar</h2>
+        <h2 className="text-lg font-semibold text-brand-dark">{t("integrationsTitle")}</h2>
         <p className="mt-0.5 text-sm text-brand-dark/50">
-          İçerik ve sosyal medya araçlarınızı ScoreAI ile bağlayın.
+          {t("integrationsSubtitle")}
         </p>
       </div>
 
       <div>
         <p className="mb-1 text-sm font-semibold text-brand-dark">
-          Bağlanabilir Uygulamalar
+          {t("connectableApps")}
         </p>
         <p className="mb-4 text-xs text-brand-dark/50">
-          İlk aşamada temel tasarım ve sosyal medya bağlantıları.
+          {t("connectableAppsDesc")}
         </p>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1085,17 +1147,18 @@ function EntegrasyonlarTab() {
             const isInstagram = item.id === "instagram";
             const comingSoon = Boolean(item.comingSoon);
             const connected = isInstagram ? instagramConnected : item.connected;
+            const copy = integrationCopy[item.id];
             const meta = comingSoon
-              ? item.meta
+              ? copy.meta
               : isInstagram
                 ? connected
                   ? instagramUsername
                     ? `@${instagramUsername}`
-                    : "Bağlı"
+                    : t("connected")
                   : instagramConfigured
-                    ? "Instagram Login ile doğrula"
-                    : "Instagram Login yapılandırılmamış"
-                : item.meta;
+                    ? t("instagramVerify")
+                    : t("instagramNotConfigured")
+                : copy.meta;
 
             return (
               <div
@@ -1120,11 +1183,15 @@ function EntegrasyonlarTab() {
                               : "bg-brand-dark/8 text-brand-dark/50"
                         }`}
                       >
-                        {comingSoon ? "Yakında" : connected ? "Bağlı" : "Bağlı Değil"}
+                        {comingSoon
+                          ? t("comingSoon")
+                          : connected
+                            ? t("connected")
+                            : t("notConnected")}
                       </span>
                     </div>
                     <p className="mt-0.5 text-xs leading-relaxed text-brand-dark/50">
-                      {item.desc}
+                      {copy.desc}
                     </p>
                   </div>
                 </div>
@@ -1151,16 +1218,16 @@ function EntegrasyonlarTab() {
                     }`}
                   >
                     {comingSoon
-                      ? "Yakında"
+                      ? t("comingSoon")
                       : isInstagram
                         ? connected
-                          ? "Kopar"
+                          ? t("disconnect")
                           : instagramBusy
                             ? "..."
-                            : "Bağla"
+                            : t("connect")
                         : connected
-                          ? "Yönet"
-                          : "Bağla"}
+                          ? t("manage")
+                          : t("connect")}
                   </button>
                 </div>
               </div>
@@ -1175,15 +1242,16 @@ function EntegrasyonlarTab() {
 // ─── Fatura ve Plan Tab ───────────────────────────────────────────────────────
 
 function FaturaVePlanTab() {
+  const t = useTranslations("settings");
   const plan = ((): "normal" | "pro" => "normal")();
   const isPro = plan === "pro";
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-brand-dark">Fatura ve Plan</h2>
+        <h2 className="text-lg font-semibold text-brand-dark">{t("billingTitle")}</h2>
         <p className="mt-0.5 text-sm text-brand-dark/50">
-          Abonelik ve ödeme bilgilerinizi yönetin.
+          {t("billingSubtitle")}
         </p>
       </div>
 
@@ -1191,15 +1259,13 @@ function FaturaVePlanTab() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-brand-dark/45">
-              Mevcut plan
+              {t("currentPlan")}
             </p>
             <p className="mt-1 text-xl font-semibold text-brand-dark">
-              {isPro ? "Pro" : "Normal"}
+              {isPro ? t("planPro") : t("planNormal")}
             </p>
             <p className="mt-1 text-sm text-brand-dark/50">
-              {isPro
-                ? "Gelişmiş analiz araçları ve öncelikli destek dahil."
-                : "Temel analiz özellikleri aktif."}
+              {isPro ? t("planProDesc") : t("planNormalDesc")}
             </p>
           </div>
           {!isPro && (
@@ -1207,7 +1273,7 @@ function FaturaVePlanTab() {
               type="button"
               className="cursor-pointer rounded-xl bg-brand-neon px-4 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
             >
-              Pro&apos;ya yükselt
+              {t("upgradePro")}
             </button>
           )}
         </div>
@@ -1219,14 +1285,14 @@ function FaturaVePlanTab() {
             <CreditCard className="size-4 text-brand-dark/60" strokeWidth={1.75} />
           </div>
           <div>
-            <h3 className="font-semibold text-brand-dark">Ödeme bilgileri</h3>
+            <h3 className="font-semibold text-brand-dark">{t("paymentInfo")}</h3>
             <p className="mt-0.5 text-xs text-brand-dark/50">
-              Kayıtlı kart ve fatura geçmişiniz burada görünecek.
+              {t("paymentInfoDesc")}
             </p>
           </div>
         </div>
         <p className="rounded-xl bg-brand-dark/3 px-3.5 py-3 text-sm text-brand-dark/55">
-          Henüz kayıtlı bir ödeme yöntemi yok.
+          {t("noPaymentMethod")}
         </p>
       </div>
     </div>
@@ -1236,6 +1302,7 @@ function FaturaVePlanTab() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AyarlarPage() {
+  const t = useTranslations("settings");
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (typeof window === "undefined") return "profil";
     const params = new URLSearchParams(window.location.search);
@@ -1264,51 +1331,51 @@ export default function AyarlarPage() {
     const igUser = params.get("ig_user");
 
     if (flag === "connected") {
+      const connectedTitle = igUser
+        ? t("instagramConnectedWithUser", { user: igUser, count: posts })
+        : t("instagramConnectedCount", { count: posts });
       if (postsWarning === "low" || (posts > 0 && posts < 6)) {
-        toast.message(
-          igUser
-            ? `@${igUser} bağlandı · ${posts} içerik alındı`
-            : `Instagram bağlandı · ${posts} içerik alındı`,
-          {
-            description:
-              "Analiz için en az 6 içerik önerilir. Eksik kalanları manuel yükleyebilirsin.",
-          },
-        );
+        toast.message(connectedTitle, {
+          description: t("instagramConnectedLowDesc"),
+        });
       } else if (postsWarning === "none" || posts === 0) {
-        toast.message("Instagram hesabı bağlandı", {
-          description:
-            "Henüz içerik çekilemedi. 6–12 görsel/video manuel yükleyebilirsin.",
+        toast.message(t("instagramConnectedNone"), {
+          description: t("instagramConnectedNoneDesc"),
         });
       } else {
-        toast.success(
-          igUser
-            ? `@${igUser} bağlandı · ${posts} içerik alındı`
-            : `Instagram bağlandı · ${posts} içerik alındı`,
-        );
+        toast.success(connectedTitle);
       }
     } else if (flag === "denied") {
-      toast.error("Instagram bağlantısı iptal edildi");
+      toast.error(t("instagramDenied"));
     } else if (flag === "error") {
-      toast.error("Instagram bağlantısı başarısız");
+      toast.error(t("instagramError"));
     }
 
     window.history.replaceState({}, "", "/dashboard/ayarlar?tab=entegrasyonlar");
-  }, []);
+  }, [t]);
+
+  const tabLabels: Record<Tab, string> = {
+    profil: t("profile"),
+    guvenlik: t("security"),
+    bildirimler: t("notifications"),
+    entegrasyonlar: t("integrations"),
+    fatura: t("billing"),
+  };
 
   return (
     <div className="px-4 pb-40 pt-2 sm:px-6 lg:px-8 lg:pb-48 lg:pt-4">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight text-brand-dark lg:text-3xl">
-          Ayarlar
+          {t("title")}
         </h1>
         <p className="mt-1 text-sm text-brand-dark/50">
-          Hesap ve platform ayarlarınızı yönetin.
+          {t("subtitle")}
         </p>
       </div>
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <nav className="flex shrink-0 gap-1 overflow-x-auto rounded-2xl border border-brand-dark/8 bg-white p-2 lg:w-48 lg:flex-col lg:overflow-x-visible">
-          {tabs.map(({ id, label, icon: Icon }) => (
+          {tabs.map(({ id, icon: Icon }) => (
             <button
               key={id}
               type="button"
@@ -1320,7 +1387,7 @@ export default function AyarlarPage() {
               }`}
             >
               <Icon className="size-4 shrink-0" strokeWidth={1.75} />
-              {label}
+              {tabLabels[id]}
             </button>
           ))}
         </nav>

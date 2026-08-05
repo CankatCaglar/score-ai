@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useLocale } from "next-intl";
 import { Suspense, useEffect, useState } from "react";
+import type { AppLocale } from "@/i18n/routing";
 import {
   applyActionCode,
   checkActionCode,
@@ -33,6 +35,7 @@ function passwordMeetsRules(password: string): boolean {
 }
 function AuthActionInner() {
   const router = useRouter();
+  const locale = useLocale() as AppLocale;
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
   const oobCode = searchParams.get("oobCode");
@@ -104,7 +107,7 @@ function AuthActionInner() {
       } catch (error) {
         if (!cancelled) {
           setStatus("error");
-          setMessage(mapAuthError(error));
+          setMessage(mapAuthError(error, locale));
         }
       }
     }
@@ -113,7 +116,7 @@ function AuthActionInner() {
     return () => {
       cancelled = true;
     };
-  }, [mode, oobCode, router]);
+  }, [mode, oobCode, router, locale]);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,7 +139,7 @@ function AuthActionInner() {
       setMessage("Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz.");
       toast.success("Şifre güncellendi.");
     } catch (error) {
-      setFeedback(mapAuthError(error));
+      setFeedback(mapAuthError(error, locale));
     } finally {
       setLoading(false);
     }

@@ -17,6 +17,7 @@ import {
   Trophy,
   X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { logoutUser } from "@/actions/auth";
 import { auth } from "@/lib/firebase";
@@ -25,6 +26,8 @@ import { useClickOutside } from "@/hooks/useClickOutside";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { DashboardBackProvider } from "@/components/dashboard/DashboardBackContext";
 import { DashboardHeaderBack } from "@/components/dashboard/DashboardHeaderBack";
+import { prefetchDashboard } from "@/lib/dashboard/client-cache";
+import { clientAllowsInstantNotify } from "@/lib/notifications/client-preferences";
 import { flushProductTipQueue } from "@/lib/notifications/product-tips";
 
 export type MembershipPlan = "normal" | "pro";
@@ -37,8 +40,11 @@ export type DashboardUser = {
   plan?: MembershipPlan;
 };
 
-function planLabel(plan: MembershipPlan = "normal") {
-  return plan === "pro" ? "Pro" : "Normal";
+function planLabel(
+  plan: MembershipPlan = "normal",
+  t: (key: "plan.pro" | "plan.normal") => string,
+) {
+  return plan === "pro" ? t("plan.pro") : t("plan.normal");
 }
 
 function ProfileAvatar({
@@ -87,21 +93,6 @@ type NavItem = {
   icon: typeof LayoutDashboard;
 };
 
-const primaryNav: NavItem[] = [
-  { label: "Genel Bakış", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Analizler", href: "/dashboard/analizler", icon: BarChart3 },
-];
-
-const toolsNav: NavItem[] = [
-  { label: "Brand DNA", href: "/dashboard/brand-brain", icon: Brain },
-  { label: "Benchmark", href: "/dashboard/benchmark", icon: Trophy },
-  { label: "Creative Memory", href: "/dashboard/creative-memory", icon: Sparkles },
-];
-
-const settingsNav: NavItem[] = [
-  { label: "Ayarlar", href: "/dashboard/ayarlar", icon: Settings },
-];
-
 function isActiveRoute(pathname: string, href: string) {
   if (href === "/dashboard") return pathname === "/dashboard";
   return pathname.startsWith(href);
@@ -145,6 +136,8 @@ function ProfilePopup({
   onClose: () => void;
   onLogoutRequest: () => void;
 }) {
+  const t = useTranslations("shell");
+
   return (
     <div className="absolute bottom-full left-0 right-0 z-50 mb-2 mx-2">
       <div className="overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
@@ -160,7 +153,7 @@ function ProfilePopup({
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-brand-dark">{user.name}</p>
-              <p className="text-xs text-brand-dark/50">{planLabel(user.plan)}</p>
+              <p className="text-xs text-brand-dark/50">{planLabel(user.plan, t)}</p>
               <p className="mt-0.5 truncate text-xs text-brand-dark/40">
                 {user.email}
               </p>
@@ -178,9 +171,9 @@ function ProfilePopup({
           >
             <HelpCircle className="size-4 shrink-0 text-brand-dark/50" strokeWidth={1.75} />
             <div className="min-w-0 text-left">
-              <p className="text-sm font-medium text-brand-dark">Yardım Merkezi</p>
+              <p className="text-sm font-medium text-brand-dark">{t("help.title")}</p>
               <p className="text-[11px] text-brand-dark/45">
-                Destek ve iletişim
+                {t("help.subtitle")}
               </p>
             </div>
           </a>
@@ -194,9 +187,9 @@ function ProfilePopup({
           >
             <LogOut className="size-4 shrink-0 text-red-500" strokeWidth={1.75} />
             <div className="min-w-0 text-left">
-              <p className="text-sm font-medium text-red-500">Çıkış Yap</p>
+              <p className="text-sm font-medium text-red-500">{t("logout.title")}</p>
               <p className="text-[11px] text-red-400/70">
-                Hesabınızdan güvenli çıkış yapın
+                {t("logout.subtitle")}
               </p>
             </div>
           </button>
@@ -217,9 +210,29 @@ function SidebarContent({
   onNavigate?: () => void;
   onLogout: () => void;
 }) {
+  const t = useTranslations("shell");
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   useClickOutside(profileRef, () => setProfileOpen(false));
+
+  const primaryNav: NavItem[] = [
+    { label: t("nav.overview"), href: "/dashboard", icon: LayoutDashboard },
+    { label: t("nav.analyses"), href: "/dashboard/analizler", icon: BarChart3 },
+  ];
+
+  const toolsNav: NavItem[] = [
+    { label: t("nav.brandDna"), href: "/dashboard/brand-brain", icon: Brain },
+    { label: t("nav.benchmark"), href: "/dashboard/benchmark", icon: Trophy },
+    {
+      label: t("nav.creativeMemory"),
+      href: "/dashboard/creative-memory",
+      icon: Sparkles,
+    },
+  ];
+
+  const settingsNav: NavItem[] = [
+    { label: t("nav.settings"), href: "/dashboard/ayarlar", icon: Settings },
+  ];
 
   const yeniAnalizActive = isActiveRoute(pathname, "/dashboard/yeni-analiz");
 
@@ -242,7 +255,7 @@ function SidebarContent({
           }`}
         >
           <Plus className="size-[18px] shrink-0" strokeWidth={2.25} />
-          Yeni Analiz
+          {t("nav.newAnalysis")}
         </Link>
 
         <div className="space-y-0.5">
@@ -312,7 +325,7 @@ function SidebarContent({
               {user.name}
             </p>
             <p className="truncate text-xs text-brand-neon">
-              {planLabel(user.plan)}
+              {planLabel(user.plan, t)}
             </p>
           </div>
           <ChevronDown
@@ -332,6 +345,7 @@ export function DashboardShell({
   children: React.ReactNode;
   user: DashboardUser;
 }) {
+  const t = useTranslations("shell");
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -344,11 +358,32 @@ export function DashboardShell({
     if (wasOnResultRef.current && !onResult) {
       // After leaving result page: show queued tips one-by-one
       // (completed toast is already gone / no longer competing).
-      flushProductTipQueue({ delayMs: 500 });
+      void clientAllowsInstantNotify().then((allowed) => {
+        if (allowed) flushProductTipQueue({ delayMs: 500 });
+      });
     }
     wasOnResultRef.current = onResult;
   }, [pathname]);
 
+  // Warm common dashboard APIs so tab switches paint from memory cache.
+  // Skip while an analysis is running — prefetch stampede freezes the wait UI.
+  useEffect(() => {
+    if (pathname.startsWith("/dashboard/analiz-sonucu")) return;
+    const timer = window.setTimeout(() => {
+      prefetchDashboard("/api/dashboard/overview", "dashboard:overview");
+      prefetchDashboard(
+        "/api/dashboard/analyses?dateRange=30d&scoreRange=all&page=1&pageSize=10",
+        "dashboard:analyses:dateRange=30d&scoreRange=all&page=1&pageSize=10",
+      );
+      prefetchDashboard(
+        "/api/dashboard/analyses?dateRange=all&scoreRange=all&page=1&pageSize=20&includeStats=1",
+        "dashboard:creative-memory:1::all",
+      );
+      prefetchDashboard("/api/dashboard/benchmark", "dashboard:benchmark");
+      prefetchDashboard("/api/dashboard/brand-dna", "dashboard:brand-dna");
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [pathname]);
   const requestLogout = () => {
     setMobileOpen(false);
     setLogoutConfirmOpen(true);
@@ -360,11 +395,11 @@ export function DashboardShell({
     try {
       await logoutUser();
       await auth.signOut().catch(() => undefined);
-      toast.success("Çıkış yapıldı.");
+      toast.success(t("logout.success"));
       router.replace("/giris");
       router.refresh();
     } catch {
-      toast.error("Çıkış yapılamadı.");
+      toast.error(t("logout.error"));
       setIsLoggingOut(false);
       setLogoutConfirmOpen(false);
     }
@@ -392,7 +427,7 @@ export function DashboardShell({
                 type="button"
                 onClick={() => setMobileOpen(false)}
                 className="absolute right-3 top-4 flex size-8 cursor-pointer items-center justify-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white"
-                aria-label="Menüyü kapat"
+                aria-label={t("menu.close")}
               >
                 <X className="size-5" strokeWidth={1.75} />
               </button>
@@ -413,7 +448,7 @@ export function DashboardShell({
                 type="button"
                 onClick={() => setMobileOpen(true)}
                 className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-brand-dark/70 transition-colors hover:bg-brand-dark/5 hover:text-brand-dark lg:hidden"
-                aria-label="Menüyü aç"
+                aria-label={t("menu.open")}
               >
                 <Menu className="size-5" strokeWidth={1.75} />
               </button>
@@ -450,11 +485,10 @@ export function DashboardShell({
                 id="logout-confirm-title"
                 className="text-lg font-semibold text-brand-dark"
               >
-                Çıkış yapmak istediğinize emin misiniz?
+                {t("logout.confirmTitle")}
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-brand-dark/65">
-                Hesabınızdan güvenli şekilde çıkış yapılacak. Tekrar giriş yaparak
-                kaldığınız yerden devam edebilirsiniz.
+                {t("logout.confirmBody")}
               </p>
               <div className="mt-5 flex items-center justify-end gap-2">
                 <button
@@ -463,7 +497,7 @@ export function DashboardShell({
                   onClick={() => setLogoutConfirmOpen(false)}
                   className="rounded-lg border border-brand-dark/10 px-3.5 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Vazgeç
+                  {t("logout.cancel")}
                 </button>
                 <button
                   type="button"
@@ -472,7 +506,7 @@ export function DashboardShell({
                   className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3.5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <LogOut className="size-4" strokeWidth={2} />
-                  {isLoggingOut ? "Çıkış yapılıyor..." : "Evet, Çıkış Yap"}
+                  {isLoggingOut ? t("logout.confirming") : t("logout.confirm")}
                 </button>
               </div>
             </div>

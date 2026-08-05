@@ -1,33 +1,11 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
 const SUPPORT_PHONE_DISPLAY = "+90 544 112 86 25";
 const SUPPORT_WHATSAPP_URL = "https://wa.me/905441128625";
-
-const COPY = {
-  tr: {
-    button: "Canlı Destek",
-    title: "Canlı Destek",
-    subtitle: "Aklınızdakileri sormaktan çekinmeyin!",
-    agent: "Destek Yetkilisi",
-    available: "Müsait",
-    openAria: "Canlı destek penceresini aç",
-    closeAria: "Canlı destek penceresini kapat",
-    chatAria: "WhatsApp üzerinden destek yetkilisine yaz",
-  },
-  en: {
-    button: "Live Support",
-    title: "Live Support",
-    subtitle: "Don't hesitate to ask what's on your mind!",
-    agent: "Support Agent",
-    available: "Available",
-    openAria: "Open live support window",
-    closeAria: "Close live support window",
-    chatAria: "Chat with support agent on WhatsApp",
-  },
-} as const;
 
 function WhatsAppIcon({ className = "size-5" }: { className?: string }) {
   return (
@@ -37,14 +15,10 @@ function WhatsAppIcon({ className = "size-5" }: { className?: string }) {
   );
 }
 
-type LiveSupportWidgetProps = {
-  locale?: "tr" | "en";
-};
-
-export function LiveSupportWidget({ locale = "tr" }: LiveSupportWidgetProps) {
+export function LiveSupportWidget() {
+  const t = useTranslations("liveSupport");
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-  const copy = COPY[locale];
 
   useEffect(() => {
     if (!isOpen) return;
@@ -75,7 +49,7 @@ export function LiveSupportWidget({ locale = "tr" }: LiveSupportWidgetProps) {
       {isOpen && (
         <div
           role="dialog"
-          aria-label={copy.title}
+          aria-label={t("title")}
           className="w-[min(100vw-2.5rem,20rem)] overflow-hidden rounded-2xl bg-white shadow-[0_12px_40px_rgba(15,23,42,0.18)] ring-1 ring-black/5"
         >
           <div className="relative bg-[#25D366] px-5 pb-5 pt-4 text-center text-white">
@@ -83,12 +57,12 @@ export function LiveSupportWidget({ locale = "tr" }: LiveSupportWidgetProps) {
               type="button"
               onClick={() => setIsOpen(false)}
               className="absolute right-3 top-3 rounded-md p-1 text-white/90 transition hover:bg-white/15 hover:text-white"
-              aria-label={copy.closeAria}
+              aria-label={t("closeAria")}
             >
               <X className="size-4" strokeWidth={2.5} />
             </button>
-            <p className="text-lg font-bold tracking-tight">{copy.title}</p>
-            <p className="mt-1 text-sm text-white/90">{copy.subtitle}</p>
+            <p className="text-lg font-bold tracking-tight">{t("title")}</p>
+            <p className="mt-1 text-sm text-white/90">{t("subtitle")}</p>
           </div>
 
           <div className="bg-white p-3.5">
@@ -97,17 +71,17 @@ export function LiveSupportWidget({ locale = "tr" }: LiveSupportWidgetProps) {
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 rounded-xl bg-[#F3F4F6] px-3 py-3 transition hover:bg-[#EBEDEF]"
-              aria-label={copy.chatAria}
+              aria-label={t("chatAria")}
               onClick={() => setIsOpen(false)}
             >
               <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-sm">
                 <WhatsAppIcon className="size-6" />
               </span>
               <span className="min-w-0 text-left">
-                <span className="block text-sm font-semibold text-slate-800">{copy.agent}</span>
+                <span className="block text-sm font-semibold text-slate-800">{t("agent")}</span>
                 <span className="mt-0.5 block text-sm text-slate-500">{SUPPORT_PHONE_DISPLAY}</span>
                 <span className="mt-1.5 inline-flex rounded-full bg-[#25D366] px-2.5 py-0.5 text-[11px] font-semibold text-white">
-                  {copy.available}
+                  {t("available")}
                 </span>
               </span>
             </a>
@@ -120,10 +94,10 @@ export function LiveSupportWidget({ locale = "tr" }: LiveSupportWidgetProps) {
         onClick={() => setIsOpen((open) => !open)}
         className="inline-flex items-center gap-2.5 rounded-full bg-[#25D366] px-5 py-3 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(37,211,102,0.35)] transition hover:bg-[#20BD5A] hover:shadow-[0_10px_28px_rgba(37,211,102,0.42)] active:scale-[0.98]"
         aria-expanded={isOpen}
-        aria-label={isOpen ? copy.closeAria : copy.openAria}
+        aria-label={isOpen ? t("closeAria") : t("openAria")}
       >
         <WhatsAppIcon className="size-4" />
-        {copy.button}
+        {t("button")}
       </button>
     </div>
   );

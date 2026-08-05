@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownRight,
@@ -13,8 +14,27 @@ import {
   Target,
 } from "lucide-react";
 import { ScoreRing } from "@/app/dashboard/analizler/ScoreRing";
+import {
+  contentTypeLabel,
+  formatAnalysisDate,
+  getDisplaySummary,
+  toAnalysisUiLocale,
+} from "@/lib/analysis/display-copy";
 import { summarizeAiCommentary } from "@/lib/analysis/insight-summary";
+import { rubricModeFromVersion, RUBRIC_VERSION_BASE } from "@/lib/analysis/rubric";
 import type { Analysis } from "@/lib/analysis/types";
+import {
+  creativeMemoryDetailCacheKey,
+  fetchDashboardCached,
+  getDashboardCache,
+  setDashboardCache,
+} from "@/lib/dashboard/client-cache";
+
+type DetailPayload = {
+  analysis: Analysis;
+  partial?: boolean;
+  translating?: boolean;
+};
 
 function Card({
   children,
@@ -127,53 +147,133 @@ function InsightRowCard({
 }
 
 export default function CreativeMemoryInsightPage() {
+  const t = useTranslations("dashboard.creativeMemory.detail");
+  const locale = toAnalysisUiLocale(useLocale());
   const params = useParams<{ slug: string }>();
   const slug = typeof params.slug === "string" ? params.slug : "";
-  const [analysis, setAnalysis] = useState<Analysis | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = creativeMemoryDetailCacheKey(slug, locale);
+  const cached = slug ? getDashboardCache<DetailPayload>(cacheKey) : null;
+
+  const [analysis, setAnalysis] = useState<Analysis | null>(
+    cached?.analysis ?? null,
+  );
+  const [loading, setLoading] = useState(!cached?.analysis);
+  const [detailsLoading, setDetailsLoading] = useState(
+    Boolean(cached?.analysis && cached.partial !== false),
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!slug) return;
-    const controller = new AbortController();
-    const load = async () => {
-      setLoading(true);
+    let cancelled = false;
+    let translateTimer: ReturnType<typeof setTimeout> | undefined;
+    const key = creativeMemoryDetailCacheKey(slug, locale);
+    const detailUrl = `/api/dashboard/analyses/${encodeURIComponent(slug)}?locale=${locale}`;
+
+    const applyPayload = (data: DetailPayload) => {
+      if (!data.analysis) return;
+      setAnalysis(data.analysis);
+      setLoading(false);
+      if (data.partial === false) setDetailsLoading(false);
+    };
+
+    const load = async (force: boolean) => {
       setError(null);
-      try {
-        const response = await fetch(`/api/dashboard/analyses/${slug}`, {
-          signal: controller.signal,
-          cache: "no-store",
-        });
-        if (response.status === 404) {
-          setError("İçgörü bulunamadı.");
-          setAnalysis(null);
-          return;
-        }
-        if (!response.ok) throw new Error("İçgörü alınamadı");
-        const data = (await response.json()) as { analysis: Analysis };
-        setAnalysis(data.analysis ?? null);
-      } catch (fetchError) {
-        if ((fetchError as Error).name === "AbortError") return;
-        setError("İçgörü yüklenirken bir hata oluştu.");
-      } finally {
+      const seed = getDashboardCache<DetailPayload>(key);
+      const seedIsPartial = Boolean(seed?.analysis && seed.partial !== false);
+      if (seed?.analysis) {
+        setAnalysis(seed.analysis);
         setLoading(false);
+        setDetailsLoading(seedIsPartial);
+      } else if (!force) {
+        setLoading(true);
+        setDetailsLoading(true);
+      }
+
+      try {
+        const data = await fetchDashboardCached<DetailPayload>({
+          key,
+          url: detailUrl,
+          force: force || seedIsPartial,
+          onCache: (hit) => {
+            if (cancelled) return;
+            applyPayload(hit);
+          },
+        });
+        if (cancelled) return;
+        const full: DetailPayload = {
+          analysis: data.analysis,
+          partial: false,
+          translating: data.translating === true,
+        };
+        setDashboardCache(key, full);
+        applyPayload(full);
+
+        // First paint uses source language; one soft refetch after background MT.
+        if (full.translating && !force) {
+          translateTimer = setTimeout(() => {
+            if (cancelled) return;
+            void load(true);
+          }, 4_000);
+        }
+      } catch (fetchError) {
+        if (cancelled) return;
+        if ((fetchError as Error).name === "AbortError") return;
+        if (!getDashboardCache<DetailPayload>(key)?.analysis) {
+          if (
+            fetchError instanceof Error &&
+            fetchError.message.includes("404")
+          ) {
+            setError(t("notFound"));
+          } else {
+            setError(t("loadError"));
+          }
+          setAnalysis(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          setDetailsLoading(false);
+        }
       }
     };
-    void load();
-    return () => controller.abort();
-  }, [slug]);
 
-  const commentary = useMemo(() => summarizeAiCommentary(analysis), [analysis]);
+    void load(false);
+    return () => {
+      cancelled = true;
+      if (translateTimer) clearTimeout(translateTimer);
+    };
+  }, [slug, locale, t]);
+  const commentary = useMemo(
+    () => summarizeAiCommentary(analysis, locale),
+    [analysis, locale],
+  );
+  const summary = useMemo(() => {
+    if (!analysis) return null;
+    const mode = rubricModeFromVersion(
+      analysis.rubricVersion || RUBRIC_VERSION_BASE,
+    );
+    return getDisplaySummary(analysis, locale, mode);
+  }, [analysis, locale]);
+  const hasCommentary =
+    commentary.strengths.length > 0 ||
+    commentary.weaknesses.length > 0 ||
+    commentary.actions.length > 0;
+  const hasEvaluations = Boolean(
+    analysis?.criteriaEvaluations &&
+      Object.keys(analysis.criteriaEvaluations).length > 0,
+  );
   const thumbSrc =
-    analysis?.mediaUrl || analysis?.sourceUrl
-      ? `/api/dashboard/media/${analysis.id}`
-      : null;
+    analysis?.previewUrl ||
+    (analysis?.mediaUrl || analysis?.sourceUrl
+      ? `/api/dashboard/media/${analysis.id}?size=thumb`
+      : null);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 px-4 py-24 text-sm text-brand-dark/50 sm:px-6 lg:px-8">
         <Loader2 className="size-4 animate-spin" strokeWidth={2} />
-        İçgörü yükleniyor…
+        {t("loading")}
       </div>
     );
   }
@@ -183,7 +283,7 @@ export default function CreativeMemoryInsightPage() {
       <div className="space-y-4 px-4 py-10 sm:px-6 lg:px-8">
         <Card className="py-12 text-center">
           <p className="text-sm font-medium text-brand-dark/70">
-            {error ?? "İçgörü bulunamadı."}
+            {error ?? t("notFound")}
           </p>
         </Card>
       </div>
@@ -197,7 +297,7 @@ export default function CreativeMemoryInsightPage() {
           href={`/dashboard/analizler/${analysis.slug}`}
           className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-xl bg-brand-neon/80 px-3.5 py-2 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90 sm:right-5 sm:top-5"
         >
-          Analiz Detayı
+          {t("analysisDetail")}
           <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
         </Link>
 
@@ -209,6 +309,8 @@ export default function CreativeMemoryInsightPage() {
                 <img
                   src={thumbSrc}
                   alt=""
+                  loading="eager"
+                  decoding="async"
                   className="h-auto w-full rounded-2xl object-contain"
                 />
               ) : (
@@ -224,7 +326,11 @@ export default function CreativeMemoryInsightPage() {
               </h1>
               <p className="mt-1.5 flex items-center justify-center gap-1.5 text-sm text-brand-dark/50 sm:justify-start">
                 <Camera className="size-3.5" strokeWidth={1.75} />
-                {analysis.contentType || "Gönderi"} · {analysis.date}
+                {contentTypeLabel(locale)} ·{" "}
+                {formatAnalysisDate(
+                  analysis.updatedAtMs || analysis.createdAtMs,
+                  locale,
+                )}
               </p>
               <div className="mt-3.5">
                 <ScoreRing score={analysis.score} size={80} stroke={5.5} />
@@ -241,11 +347,12 @@ export default function CreativeMemoryInsightPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-brand-dark">
-                  Score AI İçgörüsü
+                  {t("aiInsight")}
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-brand-dark/75">
-                  {analysis.insight?.trim() ||
-                    "Bu analiz için henüz AI içgörüsü oluşmadı."}
+                  {detailsLoading && !hasEvaluations
+                    ? t("loadingDetails")
+                    : summary?.insight?.trim() || t("noInsight")}
                 </p>
               </div>
             </div>
@@ -253,34 +360,39 @@ export default function CreativeMemoryInsightPage() {
         </div>
       </Card>
 
-      {(commentary.strengths.length > 0 ||
-        commentary.weaknesses.length > 0 ||
-        commentary.actions.length > 0) && (
+      {detailsLoading && !hasCommentary ? (
+        <div className="flex items-center justify-center gap-2 py-8 text-sm text-brand-dark/45">
+          <Loader2 className="size-4 animate-spin" strokeWidth={2} />
+          {t("loadingDetails")}
+        </div>
+      ) : null}
+
+      {hasCommentary ? (
         <div className="space-y-4">
           <InsightRowCard
-            title="Güçlü Yönler"
+            title={t("strengths")}
             icon={ArrowUpRight}
             tone="strength"
             items={commentary.strengths}
-            emptyLabel="Kayıt yok"
+            emptyLabel={t("emptyRecords")}
           />
           <InsightRowCard
-            title="Eksikler"
+            title={t("weaknesses")}
             icon={ArrowDownRight}
             tone="weakness"
             items={commentary.weaknesses}
-            emptyLabel="Kayıt yok"
+            emptyLabel={t("emptyRecords")}
           />
           <InsightRowCard
-            title="Öncelikli Aksiyonlar"
+            title={t("actions")}
             icon={Target}
             tone="action"
             items={commentary.actions}
-            emptyLabel="Kayıt yok"
+            emptyLabel={t("emptyRecords")}
             labeled={false}
           />
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

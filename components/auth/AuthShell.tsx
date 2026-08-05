@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import {
   BarChart3,
   FileText,
@@ -12,26 +13,6 @@ import {
   Users,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
-
-const STATS = [
-  { icon: FileText, value: "50K+", label: "Analiz edilen içerik" },
-  { icon: TrendingUp, value: "2.5M+", label: "İyileştirilen etkileşim" },
-  { icon: Users, value: "1.200+", label: "Mutlu marka" },
-  { icon: ShieldCheck, value: "%98", label: "Müşteri memnuniyeti" },
-];
-
-const SIDE_QUOTES = [
-  {
-    text: "İçerik stratejimizi tamamen değiştirdik. Score AI bizim için oyun değiştirici oldu.",
-    name: "Mert A.",
-    role: "Growth Lead, Eco Alacay",
-  },
-  {
-    text: "Kullanımı çok kolay ve önerileri çok isabetli. Zaman kazandırıyor ve sonuç getiriyor.",
-    name: "Buse T.",
-    role: "Sosyal Medya Uzmanı, GreenO Organics",
-  },
-];
 
 type AuthShellProps = {
   children: React.ReactNode;
@@ -52,6 +33,28 @@ export function AuthShell({
   compact = false,
   footer,
 }: AuthShellProps) {
+  const t = useTranslations("auth");
+
+  const stats = [
+    { icon: FileText, value: "50K+", label: t("shell.statAnalyses") },
+    { icon: TrendingUp, value: "2.5M+", label: t("shell.statEngagement") },
+    { icon: Users, value: "1.200+", label: t("shell.statBrands") },
+    { icon: ShieldCheck, value: "%98", label: t("shell.statSatisfaction") },
+  ];
+
+  const sideQuotes = [
+    {
+      text: t("shell.quote1"),
+      name: t("shell.quote1Name"),
+      role: t("shell.quote1Role"),
+    },
+    {
+      text: t("shell.quote2"),
+      name: t("shell.quote2Name"),
+      role: t("shell.quote2Role"),
+    },
+  ];
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [title]);
@@ -110,13 +113,14 @@ export function AuthShell({
           {variant === "social" ? (
             <>
               <h2 className="max-w-xl text-3xl font-bold tracking-tight text-white xl:text-[2.15rem] xl:leading-[1.2]">
-                Binlerce marka,{" "}
-                <span className="text-brand-neon">Score AI</span> ile
-                içeriklerini bir üst seviyeye taşıyor.
+                {t.rich("shell.headline", {
+                  brand: (chunks) => (
+                    <span className="text-brand-neon">{chunks}</span>
+                  ),
+                })}
               </h2>
               <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/60 xl:text-[15px]">
-                AI destekli analiz ile içeriklerinizi geliştirin, etkileşiminizi
-                artırın.
+                {t("shell.tagline")}
               </p>
 
               <div className="mt-8 grid grid-cols-[1.35fr_1fr] gap-5.5">
@@ -133,20 +137,22 @@ export function AuthShell({
                       ))}
                     </div>
                     <span className="text-xs font-semibold text-white/80">
-                      4.9/5{" "}
+                      {t("shell.ratingLabel")}{" "}
                       <span className="font-normal text-white/40">
-                        (120+ yorum)
+                        {t("shell.ratingCount")}
                       </span>
                     </span>
                   </div>
 
                   <Quote className="mt-4 size-7 text-brand-neon/40" />
                   <p className="mt-2 text-[15px] leading-relaxed text-white/80">
-                    Score AI sayesinde içeriklerimizin performansını net bir
-                    şekilde görebiliyoruz. Öneriler sayesinde etkileşim
-                    oranlarımız{" "}
-                    <span className="font-semibold text-brand-neon">%35</span>{" "}
-                    arttı.
+                    {t.rich("shell.mainQuote", {
+                      pct: (chunks) => (
+                        <span className="font-semibold text-brand-neon">
+                          {chunks}
+                        </span>
+                      ),
+                    })}
                   </p>
 
                   <div className="mt-5 flex items-center gap-3">
@@ -155,10 +161,10 @@ export function AuthShell({
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-white">
-                        Selin K.
+                        {t("shell.mainAuthor")}
                       </p>
                       <p className="text-xs text-white/45">
-                        Dijital Pazarlama Yöneticisi · Terra Niva
+                        {t("shell.mainRole")}
                       </p>
                     </div>
                   </div>
@@ -166,7 +172,7 @@ export function AuthShell({
 
                 {/* Yan quote'lar */}
                 <div className="flex flex-col gap-3.5">
-                  {SIDE_QUOTES.map((q) => (
+                  {sideQuotes.map((q) => (
                     <div
                       key={q.name}
                       className="rounded-2xl border border-white/10 bg-white/5 p-4"
@@ -204,7 +210,7 @@ export function AuthShell({
 
               {/* Stats */}
               <div className="mt-4 grid grid-cols-4 gap-2.5 rounded-2xl border border-white/10 bg-white/5 px-3 py-4 xl:px-4">
-                {STATS.map(({ icon: Icon, value, label }) => (
+                {stats.map(({ icon: Icon, value, label }) => (
                   <div key={label} className="text-center">
                     <div className="mx-auto flex size-8 items-center justify-center rounded-full bg-brand-neon/20 text-brand-neon">
                       <Icon className="size-3.5" strokeWidth={1.75} />
@@ -221,7 +227,7 @@ export function AuthShell({
 
               <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-white/35">
                 <ShieldCheck className="size-3.5 text-brand-neon/70" strokeWidth={1.75} />
-                Verileriniz 256-bit SSL ile korunur. Güvenli ve gizli.
+                {t("shell.sslNote")}
               </p>
             </>
           ) : (
@@ -230,24 +236,23 @@ export function AuthShell({
                 <BarChart3 className="size-6" strokeWidth={1.75} />
               </div>
               <h2 className="mt-6 text-2xl font-bold tracking-tight text-white xl:text-3xl">
-                Hesabınız güvende.
+                {t("shell.simpleTitle")}
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-white/60">
-                Score AI, içeriğinizi 40 mikro kritere göre analiz eder ve
-                uygulanabilir önerilerle performansınızı yükseltir.
+                {t("shell.simpleBody")}
               </p>
               <ul className="mt-6 space-y-3 text-sm text-white/70">
                 <li className="flex gap-2.5">
                   <span className="mt-1 size-1.5 shrink-0 rounded-full bg-brand-neon" />
-                  Şifre sıfırlama bağlantıları tek kullanımlıktır.
+                  {t("shell.simpleBullet1")}
                 </li>
                 <li className="flex gap-2.5">
                   <span className="mt-1 size-1.5 shrink-0 rounded-full bg-brand-neon" />
-                  Bağlantılar sınırlı süre geçerlidir.
+                  {t("shell.simpleBullet2")}
                 </li>
                 <li className="flex gap-2.5">
                   <span className="mt-1 size-1.5 shrink-0 rounded-full bg-brand-neon" />
-                  İşlemleriniz uçtan uca korunur.
+                  {t("shell.simpleBullet3")}
                 </li>
               </ul>
             </div>

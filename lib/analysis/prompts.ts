@@ -21,16 +21,40 @@ function formatCriteriaKeysForPrompt(criteriaKeys: string[]): string {
   return criteriaKeys.map((key) => `- ${key}`).join("\n");
 }
 
-function buildSharedRules(criteriaKeys: string[], compact = false): string {
+function buildSharedRules(
+  criteriaKeys: string[],
+  compact = false,
+  locale: "tr" | "en" = "tr",
+): string {
+  if (locale === "en") {
+    return [
+      "RULES:",
+      "1) Never calculate totals, averages, or percentages.",
+      "2) Base every claim only on evidence clearly visible in the creative. Do not invent missing facts.",
+      "3) seviye must be only 0, 1, 2, or 3.",
+      "4) Return JSON only — no markdown, preamble, or notes outside JSON.",
+      "5) LANGUAGE LOCK: Write mevcut_durum, eksiklikler, and aksiyon_onerisi in English only. Never use Turkish for these fields. Quoted creative-copy examples (CTA, headline, badge text) must still match the creative's original language.",
+      "6) Emit only the keys listed below; every key is required; do not add extras.",
+      formatCriteriaKeysForPrompt(criteriaKeys),
+      compact
+        ? "7) Keep mevcut_durum, eksiklikler, aksiyon_onerisi to at most 12 words each."
+        : "7) Keep mevcut_durum, eksiklikler, and aksiyon_onerisi short (1–2 sentences each).",
+      "",
+      'JSON schema: { "criterion_key": { "seviye": 0, "mevcut_durum": "...", "eksiklikler": "...", "aksiyon_onerisi": "..." } }',
+    ].join("\n");
+  }
+
+  const commentaryLanguage = compact
+    ? "5) aksiyon_onerisi içindeki somut metin örnekleri görselin kendi dilinde olsun."
+    : "5) Önce görseldeki yaratıcı metinlerin ORİJİNAL dilini tespit et. aksiyon_onerisi içinde önerdiğin somut yaratıcı metin örnekleri (CTA metni, başlık, değer önerisi, rozet metni) görselin KENDİ dilinde olmalı: Türkçe görsele Türkçe, İngilizce görsele İngilizce metin öner. Açıklama cümlelerin Türkçe kalabilir ama tırnak içindeki önerilen metinler kaynak dilde yazılmalı.";
+
   return [
     "KURALLAR:",
     "1) Asla hesaplama yapma, puan toplamı üretme, ortalama alma, yüzde hesaplama yapma.",
     "2) Yalnızca görselde net görülen kanıta dayan. Görünmeyen bilgi için varsayım yapma.",
     "3) Her madde için seviye sadece 0, 1, 2 veya 3 olmalı.",
     "4) JSON dışı hiçbir metin, markdown, açıklama veya not döndürme.",
-    compact
-      ? "5) aksiyon_onerisi içindeki somut metin örnekleri görselin kendi dilinde olsun."
-      : "5) Önce görseldeki yaratıcı metinlerin ORİJİNAL dilini tespit et. aksiyon_onerisi içinde önerdiğin somut yaratıcı metin örnekleri (CTA metni, başlık, değer önerisi, rozet metni) görselin KENDİ dilinde olmalı: Türkçe görsele Türkçe, İngilizce görsele İngilizce metin öner. Açıklama cümlelerin Türkçe kalabilir ama tırnak içindeki önerilen metinler kaynak dilde yazılmalı.",
+    commentaryLanguage,
     "6) Sadece aşağıdaki anahtarları üret; eksik veya ekstra anahtar üretme. listedeki HER anahtar zorunlu.",
     formatCriteriaKeysForPrompt(criteriaKeys),
     compact
@@ -46,13 +70,24 @@ function basePrompt(
   analysisFocus: string,
   criteriaKeys: string[],
   compact = false,
+  locale: "tr" | "en" = "tr",
 ) {
+  if (locale === "en") {
+    return [
+      `You are a senior specialist in ${categoryTitle}.`,
+      "",
+      `Your task: evaluate only the "${analysisFocus}" category.`,
+      "",
+      buildSharedRules(criteriaKeys, compact, locale),
+    ].join("\n");
+  }
+
   return [
     `Sen kıdemli bir ${categoryTitle} analiz uzmanısın.`,
     "",
     `Görevin: yalnızca "${analysisFocus}" kategorisini değerlendir.`,
     "",
-    buildSharedRules(criteriaKeys, compact),
+    buildSharedRules(criteriaKeys, compact, locale),
   ].join("\n");
 }
 
@@ -110,17 +145,25 @@ function buildBrandSystemPrompt(
   strategic: boolean,
   hasBrandDna: boolean,
   compact = false,
+  locale: "tr" | "en" = "tr",
 ) {
   const lines = [
     basePrompt(
-      "marka stratejisi, marka dili ve görsel kimlik",
+      locale === "en"
+        ? "brand strategy, brand voice, and visual identity"
+        : "marka stratejisi, marka dili ve görsel kimlik",
       "Brand Intelligence",
       criteriaKeys,
       compact,
+      locale,
     ),
     "",
-    "Brand Intelligence kuralı: Brand DNA varsa 'markaya göre' analiz et; yoksa yalnızca görselden çıkarılan marka sinyallerine göre analiz et. Varsayım yapma.",
-    "Kısmi Brand DNA (brand_dna_mode=partial): Mevcut alanları kullan; eksik alanlarda görsel-içi sinyallere düş. Bilgi yoksa ilgili alt boyutta puan tavanını düşür.",
+    locale === "en"
+      ? "Brand Intelligence rule: if Brand DNA exists, analyze 'for this brand'; otherwise use only brand signals visible in the creative. Do not invent."
+      : "Brand Intelligence kuralı: Brand DNA varsa 'markaya göre' analiz et; yoksa yalnızca görselden çıkarılan marka sinyallerine göre analiz et. Varsayım yapma.",
+    locale === "en"
+      ? "Partial Brand DNA (brand_dna_mode=partial): use available fields; fall back to in-creative signals for missing fields. Lower the score ceiling when information is missing."
+      : "Kısmi Brand DNA (brand_dna_mode=partial): Mevcut alanları kullan; eksik alanlarda görsel-içi sinyallere düş. Bilgi yoksa ilgili alt boyutta puan tavanını düşür.",
   ];
 
   if (compact && !hasBrandDna && !strategic) {
@@ -175,22 +218,37 @@ function buildBrandSystemPrompt(
   return lines.join("\n");
 }
 
-function buildBusinessSystemPrompt(strategic: boolean, compact = false) {
+function buildBusinessSystemPrompt(
+  strategic: boolean,
+  compact = false,
+  locale: "tr" | "en" = "tr",
+) {
   const lines = [
     basePrompt(
-      "growth marketing, CRO, performans reklam ve iş hedefi optimizasyonu",
+      locale === "en"
+        ? "growth marketing, CRO, performance ads, and business-goal optimization"
+        : "growth marketing, CRO, performans reklam ve iş hedefi optimizasyonu",
       "Business Intelligence",
       BUSINESS_CRITERIA_KEYS,
       compact,
+      locale,
     ),
     "",
-    "Öncelik: dönüşüm potansiyeli, iş amacı netliği, değer teklifinin açıklığı, karar vermeye hazırlık ve rekabetçi konumlanma.",
+    locale === "en"
+      ? "Focus: conversion potential, business-objective clarity, value-offer clarity, decision readiness, and competitive positioning."
+      : "Öncelik: dönüşüm potansiyeli, iş amacı netliği, değer teklifinin açıklığı, karar vermeye hazırlık ve rekabetçi konumlanma.",
   ];
   if (strategic) {
     lines.push(
-      "Strategic Brand Intelligence içinde Trust Proofs varsa conversion_potential değerlendirmesinde güven kanıtı etkisini dikkate al.",
-      "competitive_positioning: Benchmark Competitors verisine dayan; eksiklikler/aksiyon metninde rakip adını veya 'rakiplerinizin içerik temasına göre' ifadesini kullan.",
-      "decision_readiness / conversion_potential: Trust Proofs varsa (sertifika, yorum, test) kullanılmayan kanıtları aksiyonlarda belirt.",
+      locale === "en"
+        ? "If Trust Proofs exist in Strategic Brand Intelligence, factor proof strength into conversion_potential."
+        : "Strategic Brand Intelligence içinde Trust Proofs varsa conversion_potential değerlendirmesinde güven kanıtı etkisini dikkate al.",
+      locale === "en"
+        ? "competitive_positioning: ground claims in Benchmark Competitors; name a competitor or say 'vs your Benchmark competitors' in gap/action text."
+        : "competitive_positioning: Benchmark Competitors verisine dayan; eksiklikler/aksiyon metninde rakip adını veya 'rakiplerinizin içerik temasına göre' ifadesini kullan.",
+      locale === "en"
+        ? "decision_readiness / conversion_potential: if Trust Proofs exist (certifications, reviews, tests), call out unused proofs in actions."
+        : "decision_readiness / conversion_potential: Trust Proofs varsa (sertifika, yorum, test) kullanılmayan kanıtları aksiyonlarda belirt.",
     );
   }
   return lines.join("\n");
@@ -198,75 +256,111 @@ function buildBusinessSystemPrompt(strategic: boolean, compact = false) {
 
 export function getCategoryPrompts(
   mode: RubricMode = "strategic_brand",
-  options?: { hasBrandDna?: boolean; compact?: boolean },
+  options?: {
+    hasBrandDna?: boolean;
+    compact?: boolean;
+    locale?: "tr" | "en";
+  },
 ): CategoryPromptConfig[] {
   const strategic = mode === "strategic_brand";
   const hasBrandDna = Boolean(options?.hasBrandDna);
   const compact = Boolean(options?.compact);
+  const locale = options?.locale === "en" ? "en" : "tr";
   const brandKeys = strategic ? BRAND_CRITERIA_KEYS_STRATEGIC : BRAND_CRITERIA_KEYS_BASE;
+
+  const withLanguageLock = (prompt: string) =>
+    locale === "en"
+      ? `${prompt}\n\nLANGUAGE LOCK: mevcut_durum, eksiklikler, and aksiyon_onerisi must be English only.`
+      : prompt;
 
   return [
     {
       categoryId: "visual_intelligence",
       categoryLabel: "Visual Intelligence",
       criteriaKeys: VISUAL_CRITERIA_KEYS,
-      systemPrompt: [
-        basePrompt(
-          "görsel iletişim, tasarım, reklam kreatifi ve UI/UX",
-          "Visual Intelligence",
-          VISUAL_CRITERIA_KEYS,
-          compact,
-        ),
-        "",
-        "Öncelik: görsel hiyerarşi, kompozisyon dengesi, boş alan, renk/kontrast, tipografi, teknik kalite, dikkat çekicilik ve özgünlük.",
-      ].join("\n"),
+      systemPrompt: withLanguageLock(
+        [
+          basePrompt(
+            locale === "en"
+              ? "visual communication, design, ad creative, and UI/UX"
+              : "görsel iletişim, tasarım, reklam kreatifi ve UI/UX",
+            "Visual Intelligence",
+            VISUAL_CRITERIA_KEYS,
+            compact,
+            locale,
+          ),
+          "",
+          locale === "en"
+            ? "Focus: visual hierarchy, composition balance, whitespace, color/contrast, typography, technical quality, attention, and originality."
+            : "Öncelik: görsel hiyerarşi, kompozisyon dengesi, boş alan, renk/kontrast, tipografi, teknik kalite, dikkat çekicilik ve özgünlük.",
+        ].join("\n"),
+      ),
     },
     {
       categoryId: "content_intelligence",
       categoryLabel: "Content Intelligence",
       criteriaKeys: CONTENT_CRITERIA_KEYS,
-      systemPrompt: [
-        basePrompt(
-          "içerik stratejisi, reklam metni, performans pazarlama ve mesaj mimarisi",
-          "Content Intelligence",
-          CONTENT_CRITERIA_KEYS,
-          compact,
-        ),
-        "",
-        "Öncelik: başlık gücü, mesaj netliği, okunabilirlik, hikaye akışı, merak tetikleme, CTA gücü, akılda kalıcılık ve paylaşılabilirlik.",
-      ].join("\n"),
+      systemPrompt: withLanguageLock(
+        [
+          basePrompt(
+            locale === "en"
+              ? "content strategy, ad copy, performance marketing, and message architecture"
+              : "içerik stratejisi, reklam metni, performans pazarlama ve mesaj mimarisi",
+            "Content Intelligence",
+            CONTENT_CRITERIA_KEYS,
+            compact,
+            locale,
+          ),
+          "",
+          locale === "en"
+            ? "Focus: headline strength, message clarity, readability, storytelling, curiosity, CTA strength, memorability, and shareability."
+            : "Öncelik: başlık gücü, mesaj netliği, okunabilirlik, hikaye akışı, merak tetikleme, CTA gücü, akılda kalıcılık ve paylaşılabilirlik.",
+        ].join("\n"),
+      ),
     },
     {
       categoryId: "brand_intelligence",
       categoryLabel: "Brand Intelligence",
       criteriaKeys: brandKeys,
-      systemPrompt: buildBrandSystemPrompt(
-        brandKeys,
-        strategic,
-        hasBrandDna,
-        compact,
+      systemPrompt: withLanguageLock(
+        buildBrandSystemPrompt(
+          brandKeys,
+          strategic,
+          hasBrandDna,
+          compact,
+          locale,
+        ),
       ),
     },
     {
       categoryId: "channel_intelligence",
       categoryLabel: "Channel Intelligence",
       criteriaKeys: CHANNEL_CRITERIA_KEYS,
-      systemPrompt: [
-        basePrompt(
-          "platform uyumluluğu, mobil UX ve teknik kreatif optimizasyonu",
-          "Channel Intelligence",
-          CHANNEL_CRITERIA_KEYS,
-          compact,
-        ),
-        "",
-        "Öncelik: platform oran/çözünürlük uyumu ve mobil ekranda okunabilirlik/bilgi korunumu.",
-      ].join("\n"),
+      systemPrompt: withLanguageLock(
+        [
+          basePrompt(
+            locale === "en"
+              ? "platform fit, mobile UX, and technical creative optimization"
+              : "platform uyumluluğu, mobil UX ve teknik kreatif optimizasyonu",
+            "Channel Intelligence",
+            CHANNEL_CRITERIA_KEYS,
+            compact,
+            locale,
+          ),
+          "",
+          locale === "en"
+            ? "Focus: platform aspect-ratio/resolution fit and mobile readability/information retention."
+            : "Öncelik: platform oran/çözünürlük uyumu ve mobil ekranda okunabilirlik/bilgi korunumu.",
+        ].join("\n"),
+      ),
     },
     {
       categoryId: "business_intelligence",
       categoryLabel: "Business Intelligence",
       criteriaKeys: BUSINESS_CRITERIA_KEYS,
-      systemPrompt: buildBusinessSystemPrompt(strategic, compact),
+      systemPrompt: withLanguageLock(
+        buildBusinessSystemPrompt(strategic, compact, locale),
+      ),
     },
   ];
 }
@@ -277,7 +371,7 @@ export const CATEGORY_PROMPTS: CategoryPromptConfig[] = getCategoryPrompts("stra
 export function getCategoryPromptConfig(
   categoryId: NcqsCategoryId,
   mode: RubricMode = "strategic_brand",
-  options?: { hasBrandDna?: boolean },
+  options?: { hasBrandDna?: boolean; locale?: "tr" | "en" },
 ): CategoryPromptConfig {
   const config = getCategoryPrompts(mode, options).find(
     (item) => item.categoryId === categoryId,

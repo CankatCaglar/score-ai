@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2, X } from "lucide-react";
 
 type PotentialResultModalProps = {
@@ -26,7 +27,9 @@ export function PotentialResultModal({
   onClose,
   onOpenCanva,
 }: PotentialResultModalProps) {
+  const t = useTranslations("dashboard.analysisResult.potentialModal");
   const gain = potentialScore - currentScore;
+  const signedGain = `${gain > 0 ? "+" : ""}${gain}`;
 
   useEffect(() => {
     if (!open) return;
@@ -69,7 +72,7 @@ export function PotentialResultModal({
           onClick={onClose}
           disabled={openingCanva}
           className="absolute right-3 top-3 z-20 inline-flex size-9 items-center justify-center rounded-full bg-white/95 text-brand-dark/60 shadow-sm transition hover:bg-white hover:text-brand-dark disabled:opacity-50 sm:right-4 sm:top-4"
-          aria-label="Kapat"
+          aria-label={t("closeAria")}
         >
           <X className="size-4" strokeWidth={2} />
         </button>
@@ -82,13 +85,13 @@ export function PotentialResultModal({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewUrl}
-                  alt="Potansiyel görsel önizleme"
+                  alt={t("previewAlt")}
                   className="max-h-full max-w-full rounded-2xl object-contain shadow-[0_24px_60px_rgba(0,0,0,0.35)]"
                 />
               </div>
             ) : (
               <div className="flex h-48 w-full items-center justify-center rounded-2xl border border-dashed border-white/20 text-sm text-white/50 lg:h-full">
-                Önizleme hazırlanıyor
+                {t("previewPreparing")}
               </div>
             )}
           </div>
@@ -99,20 +102,22 @@ export function PotentialResultModal({
                 id="potential-result-title"
                 className="max-w-md pr-8 text-2xl font-semibold tracking-tight text-brand-dark sm:text-[1.75rem] sm:leading-snug"
               >
-                Optimize edilmiş görseliniz oluşturuldu
+                {t("title")}
               </h2>
 
               <p className="mt-2.5 max-w-md text-sm leading-relaxed text-brand-dark/60">
-                <span className="font-medium text-brand-dark">{title}</span> için
-                potansiyel skora göre son çıktı hazır. Beğendiyseniz kullanın; üzerinde
-                oynamak istediğiniz alanlar için Canva Sihirli Katmanlar sayfasına
-                gidin.
+                {t.rich("description", {
+                  title,
+                  highlight: (chunks) => (
+                    <span className="font-medium text-brand-dark">{chunks}</span>
+                  ),
+                })}
               </p>
 
               <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-end gap-3 rounded-2xl border border-brand-dark/8 bg-bg-offwhite/80 px-4 py-4 sm:px-5">
                 <div>
                   <p className="text-[11px] font-medium uppercase tracking-wide text-brand-dark/40">
-                    Mevcut
+                    {t("current")}
                   </p>
                   <p className="mt-1 text-3xl font-bold tabular-nums text-brand-dark/45 sm:text-4xl">
                     {currentScore}
@@ -124,7 +129,7 @@ export function PotentialResultModal({
                 <span className="mb-2 text-xl font-semibold text-brand-dark/30">→</span>
                 <div className="text-right">
                   <p className="text-[11px] font-medium uppercase tracking-wide text-brand-dark/55">
-                    Potansiyel
+                    {t("potential")}
                   </p>
                   <p className="mt-1 text-3xl font-bold tabular-nums text-brand-dark sm:text-4xl">
                     {potentialScore}
@@ -137,24 +142,25 @@ export function PotentialResultModal({
 
               {gain !== 0 && (
                 <p className="mt-3 text-sm font-semibold text-brand-dark">
-                  Tahmini skor artışı:{" "}
-                  <span className="rounded-md bg-brand-neon px-1.5 py-0.5 tabular-nums">
-                    {gain > 0 ? "+" : ""}
-                    {gain} puan
-                  </span>
+                  {t.rich("estimatedGain", {
+                    signedGain,
+                    gain: (chunks) => (
+                      <span className="rounded-md bg-brand-neon px-1.5 py-0.5 tabular-nums">
+                        {chunks}
+                      </span>
+                    ),
+                  })}
                 </p>
               )}
 
               <div className="mt-6 space-y-2 text-sm leading-relaxed text-brand-dark/65">
+                <p>{t("body1")}</p>
                 <p>
-                  Sol taraftaki görsel, skor analizindeki eksiklere göre üretilmiş
-                  potansiyel kreatifinizdir.
-                </p>
-                <p>
-                  Değiştirmek istediğiniz katmanlar için Canva Sihirli Katmanlar’a
-                  geçebilir; görseli saklamak için üstteki{" "}
-                  <span className="font-medium text-brand-dark">İndir</span>{" "}
-                  butonunu kullanabilirsiniz.
+                  {t.rich("body2", {
+                    download: (chunks) => (
+                      <span className="font-medium text-brand-dark">{chunks}</span>
+                    ),
+                  })}
                 </p>
               </div>
 
@@ -184,9 +190,7 @@ export function PotentialResultModal({
                   />
                 )}
                 <span>
-                  {openingCanva
-                    ? "Canva açılıyor..."
-                    : "Canva'da Sihirli Katmanlarla Düzenle"}
+                  {openingCanva ? t("openingCanva") : t("editInCanva")}
                 </span>
               </button>
               <button
@@ -195,7 +199,7 @@ export function PotentialResultModal({
                 disabled={openingCanva}
                 className="mt-2.5 w-full rounded-xl px-4 py-2.5 text-sm font-medium text-brand-dark/65 transition hover:bg-brand-dark/5 disabled:opacity-50"
               >
-                Sonucu beğendim, kapat
+                {t("closeLiked")}
               </button>
             </div>
           </div>

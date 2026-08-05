@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
-import { getAdminDb, getAdminStorage, getAdminStorageBucketName } from "@/lib/firebase-admin";
+import {
+  getAdminDb,
+  getAdminStorage,
+  getAdminStorageBucketName,
+} from "@/lib/firebase-admin";
 
 type Params = { params: Promise<{ analysisId: string }> };
 
@@ -8,6 +12,26 @@ const COLLECTIONS = {
   analyses: "analyses",
 } as const;
 
+const SIGNED_URL_TTL_MS = 6 * 60 * 60 * 1000;
+const signedUrlCache = new Map<string, { url: string; at: number }>();
+const SIGNED_URL_CACHE_TTL_MS = 30 * 60 * 1000;
+
+async function signReadUrl(objectPath: string): Promise<string> {
+  const cached = signedUrlCache.get(objectPath);
+  if (cached && Date.now() - cached.at < SIGNED_URL_CACHE_TTL_MS) {
+    return cached.url;
+  }
+  const storage = getAdminStorage();
+  const bucket = storage.bucket(getAdminStorageBucketName());
+  const [url] = await bucket.file(objectPath).getSignedUrl({
+    action: "read",
+    expires: Date.now() + SIGNED_URL_TTL_MS,
+  });
+  signedUrlCache.set(objectPath, { url, at: Date.now() });
+  return url;
+}
+
+/** Auth check then 302 to GCS — never proxy image bytes through Next. */
 export async function GET(request: Request, { params }: Params) {
   const ownerEmail = getDashboardUserEmailFromCookieHeader(
     request.headers.get("cookie"),
@@ -33,23 +57,19 @@ export async function GET(request: Request, { params }: Params) {
       : null;
   const mediaUrl =
     typeof data.potentialImageUrl === "string" ? data.potentialImageUrl : null;
-  const mimeType =
-    typeof data.potentialImageMimeType === "string"
-      ? data.potentialImageMimeType
-      : "image/jpeg";
 
   if (storagePath) {
-    const storage = getAdminStorage();
-    const bucket = storage.bucket(getAdminStorageBucketName());
-    const file = bucket.file(storagePath);
-    const [bytes] = await file.download();
-    return new NextResponse(new Uint8Array(bytes), {
-      status: 200,
-      headers: {
-        "content-type": mimeType,
-        "cache-control": "private, max-age=120",
-      },
-    });
+    try {
+      const signed = await signReadUrl(storagePath);
+      return NextResponse.redirect(signed, {
+        status: 302,
+        headers: {
+          "cache-control": "private, max-age=120",
+        },
+      });
+    } catch (error) {
+      console.error("[potential-media signed]", analysisId, error);
+    }
   }
 
   if (!mediaUrl) {

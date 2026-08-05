@@ -2,6 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import {
+  formatAnalysisDate,
+  jobStatusLabel,
+  platformTypeLabel,
+  toAnalysisUiLocale,
+} from "@/lib/analysis/display-copy";
 import {
   Briefcase,
   Camera,
@@ -16,34 +23,38 @@ import {
   Square,
   Trash2,
 } from "lucide-react";
+import {
+  fetchDashboardCached,
+  getDashboardCache,
+  invalidateDashboardCache,
+  prefetchAnalysisDetail,
+  seedAnalysisDetail,
+} from "@/lib/dashboard/client-cache";
 import { ScoreRing } from "./ScoreRing";
 import type { Analysis as DashboardAnalysis } from "./data";
+
+type AnalysesPayload = {
+  analyses: DashboardAnalysis[];
+  total: number;
+  page: number;
+  totalPages: number;
+};
 
 type DateRangeValue = "7d" | "30d" | "90d" | "all";
 type ScoreRangeValue = "all" | "0-49" | "50-69" | "70-84" | "85-100";
 
-const DATE_RANGE_OPTIONS: Array<{ value: DateRangeValue; label: string }> = [
-  { value: "7d", label: "Son 7 Gün" },
-  { value: "30d", label: "Son 30 Gün" },
-  { value: "90d", label: "Son 90 Gün" },
-  { value: "all", label: "Tümü" },
-];
-
-const SCORE_RANGE_OPTIONS: Array<{ value: ScoreRangeValue; label: string }> = [
-  { value: "all", label: "Tümü" },
-  { value: "0-49", label: "0 - 49" },
-  { value: "50-69", label: "50 - 69" },
-  { value: "70-84", label: "70 - 84" },
-  { value: "85-100", label: "85 - 100" },
+const DATE_RANGE_VALUES: DateRangeValue[] = ["7d", "30d", "90d", "all"];
+const SCORE_RANGE_VALUES: ScoreRangeValue[] = [
+  "all",
+  "0-49",
+  "50-69",
+  "70-84",
+  "85-100",
 ];
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 type PageSizeValue = `${(typeof PAGE_SIZE_OPTIONS)[number]}`;
-const PAGE_SIZE_SELECT_OPTIONS: Array<{ value: PageSizeValue; label: string }> = [
-  { value: "10", label: "10 / sayfa" },
-  { value: "20", label: "20 / sayfa" },
-  { value: "50", label: "50 / sayfa" },
-];
+const PAGE_SIZE_VALUES: PageSizeValue[] = ["10", "20", "50"];
 type PaginationItem = number | "ellipsis";
 
 function FilterSelect<T extends string>({
@@ -51,6 +62,7 @@ function FilterSelect<T extends string>({
   options,
   onChange,
   ariaLabel,
+  optionsAriaLabel,
   className = "",
   menuPlacement = "bottom",
 }: {
@@ -58,6 +70,7 @@ function FilterSelect<T extends string>({
   options: Array<{ value: T; label: string }>;
   onChange: (value: T) => void;
   ariaLabel: string;
+  optionsAriaLabel: string;
   className?: string;
   menuPlacement?: "top" | "bottom";
 }) {
@@ -105,7 +118,7 @@ function FilterSelect<T extends string>({
       {open ? (
         <ul
           role="listbox"
-          aria-label={`${ariaLabel} seçenekleri`}
+          aria-label={optionsAriaLabel}
           className={`absolute left-0 z-30 min-w-full overflow-hidden rounded-xl border border-brand-dark/10 bg-bg-light py-1.5 font-sans shadow-lg shadow-brand-dark/8 ${
             menuPlacement === "top"
               ? "bottom-full mb-1.5"
@@ -167,6 +180,8 @@ function buildPaginationItems(currentPage: number, totalPages: number): Paginati
 }
 
 export default function AnalizlerPage() {
+  const locale = toAnalysisUiLocale(useLocale());
+  const t = useTranslations("dashboard.analyses");
   const [query, setQuery] = useState("");
   const [dateRange, setDateRange] = useState<DateRangeValue>("30d");
   const [scoreRange, setScoreRange] = useState<ScoreRangeValue>("all");
@@ -181,34 +196,50 @@ export default function AnalizlerPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshTick, setRefreshTick] = useState(0);
+  const forceRefreshRef = useRef(false);
 
+  const dateRangeOptions = DATE_RANGE_VALUES.map((value) => ({
+    value,
+    label: t(`dateRanges.${value}`),
+  }));
+  const scoreRangeOptions = SCORE_RANGE_VALUES.map((value) => ({
+    value,
+    label: t(`scoreRanges.${value}`),
+  }));
+  const pageSizeOptions = PAGE_SIZE_VALUES.map((value) => ({
+    value,
+    label: t(`pageSizes.${value}`),
+  }));
 
   useEffect(() => {
-    const controller = new AbortController();
+    let cancelled = false;
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("query", query.trim());
+    params.set("dateRange", dateRange);
+    params.set("scoreRange", scoreRange);
+    params.set("page", String(page));
+    params.set("pageSize", String(pageSize));
+    const cacheKey = `dashboard:analyses:${params.toString()}`;
+    const force = forceRefreshRef.current;
+    forceRefreshRef.current = false;
     const load = async () => {
-      setLoading(true);
       setError(null);
+      if (!getDashboardCache(cacheKey) || force) setLoading(true);
       try {
-        const params = new URLSearchParams();
-        if (query.trim()) params.set("query", query.trim());
-        params.set("dateRange", dateRange);
-        params.set("scoreRange", scoreRange);
-        params.set("page", String(page));
-        params.set("pageSize", String(pageSize));
-        const response = await fetch(`/api/dashboard/analyses?${params.toString()}`, {
-          signal: controller.signal,
-          cache: "no-store",
+        const data = await fetchDashboardCached<AnalysesPayload>({
+          key: cacheKey,
+          url: `/api/dashboard/analyses?${params.toString()}`,
+          force,
+          onCache: (cached) => {
+            if (cancelled) return;
+            setAnalyses(cached.analyses ?? []);
+            setTotal(cached.total ?? 0);
+            setPage(cached.page ?? 1);
+            setTotalPages(Math.max(1, cached.totalPages ?? 1));
+          },
         });
-        if (!response.ok) {
-          throw new Error("Analizler alınamadı");
-        }
-        const data = (await response.json()) as {
-          analyses: DashboardAnalysis[];
-          total: number;
-          page: number;
-          totalPages: number;
-        };
+        if (cancelled) return;
         setAnalyses(data.analyses ?? []);
         setTotal(data.total ?? 0);
         setPage(data.page ?? 1);
@@ -217,16 +248,19 @@ export default function AnalizlerPage() {
           prev.filter((id) => (data.analyses ?? []).some((item) => item.id === id)),
         );
       } catch (fetchError) {
+        if (cancelled) return;
         if ((fetchError as Error).name === "AbortError") return;
-        setError("Analizler yüklenirken bir hata oluştu.");
+        setError(t("loadError"));
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     void load();
-    return () => controller.abort();
-  }, [dateRange, page, pageSize, query, refreshKey, scoreRange]);
+    return () => {
+      cancelled = true;
+    };
+  }, [dateRange, page, pageSize, query, refreshTick, scoreRange, t]);
 
   const paginationItems = useMemo(() => buildPaginationItems(page, totalPages), [page, totalPages]);
   const visibleFrom = total === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -263,13 +297,15 @@ export default function AnalizlerPage() {
         body: JSON.stringify({ ids: selectedIds }),
       });
       if (!response.ok) {
-        throw new Error("Silme işlemi başarısız oldu.");
+        throw new Error(t("deleteFailed"));
       }
+      invalidateDashboardCache("dashboard:");
       setSelectedIds([]);
       setShowDeleteConfirm(false);
-      setRefreshKey((current) => current + 1);
+      forceRefreshRef.current = true;
+      setRefreshTick((current) => current + 1);
     } catch {
-      setError("Analizler silinirken bir hata oluştu.");
+      setError(t("deleteError"));
     } finally {
       setDeleting(false);
     }
@@ -279,10 +315,10 @@ export default function AnalizlerPage() {
     <div className="px-4 pb-28 pt-2 sm:px-6 lg:px-8 lg:pb-24 lg:pt-4">
       <div className="mb-6">
         <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
-          Analizler
+          {t("title")}
         </h1>
         <p className="mt-1 text-sm text-brand-dark/55">
-          Geçmiş analizlerinizi görüntüleyin ve detaylarına erişin.
+          {t("subtitle")}
         </p>
       </div>
 
@@ -297,7 +333,7 @@ export default function AnalizlerPage() {
                   setQuery(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Analiz ara..."
+                placeholder={t("searchPlaceholder")}
                 className="w-full bg-transparent text-sm text-brand-dark placeholder:text-brand-dark/30 outline-none"
               />
             </div>
@@ -306,12 +342,13 @@ export default function AnalizlerPage() {
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1">
               <span className="text-[11px] font-medium text-brand-dark/45">
-                Tarih Aralığı
+                {t("dateRange")}
               </span>
               <FilterSelect
                 value={dateRange}
-                options={DATE_RANGE_OPTIONS}
-                ariaLabel="Tarih aralığı"
+                options={dateRangeOptions}
+                ariaLabel={t("dateRangeAria")}
+                optionsAriaLabel={t("optionsAria", { label: t("dateRangeAria") })}
                 onChange={(next) => {
                   setDateRange(next);
                   setPage(1);
@@ -321,12 +358,13 @@ export default function AnalizlerPage() {
 
             <label className="flex flex-col gap-1">
               <span className="text-[11px] font-medium text-brand-dark/45">
-                Score Aralığı
+                {t("scoreRange")}
               </span>
               <FilterSelect
                 value={scoreRange}
-                options={SCORE_RANGE_OPTIONS}
-                ariaLabel="Score aralığı"
+                options={scoreRangeOptions}
+                ariaLabel={t("scoreRangeAria")}
+                optionsAriaLabel={t("optionsAria", { label: t("scoreRangeAria") })}
                 className="min-w-32"
                 onChange={(next) => {
                   setScoreRange(next);
@@ -346,7 +384,7 @@ export default function AnalizlerPage() {
               className="flex items-center gap-2 rounded-lg border border-brand-dark/10 px-3 py-2.5 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5"
             >
               <FilterX className="size-4" strokeWidth={2} />
-              Filtreleri Temizle
+              {t("clearFilters")}
             </button>
             <button
               type="button"
@@ -374,9 +412,9 @@ export default function AnalizlerPage() {
               )}
               {selectionMode
                 ? deleting
-                  ? "Siliniyor..."
-                  : `Seçilenleri Sil (${selectedIds.length})`
-                : "Analiz Seç"}
+                  ? t("deleting")
+                  : t("deleteSelected", { count: selectedIds.length })
+                : t("selectAnalyses")}
             </button>
             {selectionMode && (
               <button
@@ -388,7 +426,7 @@ export default function AnalizlerPage() {
                 }}
                 className="rounded-lg border border-brand-dark/10 px-3 py-2.5 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Vazgeç
+                {t("cancel")}
               </button>
             )}
           </div>
@@ -408,7 +446,7 @@ export default function AnalizlerPage() {
               type="button"
               onClick={toggleSelectAllVisible}
               className="inline-flex items-center justify-center text-brand-dark/60 hover:text-brand-dark"
-              aria-label="Tümünü seç"
+              aria-label={t("selectAllAria")}
             >
               {allVisibleSelected ? (
                 <CheckSquare className="size-4" strokeWidth={2} />
@@ -417,10 +455,10 @@ export default function AnalizlerPage() {
               )}
             </button>
           )}
-          <span>İçerik</span>
-          <span>Tarih</span>
-          <span>Score</span>
-          <span>Durum</span>
+          <span>{t("columnContent")}</span>
+          <span>{t("columnDate")}</span>
+          <span>{t("columnScore")}</span>
+          <span>{t("columnStatus")}</span>
           <span />
         </div>
 
@@ -440,7 +478,7 @@ export default function AnalizlerPage() {
                       toggleSelected(a.id);
                     }}
                     className="inline-flex shrink-0 items-center justify-center text-brand-dark/60 hover:text-brand-dark"
-                    aria-label="Analizi seç"
+                    aria-label={t("selectAnalysisAria")}
                   >
                     {selectedIds.includes(a.id) ? (
                       <CheckSquare className="size-4" strokeWidth={2} />
@@ -452,15 +490,29 @@ export default function AnalizlerPage() {
                 <Link
                   href={`/dashboard/analizler/${a.slug}`}
                   className="flex min-w-0 flex-1 items-center gap-2"
+                  onMouseEnter={() => {
+                    seedAnalysisDetail(a, locale);
+                    prefetchAnalysisDetail(a.slug, locale);
+                  }}
+                  onFocus={() => {
+                    seedAnalysisDetail(a, locale);
+                    prefetchAnalysisDetail(a.slug, locale);
+                  }}
+                  onClick={() => seedAnalysisDetail(a, locale)}
                 >
                   <div className="grid min-w-0 flex-1 grid-cols-1 items-center gap-3 md:grid-cols-[1fr_210px_90px_150px_40px] md:gap-4">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-bg-offwhite">
-                        {a.mediaUrl || a.sourceUrl ? (
+                        {a.previewUrl || a.mediaUrl || a.sourceUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={`/api/dashboard/media/${a.id}`}
+                            src={
+                              a.previewUrl ||
+                              `/api/dashboard/media/${a.id}?size=thumb`
+                            }
                             alt={a.title}
+                            loading="lazy"
+                            decoding="async"
                             className="size-full object-contain p-1"
                           />
                         ) : null}
@@ -471,19 +523,19 @@ export default function AnalizlerPage() {
                         </p>
                         <p className="mt-1 flex items-center gap-1.5 text-xs text-brand-dark/45">
                           <PlatformIcon className="size-3.5" strokeWidth={1.75} />
-                          {a.platform}
+                          {platformTypeLabel(a.platformType, locale)}
                         </p>
                       </div>
                     </div>
 
                     <div className="text-sm text-brand-dark/60 md:block">
-                      <span className="text-brand-dark/40 md:hidden">Tarih: </span>
-                      {a.date}
+                      <span className="text-brand-dark/40 md:hidden">{t("dateLabel")} </span>
+                      {formatAnalysisDate(a.updatedAtMs || a.createdAtMs, locale)}
                     </div>
 
                     <div className="flex items-center gap-3 md:gap-2">
                       <span className="text-xs text-brand-dark/40 md:hidden">
-                        Score:
+                        {t("scoreLabel")}
                       </span>
                       <ScoreRing score={a.score} size={42} />
                       <span className="inline-flex items-center gap-1 rounded-full bg-brand-dark/5 px-2.5 py-1 text-xs font-medium text-brand-dark/70 md:hidden">
@@ -491,7 +543,7 @@ export default function AnalizlerPage() {
                           className="size-3.5 text-brand-dark"
                           strokeWidth={2}
                         />
-                        {a.status}
+                        {jobStatusLabel(a.jobStatus, locale)}
                       </span>
                     </div>
 
@@ -501,7 +553,7 @@ export default function AnalizlerPage() {
                           className="size-3.5 text-brand-dark"
                           strokeWidth={2}
                         />
-                        {a.status}
+                        {jobStatusLabel(a.jobStatus, locale)}
                       </span>
                     </div>
 
@@ -519,7 +571,7 @@ export default function AnalizlerPage() {
           })}
           {!loading && analyses.length === 0 && (
             <div className="px-4 py-10 text-center text-sm text-brand-dark/55">
-              Henüz analiz bulunamadı. Yeni analiz başlatıp içerik yükleyebilirsiniz.
+              {t("empty")}
             </div>
           )}
         </div>
@@ -527,10 +579,14 @@ export default function AnalizlerPage() {
         <div className="mt-2 flex flex-col items-center justify-between gap-3 border-t border-brand-dark/8 px-4 pt-4 sm:flex-row sm:gap-4">
           <span className="text-sm text-brand-dark/50">
             {loading
-              ? "Yükleniyor..."
+              ? t("loading")
               : total === 0
-                ? "Sonuç yok"
-                : `${visibleFrom}-${visibleTo} / ${total} analiz`}
+                ? t("noResults")
+                : t("resultsRange", {
+                    from: visibleFrom,
+                    to: visibleTo,
+                    total,
+                  })}
           </span>
 
           <div className="flex flex-wrap items-center justify-center gap-3">
@@ -540,7 +596,7 @@ export default function AnalizlerPage() {
                 disabled={loading || page <= 1}
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
                 className="flex size-8 items-center justify-center rounded-lg border border-brand-dark/10 text-brand-dark/50 hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Önceki"
+                aria-label={t("prevAria")}
               >
                 <ChevronLeft className="size-4" strokeWidth={2} />
               </button>
@@ -574,7 +630,7 @@ export default function AnalizlerPage() {
                   setPage((current) => Math.min(totalPages, current + 1))
                 }
                 className="flex size-8 items-center justify-center rounded-lg border border-brand-dark/10 text-brand-dark/50 hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Sonraki"
+                aria-label={t("nextAria")}
               >
                 <ChevronRight className="size-4" strokeWidth={2} />
               </button>
@@ -582,12 +638,13 @@ export default function AnalizlerPage() {
 
             <FilterSelect
               value={String(pageSize) as PageSizeValue}
-              options={PAGE_SIZE_SELECT_OPTIONS}
+              options={pageSizeOptions}
               onChange={(value) => {
                 setPageSize(Number(value) as (typeof PAGE_SIZE_OPTIONS)[number]);
                 setPage(1);
               }}
-              ariaLabel="Sayfa başına analiz"
+              ariaLabel={t("pageSizeAria")}
+              optionsAriaLabel={t("optionsAria", { label: t("pageSizeAria") })}
               className="min-w-[7.5rem]"
             />
           </div>
@@ -608,11 +665,16 @@ export default function AnalizlerPage() {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-1 text-lg font-semibold text-brand-dark">
-              Analizleri silmek istediğinize emin misiniz?
+              {t("deleteConfirmTitle")}
             </div>
             <p className="text-sm leading-relaxed text-brand-dark/65">
-              <span className="font-semibold text-brand-dark">{selectedIds.length}</span> analiz
-              kalıcı olarak silinecek. Bu işlem geri alınamaz.
+              {t.rich("deleteConfirmBody", {
+                count: () => (
+                  <span className="font-semibold text-brand-dark">
+                    {selectedIds.length}
+                  </span>
+                ),
+              })}
             </p>
 
             <div className="mt-5 flex items-center justify-end gap-2">
@@ -622,7 +684,7 @@ export default function AnalizlerPage() {
                 onClick={() => setShowDeleteConfirm(false)}
                 className="rounded-lg border border-brand-dark/10 px-3.5 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Vazgeç
+                {t("cancel")}
               </button>
               <button
                 type="button"
@@ -631,7 +693,7 @@ export default function AnalizlerPage() {
                 className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3.5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Trash2 className="size-4" strokeWidth={2} />
-                {deleting ? "Siliniyor..." : "Evet, Sil"}
+                {deleting ? t("deleting") : t("deleteConfirm")}
               </button>
             </div>
           </div>

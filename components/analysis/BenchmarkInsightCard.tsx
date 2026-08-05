@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ArrowUpRight, Target } from "lucide-react";
 import type { BenchmarkCommentarySummary } from "@/lib/analysis/insight-summary";
 
@@ -14,6 +17,7 @@ export function BenchmarkInsightCard({
   showEmptyState?: boolean;
   className?: string;
 }) {
+  const t = useTranslations("dashboard.analysisDetail.benchmarkCard");
   const isDark = variant === "dark";
   const hasContent =
     summary.available &&
@@ -28,7 +32,7 @@ export function BenchmarkInsightCard({
       href="/dashboard/benchmark"
       className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-neon px-3 py-2 text-xs font-semibold text-brand-dark transition-opacity hover:opacity-90"
     >
-      Benchmark
+      {t("cta")}
       <ArrowUpRight className="size-3.5" strokeWidth={2.25} />
     </Link>
   );
@@ -65,7 +69,7 @@ export function BenchmarkInsightCard({
                   : "text-base font-semibold text-brand-dark"
               }
             >
-              Benchmark karşılaştırması
+              {t("title")}
             </p>
             <p
               className={
@@ -74,7 +78,7 @@ export function BenchmarkInsightCard({
                   : "mt-1 text-xs text-brand-dark/50"
               }
             >
-              Marka vaadi, rakipler, geçmiş içerik ve güven kanıtlarına göre
+              {t("subtitle")}
             </p>
           </div>
         </div>
@@ -89,9 +93,7 @@ export function BenchmarkInsightCard({
               : "mt-5 text-sm leading-relaxed text-brand-dark/60"
           }
         >
-          Bu analiz için henüz Benchmark odaklı yorum yok. Benchmark’ı doldurup
-          yeni bir analiz çalıştırdığınızda rakip, vaat ve güven karşılaştırması
-          burada görünür.
+          {t("empty")}
         </p>
       ) : (
         <div
@@ -110,7 +112,7 @@ export function BenchmarkInsightCard({
                     : "text-xs font-semibold uppercase tracking-wide text-brand-dark/40"
                 }
               >
-                Benchmark’a göre eksikler
+                {t("gaps")}
               </p>
               <ul
                 className={
@@ -146,7 +148,7 @@ export function BenchmarkInsightCard({
                     : "text-xs font-semibold uppercase tracking-wide text-brand-dark/40"
                 }
               >
-                Benchmark’a göre güçlü yönler
+                {t("strengths")}
               </p>
               <ul
                 className={
@@ -182,7 +184,7 @@ export function BenchmarkInsightCard({
                     : "text-xs font-semibold uppercase tracking-wide text-brand-dark/40"
                 }
               >
-                Benchmark odaklı aksiyonlar
+                {t("actions")}
               </p>
               <ul
                 className={

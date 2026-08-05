@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
 
 /** Screenshot dosyalarını public/screenshots/ altında */
 export const DASHBOARD_SCREENSHOTS = {
-  hero: "/screenshots/dashboard-hero.png",
-  brandBrain: "/screenshots/dashboard-brand-brain.png",
-  benchmark: "/screenshots/dashboard-benchmark.png",
-  creativeMemory: "/screenshots/dashboard-creative-memory.png",
-  video: "/screenshots/dashboard-video.png",
+  hero: "/screenshots/dashboard-hero.webp",
+  brandBrain: "/screenshots/dashboard-brand-brain.webp",
+  benchmark: "/screenshots/dashboard-benchmark.webp",
+  creativeMemory: "/screenshots/dashboard-creative-memory.webp",
+  video: "/screenshots/dashboard-video.webp",
 } as const;
 
 const variantStyles = {
@@ -34,17 +35,25 @@ export function DashboardScreenshot({
 }: DashboardScreenshotProps) {
   const [showPlaceholder, setShowPlaceholder] = useState(!src);
 
+  useEffect(() => {
+    setShowPlaceholder(!src);
+  }, [src]);
+
   // Section görselleri arka plan/letterbox olmadan, kendi doğal oranında gösterilir
   if (variant === "section") {
     if (src && !showPlaceholder) {
       return (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
+          key={src}
           src={src}
           alt={alt}
+          width={1400}
+          height={900}
           className={`block h-auto w-full rounded-xl ${className}`}
-          decoding="async"
-          fetchPriority={priority ? "high" : "auto"}
+          sizes="(max-width: 1024px) 100vw, 55vw"
+          quality={75}
+          priority={priority}
+          loading={priority ? undefined : "lazy"}
           onError={() => setShowPlaceholder(true)}
         />
       );
@@ -70,14 +79,20 @@ export function DashboardScreenshot({
   return (
     <div className={`relative w-full overflow-hidden ${variantStyles[variant]} ${className}`}>
       {src && !showPlaceholder ? (
-        // Native img: public/ dosyası değişince Next.js image cache'e takılmaz
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
+          key={src}
           src={src}
           alt={alt}
-          className="absolute inset-0 h-full w-full object-fill"
-          decoding="async"
-          fetchPriority={priority ? "high" : "auto"}
+          fill
+          className="object-fill"
+          sizes={
+            variant === "hero"
+              ? "(max-width: 1024px) 100vw, 66vw"
+              : "(max-width: 1024px) 100vw, 50vw"
+          }
+          quality={75}
+          priority={priority}
+          loading={priority ? undefined : "lazy"}
           onError={() => setShowPlaceholder(true)}
         />
       ) : (

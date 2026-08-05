@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Copy, Share2 } from "lucide-react";
 
 type SocialShareMenuProps = {
@@ -60,11 +61,8 @@ function LinkedInIcon() {
   );
 }
 
-function normalizeShareText(title: string) {
-  return `${title} - Score AI ile olusturuldu.`;
-}
-
 export function SocialShareMenu({ title, url, buttonClassName }: SocialShareMenuProps) {
+  const t = useTranslations("dashboard.share");
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -77,7 +75,7 @@ export function SocialShareMenu({ title, url, buttonClassName }: SocialShareMenu
     }
     return url || (typeof window !== "undefined" ? window.location.href : "https://scoreai.app");
   }, [url]);
-  const text = useMemo(() => normalizeShareText(title), [title]);
+  const text = useMemo(() => t("createdWith", { title }), [t, title]);
 
   useEffect(() => {
     if (!open) return;
@@ -140,7 +138,7 @@ export function SocialShareMenu({ title, url, buttonClassName }: SocialShareMenu
         }
       >
         <Share2 className="size-4" strokeWidth={2} />
-        Paylaş
+        {t("button")}
       </button>
 
       {open ? (
@@ -186,7 +184,7 @@ export function SocialShareMenu({ title, url, buttonClassName }: SocialShareMenu
             className="mt-1 flex w-full items-center gap-2 rounded-lg border border-brand-dark/10 px-2.5 py-2 text-left text-sm font-medium text-brand-dark/70 hover:bg-brand-dark/5"
           >
             <Copy className="size-4" strokeWidth={2} />
-            {copied ? "Baglanti kopyalandi" : "Baglantiyi kopyala"}
+            {copied ? t("copied") : t("copyLink")}
           </button>
         </div>
       ) : null}

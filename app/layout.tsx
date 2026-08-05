@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { headers } from "next/headers";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { Toaster } from "sonner";
 import { ConsentAnalytics } from "@/components/ConsentAnalytics";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
@@ -17,41 +18,42 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-function isEnglishRequest(acceptLanguage: string | null): boolean {
-  if (!acceptLanguage) return false;
-  return acceptLanguage.toLowerCase().startsWith("en");
-}
-
 export async function generateMetadata(): Promise<Metadata> {
-  const requestHeaders = await headers();
-  const acceptLanguage = requestHeaders.get("accept-language");
-  const isEnglish = isEnglishRequest(acceptLanguage);
+  const t = await getTranslations("meta");
 
   return {
-    title: isEnglish
-      ? "Score AI | Measure, Understand, Improve Your Content"
-      : "Score AI | İçeriğinizi Ölçün, Anlayın, Geliştirin",
-    description: isEnglish
-      ? "AI-powered platform to analyze, score, and improve your content performance."
-      : "Yapay zeka destekli içerik analizi ve puanlama platformu",
+    title: t("title"),
+    description: t("description"),
     other: {
       "facebook-domain-verification": "4b67ra1q5atq8er0x7xfeyezrahg6e",
     },
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Fallback provider for non-locale routes (dashboard/auth) + cookie banner.
+  // Marketing pages nest a locale-keyed provider in `app/[locale]/layout.tsx`
+  // so TR↔EN navigations remount messages instead of keeping a stale root cache.
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="tr" className={`${inter.variable} min-h-full antialiased`}>
+    <html lang={locale} className={`${inter.variable} min-h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-bg-offwhite font-sans font-normal text-brand-dark">
-        {children}
-        <CookieConsentBanner />
-        <ConsentAnalytics />
-        <Toaster richColors position="top-right" />
+        <NextIntlClientProvider
+          key={locale}
+          locale={locale}
+          messages={messages}
+        >
+          {children}
+          <CookieConsentBanner />
+          <ConsentAnalytics />
+          <Toaster richColors position="top-right" />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

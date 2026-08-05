@@ -1,16 +1,42 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { hasAdminSessionFromCookieHeader } from "@/lib/admin-auth";
 import { getDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
 import {
   assertCanCreateAnalysis,
   consumeFreeAnalysis,
 } from "@/lib/analysis/credits";
+import { toAnalysisUiLocale } from "@/lib/analysis/display-copy";
+import { processPendingAnalysisJobs } from "@/lib/analysis/repository";
 import { runAnalysisJobSubmission } from "@/lib/analysis/submit-job";
 import {
   GRADER_LOCK_COOKIE_NAME,
   GRADER_LOCK_TTL_SECONDS,
   createGraderLockToken,
 } from "@/lib/grader-auth";
+import { LOCALE_COOKIE_NAME } from "@/lib/i18n/locale-cookie";
+
+function localeFromCookieHeader(cookieHeader: string | null): "tr" | "en" {
+  if (!cookieHeader) return "tr";
+  const match = cookieHeader
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${LOCALE_COOKIE_NAME}=`));
+  if (!match) return "tr";
+  return toAnalysisUiLocale(decodeURIComponent(match.split("=")[1] ?? ""));
+}
+
+function scheduleAnalysisProcessing() {
+  after(async () => {
+    try {
+      await processPendingAnalysisJobs(1);
+    } catch (error) {
+      console.error(
+        "[analysis-jobs] background processPendingAnalysisJobs failed",
+        error instanceof Error ? error.message : error,
+      );
+    }
+  });
+}
 
 export async function POST(request: Request) {
   const cookieHeader = request.headers.get("cookie");
@@ -41,7 +67,17 @@ export async function POST(request: Request) {
   }
 
   const formData = await request.formData();
-  const result = await runAnalysisJobSubmission({ ownerEmail, formData });
+  const locale =
+    formData.has("locale")
+      ? toAnalysisUiLocale(String(formData.get("locale")))
+      : localeFromCookieHeader(cookieHeader);
+  const result = await runAnalysisJobSubmission({
+    ownerEmail,
+    formData,
+    locale,
+    // Return immediately; result page polls while the job finishes in `after()`.
+    waitForCompletion: false,
+  });
 
   if (!result.ok) {
     return NextResponse.json(
@@ -49,6 +85,8 @@ export async function POST(request: Request) {
       { status: result.status },
     );
   }
+
+  scheduleAnalysisProcessing();
 
   if (!isAdmin) {
     await consumeFreeAnalysis(ownerEmail);

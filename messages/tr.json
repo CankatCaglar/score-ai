@@ -1,0 +1,1717 @@
+{
+  "meta": {
+    "title": "Score AI | İçeriğinizi Ölçün, Anlayın, Geliştirin",
+    "description": "Yapay zeka destekli içerik analizi ve puanlama platformu"
+  },
+  "common": {
+    "brand": "Score AI"
+  },
+  "landing": {
+    "nav": {
+      "menuItems": [
+        "Özellikler",
+        "Nasıl Çalışır?"
+      ],
+      "menuOpen": "Menüyü aç",
+      "menuClose": "Menüyü kapat",
+      "toTop": "Sayfanın başına dön",
+      "joinWaitlist": "Waitlist'e Katıl"
+    },
+    "waitlist": {
+      "emailPlaceholder": "E-posta adresinizi girin",
+      "joinLabel": "Waitlist'e Katıl",
+      "joiningLabel": "Ekleniyor...",
+      "securityNote": "Spam yok. Dilediğiniz zaman çıkabilirsiniz.",
+      "invalidEmail": "Lütfen geçerli bir e-posta girin.",
+      "joinSuccess": "Bekleme listesine eklendiniz!",
+      "alreadyJoined": "Bu e-posta zaten waitlist'te kayıtlı.",
+      "genericError": "Bir sorun oluştu. Lütfen tekrar deneyin.",
+      "permissionError": "Firestore izinleri eksik. Firebase kurallarını güncelleyin.",
+      "mailRejectedError": "Mail sunucusu alıcı adresi reddetti. DNS/SPF ayarlarını kontrol edin.",
+      "accessWaitlist": "Uygulama şu an waitlist modunda. Erken erişim için waitlist'e katılın.",
+      "accessInviteRequired": "Bu ekran erken erişimde. Giriş için davet linki gerekiyor.",
+      "accessInviteInvalid": "Davet linki geçersiz veya daha önce kullanılmış.",
+      "accessInviteExpired": "Davet linkinin süresi dolmuş.",
+      "accessGraderClosed": "Ücretsiz analiz aracı henüz açık değil. Erken erişim için waitlist'e katılın."
+    },
+    "hero": {
+      "badge": "Ölç, anla, geliştir",
+      "titleMobile": [
+        "İçerikleriniz neden",
+        "performans göstermiyor?",
+        "Score AI bunu size saniyeler",
+        "içinde söylesin."
+      ],
+      "titleDesktopLine1": "İçerikleriniz neden performans göstermiyor?",
+      "titleDesktopLine2": "Score AI bunu size saniyeler içinde söylesin.",
+      "desc": "Score AI, içeriklerinizi 30+ mikro kriterle analiz eder, markanızı anlar ve daha iyi sonuçlar için otomatik olarak uygulanabilir öneriler sunar.",
+      "subtitle": "Waitlist'e katılın, lansmana özel avantajlardan ilk siz haberdar olun.",
+      "waitlistCountLabel": "kişi bekleme listesinde.",
+      "screenshotAlt": "Score AI Dashboard — içerik skor karşılaştırması"
+    },
+    "scorePreview": {
+      "badge": "AI Sadece Puan Vermez",
+      "title": "İçeriğinizi daha iyi hale getirir.",
+      "currentLabel": "Mevcut",
+      "currentAlt": "Mevcut içerik önizlemesi",
+      "potentialLabel": "Potansiyel",
+      "suggestedLabel": "Önerilen",
+      "suggestedAlt": "Önerilen içerik önizlemesi",
+      "improvementsTitle": "Önerilen İyileştirmeler",
+      "improvements": [
+        "Başlığı daha güçlü hale getir",
+        "CTA ekleyerek etkileşimi artır",
+        "Marka rengini daha görünür kullan",
+        "Görsel hiyerarşisini iyileştir",
+        "Metin uzunluğunu optimize et"
+      ],
+      "updateInCanva": "Canva'da Güncelle",
+      "updateHint": "Tek tıkla tasarımı aç ve güncelle.",
+      "averageImprovementBadge": "Score AI ile ortalama iyileşme",
+      "stats": [
+        {
+          "value": "+12",
+          "label": "Puan artışı"
+        },
+        {
+          "value": "%28",
+          "label": "Daha fazla etkileşim"
+        },
+        {
+          "value": "%18",
+          "label": "Daha yüksek dönüşüm"
+        }
+      ],
+      "ctaLine1": "İçeriklerinizi geliştirin,",
+      "ctaLine2": "daha yüksek performans elde edin.",
+      "chartAria": "Performans trend grafiği"
+    },
+    "features": {
+      "badge": "Özellikler",
+      "titleBefore": "Daha iyi içerik için ihtiyacınız olan ",
+      "titleHighlight": "her şey.",
+      "title": "Daha iyi içerik için ihtiyacınız olan her şey.",
+      "desc": "Score AI, markanızı anlar, içeriklerinizi analiz eder ve size özel, uygulanabilir önerilerle performansınızı artırır.",
+      "brandDna": {
+        "title": "Brand DNA",
+        "titleHighlight": "DNA",
+        "headlineBefore": "Score AI, markanızın nasıl iletişim kurduğunu ",
+        "headlineHighlight": "öğrenir.",
+        "desc": "Tonunuzu, görsel dilinizi ve başarılı içerik kalıplarınızı zamanla hafızasına kaydeder.",
+        "bullets": [
+          "Marka DNA'nızı çıkarır.",
+          "Geçmiş içeriklerden öğrenir.",
+          "İçgörülerle daha doğru öneriler sunar.",
+          "Markanız için sürekli gelişen bir hafıza oluşturur."
+        ],
+        "screenshotAlt": "Score AI Brand DNA ekranı"
+      },
+      "benchmark": {
+        "title": "Benchmark Engine",
+        "titleHighlight": "Engine",
+        "headlineBefore": "Sektörünüzdeki markalarla sürekli ",
+        "headlineHighlight": "kıyaslama.",
+        "desc": "Performansınızı görün, gelişim alanlarınızı keşfedin.",
+        "bullets": [
+          "Kendi skorunuzu sektör ortalamasıyla karşılaştırın.",
+          "Lider markalara göre konumunuzu görün.",
+          "Veriye dayalı stratejilerle ilerleyin."
+        ],
+        "screenshotAlt": "Score AI Benchmark ekranı"
+      },
+      "creativeMemory": {
+        "title": "Creative Memory",
+        "titleHighlight": "Memory",
+        "headlineBefore": "Geçmiş paylaşımlarınızdan ",
+        "headlineHighlight": "öğrenir.",
+        "desc": "Nelerin işe yaradığını hatırlar ve gelecekte daha doğru öneriler üretir.",
+        "bullets": [
+          "Geçmiş verilerinizi analiz ederek kalıpları keşfeder.",
+          "En iyi performans gösteren içeriklerinizi hatırlar.",
+          "İçerik tercihlerinizi ve kalıplarınızı öğrenir.",
+          "Daha isabetli, size özel öneriler sunar."
+        ],
+        "screenshotAlt": "Score AI Creative Memory ekranı"
+      },
+      "pills": [
+        {
+          "title": "AI İçerik Skorlama",
+          "desc": "30+ mikro kritere göre içerik kalitenizi ölçün ve skorlayın."
+        },
+        {
+          "title": "Marka Öğrenimi",
+          "desc": "Markanızın dilini, tonunu ve görsel kimliğini öğrenir."
+        },
+        {
+          "title": "Rakip Analizi",
+          "desc": "Sektördeki en iyi markaları analiz edin, öne geçin."
+        },
+        {
+          "title": "İçerik Geçmişi",
+          "desc": "Tüm içerik performanslarınızı tek yerde takip edin."
+        },
+        {
+          "title": "Aksiyon Odaklı Öneriler",
+          "desc": "Ne yapmanız gerektiğini net ve uygulanabilir şekilde söyler."
+        },
+        {
+          "title": "Creative Copilot",
+          "desc": "Başlık, metin, CTA ve daha fazlası için AI önerileri alın."
+        }
+      ]
+    },
+    "productVideo": {
+      "badge": "Ürünü Keşfedin",
+      "titleBefore": "Score AI'nın ",
+      "titleHighlight": "nasıl çalıştığını",
+      "titleAfter": " görün.",
+      "desc": "İçeriklerinizi analiz edin, geliştirin ve daha iyi sonuçlar elde edin.",
+      "screenshotAlt": "Score AI ürün demosu",
+      "playAria": "Ürün videosunu aç",
+      "highlights": [
+        {
+          "title": "AI Destekli Analiz",
+          "desc": "30+ mikro kritere göre içerik kalitenizi ölçer."
+        },
+        {
+          "title": "Akıllı Öneriler",
+          "desc": "İçeriklerinizi geliştirmek için uygulanabilir öneriler sunar."
+        },
+        {
+          "title": "Daha İyi Sonuçlar",
+          "desc": "Performansınızı artırır, hedeflerinize daha hızlı ulaşmanızı sağlar."
+        }
+      ],
+      "modalTitle": "Ürünü Keşfedin - Video",
+      "close": "Kapat",
+      "iframeTitle": "Score AI ürün videosu"
+    },
+    "howItWorks": {
+      "badge": "Nasıl Çalışıyor?",
+      "titleBefore": "İçerik üretim sürecinizi ",
+      "titleHighlight": "5 adımda",
+      "titleAfter": " optimize edin.",
+      "desc": "Score AI, içeriğinizi analiz eder, markanızı öğrenir ve uygulanabilir önerilerle performansınızı artırır.",
+      "steps": [
+        {
+          "title": "İçeriğinizi Yükleyin",
+          "desc": "Görsel veya link ile içeriğinizi platforma alın."
+        },
+        {
+          "title": "30+ Mikro Kriter ile Analiz Edilsin",
+          "desc": "5 Ana kategoride 30+ mikro kriter ile detaylı analiz edilir."
+        },
+        {
+          "title": "Skor'unuzu Görün",
+          "desc": "İçeriğinizin genel skorunu görün ve gelişim alanlarını keşfedin."
+        },
+        {
+          "title": "Geliştirme Önerilerini Alın",
+          "desc": "Score, içeriğinizi iyileştirmek için size özel öneriler sunar."
+        },
+        {
+          "title": "Tek Tıkla Uygula ve Yayınla",
+          "desc": "Önerileri Canva'da uygulayın, tasarımınızı yapın ve paylaşın."
+        }
+      ],
+      "step1": {
+        "uploadLabel": "İçeriğinizi yükleyin",
+        "orPasteLink": "veya link yapıştırın",
+        "exampleUrl": "https://example.com/icerik"
+      },
+      "step2": {
+        "criteriaTitle": "Analiz Kriterleri",
+        "criteria": [
+          {
+            "label": "Hook Gücü",
+            "score": "92"
+          },
+          {
+            "label": "CTA Etkinliği",
+            "score": "79"
+          },
+          {
+            "label": "Storytelling",
+            "score": "84"
+          },
+          {
+            "label": "Görsel Kalitesi",
+            "score": "93"
+          },
+          {
+            "label": "Okunabilirlik",
+            "score": "88"
+          }
+        ]
+      },
+      "step3": {
+        "readyToPublish": "Yayınlanmaya Hazır",
+        "pointsVsLastMonth": "Geçen aya göre +12 puan artışı",
+        "improvementArea": "Gelişim Alanı",
+        "itemsLabel": "adet"
+      },
+      "step4": {
+        "suggestedImprovements": "Önerilen İyileştirmeler",
+        "items": [
+          "Daha güçlü bir giriş cümlesi kullan",
+          "CTA ekleyerek etkileşimi artır",
+          "İlk cümleyi daha dikkat çekici yap",
+          "Görseli üstte konumlandırın",
+          "Marka tonunu daha net yansıt"
+        ]
+      },
+      "step5": {
+        "canvaPreviewAlt": "Canva öneri önizlemesi",
+        "openInCanva": "Canva'da Aç",
+        "editDownloadShare": "Düzenle, indir ve paylaş"
+      }
+    },
+    "audience": {
+      "badge": "Kimler Kullanmalı?",
+      "title": "Daha iyi içerik üretmek isteyen herkes için.",
+      "desc": "Score AI, ihtiyaçlarınıza göre içeriklerinizi analiz eder ve geliştirmenize yardımcı olur.",
+      "visualPlaceholder": "Görsel",
+      "visualAltSuffix": "görseli",
+      "cards": [
+        {
+          "title": "Pazarlama ekibi olmayan küçük işletmeler",
+          "desc": "Profesyonel içerik desteği almadan sosyal medyada etkili olun."
+        },
+        {
+          "title": "Düzenli sosyal medya kullanan işletmeler",
+          "desc": "Düzenli paylaşımlarınızın performansını artırın ve daha fazla etkileşim alın."
+        },
+        {
+          "title": "Yerel hizmet işletmeleri",
+          "desc": "Güven oluşturan, profesyonel ve etkili içeriklerle öne çıkın."
+        },
+        {
+          "title": "Kişisel marka sahipleri",
+          "desc": "Kişisel markanızı güçlendirin, daha geniş kitlelere ulaşın."
+        },
+        {
+          "title": "E-ticaret işletmeleri",
+          "desc": "Ürünlerinizi doğru içeriklerle tanıtın, satışlarınızı artırın."
+        }
+      ]
+    },
+    "faq": {
+      "badge": "SSS",
+      "title": "Sıkça Sorulan Sorular",
+      "desc": "Score AI hakkında merak ettiğiniz her şey.",
+      "items": [
+        {
+          "question": "Score AI tam olarak ne yapar?",
+          "answer": "Score, sosyal medya içeriklerinin yayınlanmadan önce daha stratejik, etkili ve performans odaklı hale gelmesini sağlayan yapay zeka destekli bir içerik analiz platformudur. İçerikleri marka dili, hedef kitle uyumu, mecra dinamikleri ve etkileşim potansiyeli açısından değerlendirir; skorlar ve geliştirme önerileri sunup tasarlar. Markaların daha güçlü dijital iletişim kurmasına yardımcı olur."
+        },
+        {
+          "question": "İçeriklerim güvende mi?",
+          "answer": "Evet. İçerikleriniz şifreli olarak saklanır, üçüncü taraflarla paylaşılmaz. KVKK uyumlu veri işleme politikaları uygulanır."
+        },
+        {
+          "question": "Score AI ücretsiz mi?",
+          "answer": "Beta döneminde waitlist'e katılan kullanıcılara özel erken erişim ve indirimli fiyatlandırma sunulacaktır. Detaylar lansman öncesinde paylaşılacak."
+        },
+        {
+          "question": "Ne zaman erişime açılacak?",
+          "answer": "Waitlist sırasına göre kademeli olarak erişim verilecektir. Kayıt olduğunuzda sıranızı ve tahmini erişim tarihinizi e-posta ile bildireceğiz."
+        }
+      ],
+      "titleBefore": "Sıkça Sorulan Sorular",
+      "titleHighlight": ""
+    },
+    "cta": {
+      "badge": "Son Adım",
+      "title": "İçerikleriniz daha iyisini hak ediyor.",
+      "desc": "Score AI ile içeriklerinizi analiz edin, geliştirin ve her paylaşımda daha iyi sonuçlar elde edin.",
+      "perks": {
+        "earlyAccess": "Erken erişim",
+        "freeBeta": "Ücretsiz beta",
+        "noSpam": "Spam yok. Güvende kalın."
+      },
+      "stats": [
+        {
+          "value": "1.000+",
+          "label": "Kişi waitlist'te",
+          "sub": "Her geçen gün büyüyoruz."
+        },
+        {
+          "value": "60 sn",
+          "label": "İlk Analiz",
+          "sub": "Hızlı, kolay ve tamamen otomatik."
+        },
+        {
+          "value": "30+",
+          "label": "Mikro Kriter",
+          "sub": "Detaylı kalite analizi."
+        },
+        {
+          "value": "7/24",
+          "label": "Anında Analiz",
+          "sub": "İçeriklerinizi istediğiniz zaman değerlendirin."
+        }
+      ]
+    },
+    "quote": {
+      "title": "Yayına çıkmadan önce son kontrol ",
+      "body": "İçeriğinizi 30+ mikro kalite kriterine göre analiz eder, markanızı öğrenir ve performansınızı artıracak uygulanabilir öneriler sunar.",
+      "closing": "Her paylaşım, bir öncekinden daha güçlü hale gelir.",
+      "imageAlt": "Footer içgörü görseli"
+    },
+    "footer": {
+      "tagline": "Yapay zeka destekli içerik analizi ile markaların daha iyi sonuçlar almasını sağlıyoruz.",
+      "rights": "© 2026 Score AI. Tüm Hakları Saklıdır.",
+      "disclosure": "Score AI, Nera Reklam Pazarlama Yazılım Teknoloji Limited Şirketinin girişimidir.",
+      "mapsAria": "Tallinn, Estonya konumunu Google Maps'te aç",
+      "mailAria": "Score AI ekibine e-posta gönder",
+      "location": "Tallinn, Estonya",
+      "columns": [
+        {
+          "title": "ÜRÜN",
+          "links": [
+            {
+              "label": "Özellikler",
+              "id": "ozellikler"
+            },
+            {
+              "label": "Nasıl Çalışır?",
+              "id": "nasil-calisir"
+            }
+          ]
+        },
+        {
+          "title": "KAYNAKLAR",
+          "links": [
+            {
+              "label": "Blog",
+              "href": "/blog"
+            },
+            {
+              "label": "SSS",
+              "id": "faq"
+            }
+          ]
+        },
+        {
+          "title": "ŞİRKET",
+          "links": [
+            {
+              "label": "Hakkımızda",
+              "href": "https://www.nerasocial.com/hakkimizda",
+              "newTab": true
+            },
+            {
+              "label": "İletişim",
+              "href": "https://www.nerasocial.com/iletisim",
+              "newTab": true
+            },
+            {
+              "label": "Gizlilik Politikası",
+              "href": "https://www.nerasocial.com/gizlilik-politikasi",
+              "newTab": true
+            },
+            {
+              "label": "Kullanım Koşulları",
+              "href": "https://www.nerasocial.com/kullanim-kosullari",
+              "newTab": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "analyzer": {
+    "eyebrow": "Ücretsiz içerik analizi",
+    "heroTitle": "Anlık İçerik Kalite Denetimi",
+    "heroBody": "Görselini yükle; Score 30+ objektif kriterle skorlasın, eksikleri göstersin ve geliştirme potansiyelini açıklasın.",
+    "bullets": [
+      "Yaklaşık 30 saniyede detaylı analiz sonucunu gör",
+      "Score AI önerilerini ve aksiyon alanlarını gör",
+      "30+ objektif kriterle değerlendirme"
+    ],
+    "heroPointCta": "İlk ücretsiz analizinle buradan başla",
+    "freeAnalysis": "Ücretsiz analiz",
+    "criteriaBadge": "30+ kriter",
+    "emailLabel": "E-posta adresiniz",
+    "emailPlaceholder": "ornek@mail.com",
+    "emailHint": "Sonucu ve sonraki adımları paylaşabilmemiz için.",
+    "emailLockedTitle": "Önce e-posta adresinizi girin",
+    "emailLockedHint": "Geçerli bir e-posta yazınca dosya seçimi açılır.",
+    "emailError": "Lütfen geçerli bir e-posta adresi girin.",
+    "dropTitle": "Görselinizi buraya sürükleyin",
+    "dropHint": "PNG · JPG · WEBP · Maks. 20 MB",
+    "selectFile": "Dosya seç",
+    "analyzeCta": "Ücretsiz analiz et",
+    "freeUsedCta": "Ücretsiz hak kullanıldı",
+    "freeUsedNoticeBefore": "Bu tarayıcıda ücretsiz analiz hakkı kullanıldı. Devam etmek için",
+    "freeUsedLogin": "giriş yapın",
+    "freeUsedOr": "veya",
+    "freeUsedSignup": "kaydolun",
+    "freeUsedNoticeAfter": ".",
+    "viewReportCta": "Mevcut raporunu gör",
+    "selectFileError": "Lütfen analiz etmek için bir görsel seçin.",
+    "freeUsedError": "Ücretsiz analiz hakkınız daha önce kullanıldı. Yeni analiz için hesabınıza giriş yaparak dashboard üzerinden devam edin.",
+    "freeUsedApiError": "İlk ücretsiz analizinizi tamamladınız. Sonucu kaydetmek için ücretsiz hesap oluşturun.",
+    "genericSubmitError": "Analiz başlatılırken bir hata oluştu.",
+    "features": [
+      {
+        "t": "Skorla",
+        "d": "30+ objektif kritere göre içerik kalitesini ölç."
+      },
+      {
+        "t": "Anla",
+        "d": "Kritik sorunları, eksiklikleri ve potansiyeli gör."
+      },
+      {
+        "t": "Geliştir",
+        "d": "Kaydol; Score ile düzenle ve çıktını al."
+      }
+    ],
+    "positioningTitle": "Üretimden Sonra Gelen Kalite Katmanı",
+    "positioningP1": "Canva, ChatGPT veya Adobe içerik üretir. Score AI ise yayınlamadan önce kontrol eder.",
+    "positioningP2": "İçeriğini yükle. Score AI analiz etsin, geliştirilmesi gereken noktaları göstersin ve paylaşıma hazır hale getirsin.",
+    "visualSlotLabel": "Görsel alanı",
+    "visualSlotHintBefore": "PNG eklemek için",
+    "visualSlotPath": "public/analyzer/hero-visual-tr.png",
+    "moreInfoTitle": "Daha fazla bilgi",
+    "moreInfo": [
+      {
+        "q": "Content Analyzer nedir?",
+        "paragraphs": [
+          {
+            "text": "Content Analyzer, içeriğinizi yayınlamadan önce analiz eden ücretsiz bir araçtır. İçeriğinizi yükleyin, 30'un üzerinde objektif kritere göre değerlendirin ve güçlü yönlerinizle birlikte geliştirilmesi gereken alanları saniyeler içinde keşfedin.",
+            "bold": [
+              "30'un üzerinde objektif kritere göre"
+            ]
+          }
+        ]
+      },
+      {
+        "q": "Score AI, Canva veya ChatGPT'nin rakibi mi?",
+        "paragraphs": [
+          {
+            "text": "Hayır. Score'u Canva, ChatGPT veya Adobe'nin karşısına koymuyoruz. Score, içerik üretim araçlarından sonra gelen kalite katmanıdır. Üretilen içeriğin yayınlanmadan önce geçtiği kontrol ve geliştirme sistemi olarak konumlanır: objektif kriterlerle değerlendirir, geliştirme alanlarını belirler ve içeriği markaya özel biçimde yayına hazır hâle getirir. Yani üretim araçlarının yerini almaz; onların çıktısını ölçülebilir, tutarlı ve yayına hazır hale getiren yapay zekâ destekli kalite ve optimizasyon katmanıdır."
+          }
+        ]
+      },
+      {
+        "q": "Kimler için uygun?",
+        "paragraphs": [
+          {
+            "text": "Düzenli içerik üreten herkes. ChatGPT, Canva veya Adobe gibi araçlarla hazırladığınız içerikleri paylaşmadan önce analiz etmek, eksiklerini görmek ve daha güçlü hâle getirmek istiyorsanız Content Analyzer tam size göre. En çok pazarlama ekipleri, markalar, içerik üreticileri ve sosyal medya yöneticileri tarafından kullanılır."
+          }
+        ]
+      },
+      {
+        "q": "İlk analizden sonra ne olur?",
+        "paragraphs": [
+          {
+            "text": "Analyzer'da skorunu, kategori kırılımlarını, Score AI önerilerini ve eksiklikleri görürsün. Detaylı kayıt, sürekli analiz ve geliştirme için ücretsiz hesap oluşturursun. Kayıt veya giriş sonrası misafir oturumundaki analiz otomatik olarak dashboard hesabına aktarılır. Boş bir panele düşmezsin; doğrudan ilgili analizine gidersin. İkinci içerikten itibaren Score AI içinde kredi veya üyelikle devam edersin. İlk deneyim ücretsizdir; sürdürülebilir operasyon Score AI ile büyür."
+          }
+        ]
+      }
+    ],
+    "loadingSteps": [
+      "Görsel hazırlanıyor...",
+      "31 kritere göre analiz ediliyor...",
+      "Kategori skorları hesaplanıyor...",
+      "Geliştirme alanları belirleniyor...",
+      "Rapor son rötuşlarda..."
+    ],
+    "loadingTips": [
+      "İyi içerik yalnızca güzel görünmez, ölçülebilir olur.",
+      "Marka tutarlılığı, tek bir posttan değil sistemden gelir.",
+      "Score, üretimden sonra gelen kalite katmanıdır.",
+      "31 kriter, subjektif 'güzel olmuş' yorumunun yerini alır."
+    ],
+    "waitingTitle": "İçeriğiniz analiz ediliyor",
+    "waitingProgress": "İlerleme",
+    "analysisDone": "Analiz tamamlandı",
+    "contentScoreFallback": "İçerik skoru",
+    "criteriaLabel": "kriter",
+    "detailCta": "Detaylı gör, kaydol",
+    "overallScore": "Genel Skor",
+    "potentialShort": "Puan Potansiyel Geliştirme",
+    "potentialTitle": "Potansiyel Skor",
+    "potentialGainLabel": "Potansiyel artış",
+    "saveReportTitle": "Detaylı raporu kaydet",
+    "saveReportBody": "Ücretsiz hesap ile bu analizi dashboard'una aktar.",
+    "freeSignup": "Ücretsiz kaydol",
+    "shortEval": "Kısa Değerlendirme",
+    "strength": "Güçlü yön",
+    "contentPreview": "İçerik Önizleme",
+    "scoreDistribution": "Score Dağılımı",
+    "suggestions": "Score AI Önerileri",
+    "gainPotentialLabel": "puan potansiyeli",
+    "suggestionsMoreCta": "Daha fazla öneri ve tam aksiyon planı için Score AI’ya geçin",
+    "suggestionFallbackAction": "Bu kriteri güçlendir; skora en hızlı katkı buradan gelir.",
+    "insightTitle": "Score AI İçgörüsü",
+    "insightSuggestionsLabel": "Öneriler",
+    "criteriaPanelTitle": "Mikro Kriterler",
+    "criteriaPanelSubtitle": "Kategorilere göre objektif değerlendirme",
+    "finalCtaTitle": "Detaylı Geliştirme Planı için Ücretsiz Kaydol",
+    "finalCtaBody": "Bu rapor hesabına otomatik aktarılır. Tam kriter detayları ve Score ile geliştirme için ücretsiz hesap oluştur.",
+    "hasAccount": "Hesabım var, giriş yap",
+    "removeFileAria": "Seçili dosyayı kaldır",
+    "metaTitle": "Content Analyzer | Ücretsiz İçerik Analizi",
+    "metaDescription": "İçeriğini yükle. Score analiz etsin, geliştirme alanlarını açıklasın ve yayına hazır hâle getirsin.",
+    "footerProduct": "ÜRÜN",
+    "footerResources": "KAYNAKLAR",
+    "footerCompany": "ŞİRKET",
+    "footerFeatures": "Özellikler",
+    "footerHowItWorks": "Nasıl Çalışır?",
+    "footerBlog": "Blog",
+    "footerFaq": "SSS",
+    "footerAbout": "Hakkımızda",
+    "footerContact": "İletişim",
+    "footerPrivacy": "Gizlilik Politikası",
+    "footerTerms": "Kullanım Koşulları",
+    "footerTagline": "İçeriğinizi ölçün, anlayın ve geliştirin.",
+    "footerRights": "Tüm hakları saklıdır.",
+    "footerEmailLabel": "E-posta",
+    "footerLocationLabel": "Konum",
+    "footerLocation": "Tallinn, Estonya"
+  },
+  "cookie": {
+    "body": "Web sitemizi çalıştırmak, hizmet kullanımını analiz etmek, tercihlerinizi yönetmek ve deneyimi kişiselleştirmek için çerezler kullanıyoruz. Çerezleri kabul ederek ilgili içerik, sosyal özellikler ve geliştirilmiş bir gezinme deneyimi elde edersiniz. Tercihlerinizi yönetmek için “Çerez Ayarları”na tıklayın. Daha fazla bilgi için",
+    "policy": "Gizlilik Politikası",
+    "allowAll": "Tüm çerezlere izin ver",
+    "denyAll": "Tümünü reddet",
+    "settings": "Çerez ayarları",
+    "save": "Tercihleri kaydet",
+    "back": "Geri",
+    "settingsTitle": "Çerez tercihleri",
+    "analyticsTitle": "Analitik",
+    "analyticsDesc": "Trafiği ve kullanım davranışını anlamamıza yardımcı olur.",
+    "marketingTitle": "Pazarlama",
+    "marketingDesc": "İlgili içerik ve reklam deneyimini kişiselleştirmek için kullanılır.",
+    "dialogLabel": "Çerez onayı"
+  },
+  "blog": {
+    "header": {
+      "menuOpen": "Menüyü aç",
+      "menuClose": "Menüyü kapat"
+    },
+    "menu": {
+      "features": "Özellikler",
+      "howItWorks": "Nasıl Çalışır?",
+      "waitlist": "Waitlist'e Katıl"
+    },
+    "hero": {
+      "badge": "BLOG",
+      "title": "Score AI Blog",
+      "desc": "İçerik performansı, AI odaklı üretim stratejileri ve büyüme içgörüleri."
+    },
+    "empty": "Henüz yayınlanmış bir yazı yok. Çok yakında burada olacak.",
+    "read": "Yazıyı oku",
+    "readTime": "{minutes} dk",
+    "back": "Tüm yazılar",
+    "footer": {
+      "product": "ÜRÜN",
+      "resources": "KAYNAKLAR",
+      "company": "ŞİRKET",
+      "features": "Özellikler",
+      "howItWorks": "Nasıl Çalışır?",
+      "blog": "Blog",
+      "faq": "SSS",
+      "about": "Hakkımızda",
+      "contact": "İletişim",
+      "privacy": "Gizlilik Politikası",
+      "terms": "Kullanım Koşulları",
+      "rights": "© 2026 Score AI. Tüm Hakları Saklıdır.",
+      "disclosure": "Score AI, Nera Reklam Pazarlama Yazılım Teknoloji Limited Şirketinin girişimidir.",
+      "mapsLabel": "Tallinn, Estonya konumunu Google Maps'te aç",
+      "mapsText": "Tallinn, Estonya",
+      "mailLabel": "Score AI ekibine e-posta gönder",
+      "desc": "Yapay zeka destekli içerik analizi ile markaların daha iyi sonuçlar almasını sağlıyoruz."
+    }
+  },
+  "privacy": {
+    "metaTitle": "Gizlilik Politikası | Score AI",
+    "metaDescription": "Score AI gizlilik politikası — hesap, analiz ve Instagram bağlantı verilerinin kullanımı.",
+    "home": "← Score AI",
+    "title": "Gizlilik Politikası",
+    "lastUpdated": "Son güncelleme: 30 Temmuz 2026",
+    "switchLanguage": "English",
+    "sections": [
+      {
+        "heading": "1. Kapsam",
+        "paragraphs": [
+          "Bu politika, Score AI (<strong>usescore.net</strong>) hizmetini kullandığınızda topladığımız verileri ve bunları nasıl kullandığımızı açıklar."
+        ]
+      },
+      {
+        "heading": "2. Topladığımız veriler",
+        "items": [
+          "Hesap bilgileri (ad, e-posta, oturum)",
+          "Yüklediğiniz içerikler ve analiz sonuçları",
+          "Marka zekâsı alanına girdiğiniz bilgiler (marka vaadi, rakip kaynakları, güven kanıtları)",
+          "Instagram’ı bağladığınızda: Instagram kullanıcı adı, hesap kimliği, erişim izni (token) ve analiz için seçilen son medya (gönderi görselleri / kapakları ve ilgili metadata)"
+        ]
+      },
+      {
+        "heading": "3. Instagram verisi nasıl kullanılır?",
+        "paragraphs": [
+          "Instagram bağlantısı yalnızca sizin başlattığınız <strong>Instagram Login</strong> akışıyla kurulur. Başkasının kullanıcı adını yazarak hesap bağlanamaz.",
+          "Instagram verilerini şu amaçlarla kullanırız:"
+        ],
+        "items": [
+          "Marka tutarlılığı ve içerik analizi",
+          "Geçmiş içerik / creative memory sinyalleri",
+          "Size gösterilen skor ve önerilerin üretilmesi"
+        ],
+        "paragraphsAfter": [
+          "Instagram verilerinizi reklam amacıyla satmayız. İzni yalnızca hizmeti sunmak için gerekli olduğu sürece saklarız; bağlantıyı kestiğinizde erişim token’ı kaldırılır."
+        ]
+      },
+      {
+        "heading": "4. Üçüncü taraflar",
+        "paragraphs": [
+          "Hizmeti sunmak için altyapı sağlayıcıları (ör. barındırma, kimlik doğrulama, yapay zekâ işleme) kullanılabilir. Instagram verisine erişim Meta’nın Instagram API’si üzerinden, verdiğiniz izinler kapsamında sağlanır."
+        ]
+      },
+      {
+        "heading": "5. Haklarınız",
+        "paragraphs": [
+          "Hesabınızı silebilir, Instagram bağlantısını koparabilir veya veri talepleriniz için bizimle iletişime geçebilirsiniz: <a class=\"font-medium text-brand-dark underline\" href=\"mailto:info@usescore.net\">info@usescore.net</a>"
+        ]
+      },
+      {
+        "heading": "6. İletişim",
+        "paragraphs": [
+          "Score AI — Nera Social / usescore.net<br />E-posta: info@usescore.net"
+        ]
+      }
+    ]
+  },
+  "liveSupport": {
+    "button": "Canlı Destek",
+    "title": "Canlı Destek",
+    "subtitle": "Aklınızdakileri sormaktan çekinmeyin!",
+    "agent": "Destek Yetkilisi",
+    "available": "Müsait",
+    "openAria": "Canlı destek penceresini aç",
+    "closeAria": "Canlı destek penceresini kapat",
+    "chatAria": "WhatsApp üzerinden destek yetkilisine yaz"
+  },
+  "shell": {
+    "nav": {
+      "overview": "Genel Bakış",
+      "analyses": "Analizler",
+      "newAnalysis": "Yeni Analiz",
+      "brandDna": "Brand DNA",
+      "benchmark": "Benchmark",
+      "creativeMemory": "Creative Memory",
+      "settings": "Ayarlar"
+    },
+    "plan": {
+      "normal": "Normal",
+      "pro": "Pro"
+    },
+    "help": {
+      "title": "Yardım Merkezi",
+      "subtitle": "Destek ve iletişim"
+    },
+    "logout": {
+      "title": "Çıkış Yap",
+      "subtitle": "Hesabınızdan güvenli çıkış yapın",
+      "confirmTitle": "Çıkış yapmak istediğinize emin misiniz?",
+      "confirmBody": "Hesabınızdan güvenli şekilde çıkış yapılacak. Tekrar giriş yaparak kaldığınız yerden devam edebilirsiniz.",
+      "cancel": "Vazgeç",
+      "confirm": "Evet, Çıkış Yap",
+      "confirming": "Çıkış yapılıyor...",
+      "success": "Çıkış yapıldı.",
+      "error": "Çıkış yapılamadı."
+    },
+    "menu": {
+      "open": "Menüyü aç",
+      "close": "Menüyü kapat"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Giriş Yap",
+      "subtitle": "Hesabınıza giriş yapın",
+      "welcome": "Hoş geldiniz",
+      "welcomeBack": "Tekrar hoş geldiniz",
+      "email": "E-posta",
+      "password": "Şifre",
+      "rememberMe": "Beni hatırla",
+      "submit": "Giriş Yap",
+      "submitting": "Giriş yapılıyor...",
+      "noAccount": "Hesabınız yok mu?",
+      "signupLink": "Kayıt ol",
+      "forgotPassword": "Şifremi unuttum?",
+      "success": "Giriş başarılı.",
+      "orContinueWith": "veya",
+      "loading": "Yükleniyor…",
+      "emailPlaceholder": "ornek@sirket.com",
+      "emailPasswordRequired": "Devam etmek için e-posta ve şifrenizi girin."
+    },
+    "signup": {
+      "title": "Hesap oluşturun",
+      "subtitle": "Score AI’ye katılın ve içeriklerinizi bir üst seviyeye taşıyın.",
+      "submit": "Kayıt Ol",
+      "submitting": "Kayıt yapılıyor...",
+      "hasAccount": "Zaten hesabınız var mı?",
+      "loginLink": "Giriş Yap",
+      "success": "Hesap oluşturuldu. E-posta doğrulama bağlantısı gönderildi.",
+      "loading": "Yükleniyor…",
+      "name": "Ad Soyad",
+      "namePlaceholder": "Adınız Soyadınız",
+      "email": "E-posta",
+      "emailPlaceholder": "ornek@sirket.com",
+      "password": "Şifre",
+      "confirmPassword": "Şifre Tekrar",
+      "confirmPlaceholder": "Tekrar",
+      "google": "Google ile kayıt ol",
+      "terms": "<terms>Kullanım koşullarını</terms> ve <privacy>Gizlilik politikasını</privacy> okudum, kabul ediyorum.",
+      "fieldsRequired": "Devam etmek için ad, e-posta ve şifre gerekli.",
+      "passwordMismatch": "Şifreler eşleşmiyor. Lütfen kontrol edin.",
+      "termsRequired": "Devam etmek için kullanım koşullarını ve gizlilik politikasını kabul etmelisiniz."
+    },
+    "forgot": {
+      "title": "Şifrenizi mi unuttunuz?",
+      "subtitle": "Kayıtlı e-posta adresinizi girin, size şifre sıfırlama bağlantısı gönderelim.",
+      "submit": "Gönder",
+      "submitting": "Gönderiliyor...",
+      "success": "E-posta adresiniz sistemde kayıtlıysa sıfırlama bağlantısı gönderildi. Gelen kutusu ve spam klasörünü kontrol edin.",
+      "backToLogin": "Giriş sayfasına dön",
+      "backToLoginShort": "Girişe dön",
+      "email": "E-posta",
+      "emailPlaceholder": "ornek@sirket.com",
+      "emailRequired": "E-posta adresi gerekli."
+    },
+    "verify": {
+      "title": "E-postanızı doğrulayın",
+      "subtitle": "Hesabınızı güvence altına almak için e-posta adresinizi doğrulamanız gerekiyor.",
+      "resend": "E-postayı yeniden gönder",
+      "resending": "Gönderiliyor…",
+      "checkInbox": "Gelen kutunuzu kontrol edin",
+      "refreshed": "Doğrulama durumu güncellendi.",
+      "bodyWithEmail": "<highlight>{address}</highlight> adresine bir doğrulama bağlantısı gönderdik. Bağlantıya tıkladıktan sonra aşağıdaki butonla devam edin.",
+      "bodyWithoutEmail": "Doğrulama e-postasını kontrol edin. Bağlantıya tıkladıktan sonra buradan devam edebilirsiniz.",
+      "continue": "Doğruladım, devam et",
+      "checking": "Kontrol ediliyor…",
+      "logout": "Çıkış yap",
+      "backToLogin": "Girişe dön",
+      "resendSuccess": "Doğrulama e-postası yeniden gönderildi.",
+      "notVerifiedTitle": "Henüz doğrulanmadı",
+      "notVerifiedDescription": "E-postadaki bağlantıya tıkladıktan sonra tekrar deneyin.",
+      "sessionMissing": "Oturum bulunamadı. Lütfen tekrar giriş yapın.",
+      "checkFailed": "Doğrulama kontrolü başarısız.",
+      "verifiedSuccess": "E-posta doğrulandı."
+    },
+    "fields": {
+      "password": "Şifre",
+      "showPassword": "Şifreyi göster",
+      "hidePassword": "Şifreyi gizle",
+      "passwordHint": "En az 6 karakter",
+      "pleaseWait": "Lütfen bekleyin…",
+      "googleConnecting": "Google bağlanıyor…",
+      "ruleMinLength": "En az 8 karakter",
+      "ruleMixed": "Büyük harf, küçük harf ve rakam içermeli",
+      "ruleSpecial": "Özel karakter içermeli (!@#$%^&*)"
+    },
+    "google": "Google ile devam et",
+    "shell": {
+      "headline": "Binlerce marka, <brand>Score AI</brand> ile içeriklerini bir üst seviyeye taşıyor.",
+      "tagline": "AI destekli analiz ile içeriklerinizi geliştirin, etkileşiminizi artırın.",
+      "ratingLabel": "4.9/5",
+      "ratingCount": "(120+ yorum)",
+      "mainQuote": "Score AI sayesinde içeriklerimizin performansını net bir şekilde görebiliyoruz. Öneriler sayesinde etkileşim oranlarımız <pct>%35</pct> arttı.",
+      "mainAuthor": "Selin K.",
+      "mainRole": "Dijital Pazarlama Yöneticisi · Terra Niva",
+      "quote1": "İçerik stratejimizi tamamen değiştirdik. Score AI bizim için oyun değiştirici oldu.",
+      "quote1Name": "Mert A.",
+      "quote1Role": "Growth Lead, Eco Alacay",
+      "quote2": "Kullanımı çok kolay ve önerileri çok isabetli. Zaman kazandırıyor ve sonuç getiriyor.",
+      "quote2Name": "Buse T.",
+      "quote2Role": "Sosyal Medya Uzmanı, GreenO Organics",
+      "statAnalyses": "Analiz edilen içerik",
+      "statEngagement": "İyileştirilen etkileşim",
+      "statBrands": "Mutlu marka",
+      "statSatisfaction": "Müşteri memnuniyeti",
+      "sslNote": "Verileriniz 256-bit SSL ile korunur. Güvenli ve gizli.",
+      "simpleTitle": "Hesabınız güvende.",
+      "simpleBody": "Score AI, içeriğinizi 40 mikro kritere göre analiz eder ve uygulanabilir önerilerle performansınızı yükseltir.",
+      "simpleBullet1": "Şifre sıfırlama bağlantıları tek kullanımlıktır.",
+      "simpleBullet2": "Bağlantılar sınırlı süre geçerlidir.",
+      "simpleBullet3": "İşlemleriniz uçtan uca korunur."
+    },
+    "errors": {
+      "emailAlreadyInUse": "Bu e-posta adresi zaten kayıtlı. Giriş yapmayı deneyin.",
+      "invalidEmail": "Geçerli bir e-posta adresi girin.",
+      "weakPassword": "Şifre en az 6 karakter olmalı.",
+      "wrongCredentials": "E-posta veya şifre hatalı. Google ile kayıt olduysanız aşağıdaki Google butonunu kullanın.",
+      "tooManyRequests": "Çok fazla deneme yapıldı. Lütfen biraz sonra tekrar deneyin.",
+      "popupClosed": "Google girişi iptal edildi. İsterseniz tekrar deneyebilirsiniz.",
+      "popupBlocked": "Tarayıcı pop-up’ı engelledi. Pop-up’lara izin verip tekrar deneyin.",
+      "unauthorizedDomain": "Bu domain Firebase’de yetkili değil (Authorized domains).",
+      "invalidApiKey": "Firebase API key geçersiz. .env.local içindeki NEXT_PUBLIC_FIREBASE_API_KEY değerini Firebase Console’dan yenileyin.",
+      "operationNotAllowed": "Bu giriş yöntemi Firebase’de kapalı. Provider’ı etkinleştirin.",
+      "accountExistsDifferent": "Bu e-posta Google ile kayıtlı. Lütfen Google ile devam edin.",
+      "networkFailed": "Ağ hatası. İnternet bağlantınızı kontrol edin.",
+      "requiresRecentLogin": "Bu işlem için yeniden giriş yapmanız gerekiyor.",
+      "expiredActionCode": "Bağlantının süresi dolmuş. Yeni bir bağlantı isteyin.",
+      "invalidActionCode": "Bağlantı geçersiz veya daha önce kullanılmış.",
+      "userDisabled": "Bu hesap devre dışı bırakılmış.",
+      "sessionFailed": "Oturum oluşturulamadı. Firebase Admin / USER_SESSION_SECRET ayarlarını kontrol edin.",
+      "sessionSecret": "USER_SESSION_SECRET tanımlı değil veya çok kısa.",
+      "emailRequired": "Bu hesapta e-posta adresi yok. Başka bir Google hesabı deneyin.",
+      "authIncomplete": "Kimlik doğrulama tamamlanamadı. Lütfen tekrar deneyin.",
+      "adminNotConfigured": "Sunucu Firebase Admin ayarı eksik (.env.local).",
+      "firebaseAdminBad": "Firebase Admin yapılandırması hatalı.",
+      "generic": "Bir sorun oluştu. Lütfen tekrar deneyin."
+    }
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "subtitle": "Hesap ve platform ayarlarınızı yönetin.",
+    "profile": "Profil",
+    "security": "Güvenlik",
+    "notifications": "Bildirimler",
+    "integrations": "Entegrasyonlar",
+    "billing": "Fatura ve Plan",
+    "selectPlaceholder": "Seçin",
+    "language": "Dil",
+    "languagePlaceholder": "Dil seçin",
+    "timezone": "Saat Dilimi",
+    "timezonePlaceholder": "Saat dilimi seçin",
+    "country": "Ülke",
+    "countryPlaceholder": "Ülke seçin",
+    "save": "Kaydet",
+    "saving": "Kaydediliyor...",
+    "saved": "Profil güncellendi.",
+    "loadError": "Profil yüklenemedi. Lütfen tekrar giriş yapın.",
+    "loadFailed": "Profil yüklenirken bir hata oluştu.",
+    "photoTypeError": "Yalnızca PNG, JPEG, JPG, WEBP veya GIF yükleyebilirsiniz.",
+    "photoSizeError": "Görsel en fazla 5 MB olabilir.",
+    "photoSaveError": "Profil fotoğrafı kaydedilemedi.",
+    "profileSaveError": "Profil kaydedilemedi.",
+    "profileSaveFailed": "Profil kaydedilirken bir hata oluştu.",
+    "firstName": "Ad",
+    "firstNamePlaceholder": "Adınız",
+    "lastName": "Soyad",
+    "lastNamePlaceholder": "Soyadınız",
+    "company": "Şirket",
+    "companyPlaceholder": "Şirket veya marka adı",
+    "sector": "Sektör",
+    "sectorPlaceholder": "Sektör seçin",
+    "languageUpdated": "Arayüz dili güncellendi.",
+    "profileTitle": "Profil Bilgileri",
+    "profileSubtitle": "Hesabınızı ve marka bilgilerinizi güncelleyin.",
+    "photoChangeAria": "Profil fotoğrafı değiştir",
+    "photoChange": "Fotoğraf Değiştir",
+    "photoHint": "PNG, JPEG, JPG veya WEBP · en fazla 5 MB",
+    "photoSelected": "Yeni fotoğraf seçildi — kaydettikten sonra kalıcı olur.",
+    "email": "E-posta",
+    "emailVerified": "E-posta adresiniz doğrulandı",
+    "emailUnverified": "E-posta adresiniz henüz doğrulanmadı.",
+    "securityTitle": "Güvenlik Ayarları",
+    "securitySubtitle": "Şifrenizi güncelleyin ve hesap güvenliğinizi yönetin.",
+    "changePassword": "Şifre Değiştir",
+    "changePasswordGoogle": "Bu hesap Google ile bağlandı. Şifre yönetimi Google hesabınız üzerinden yapılır.",
+    "changePasswordHint": "Güvenliğiniz için mevcut şifrenizi doğrulayın.",
+    "active": "Aktif",
+    "currentPassword": "Mevcut Şifre",
+    "newPassword": "Yeni Şifre",
+    "confirmPassword": "Yeni Şifre Tekrarı",
+    "passwordStrong": "Güçlü şifre: büyük harf, sayı ve sembol içeriyor",
+    "passwordMedium": "Orta güç: daha güvenli bir şifre oluşturun",
+    "passwordRequired": "Mevcut ve yeni şifre gerekli.",
+    "passwordMinLength": "Yeni şifre en az 6 karakter olmalı.",
+    "passwordMismatch": "Yeni şifreler eşleşmiyor.",
+    "passwordUpdated": "Şifreniz güncellendi.",
+    "passwordUpdating": "Güncelleniyor…",
+    "passwordUpdate": "Şifreyi Güncelle",
+    "notificationsTitle": "Bildirim Ayarları",
+    "notificationsSubtitle": "E-posta, hatırlatma ve uygulama bildirim tercihlerinizi yönetin.",
+    "emailNotifications": "E-posta Bildirimleri",
+    "emailNotificationsDesc": "Önemli güncellemeler e-posta adresinize gönderilir.",
+    "analysisResults": "Analiz sonuçları",
+    "analysisResultsDesc": "Rapor hazır olduğunda e-posta gönderilir.",
+    "appNotifications": "Uygulama Bildirimleri",
+    "appNotificationsDesc": "Sağ üstteki zil ikonunda görünür.",
+    "instantAlerts": "Anlık uyarılar",
+    "instantAlertsDesc": "Hatırlatmalar ve önemli gelişmeler uygulama içinde görünür.",
+    "analysisStatus": "Analiz durumu",
+    "analysisStatusDesc": "Analiz tamamlandığında bildirim ve popup gösterilir.",
+    "reminders": "Hatırlatmalar",
+    "remindersDesc": "Uzun süredir giriş yapmadığınızda veya analiziniz yarım kaldığında hatırlatma alın.",
+    "emailReminders": "E-posta hatırlatmaları",
+    "emailRemindersDesc": "3 gün giriş yoksa veya analiz yarım kaldıysa mail gönderilir.",
+    "appReminders": "Uygulama hatırlatmaları",
+    "appRemindersDesc": "Aynı hatırlatmalar sağ üst bildirimlerde de görünür.",
+    "notifSaved": "Bildirim tercihleri kaydedildi",
+    "notifSaveFailed": "Bildirim tercihleri kaydedilemedi",
+    "saveNotifications": "Bildirimleri Kaydet",
+    "integrationsTitle": "Entegrasyonlar",
+    "integrationsSubtitle": "İçerik ve sosyal medya araçlarınızı ScoreAI ile bağlayın.",
+    "connectableApps": "Bağlanabilir Uygulamalar",
+    "connectableAppsDesc": "İlk aşamada temel tasarım ve sosyal medya bağlantıları.",
+    "instagramDesc": "Gönderi ve Reels içerikleri için skor takibi yapın.",
+    "instagramMeta": "Business/Creator · Facebook gerekmez",
+    "linkedinDesc": "Şirket sayfası içeriklerini puanlayın ve iyileştirin.",
+    "linkedinMeta": "Entegrasyon yakında kullanıma açılacak",
+    "comingSoon": "Yakında",
+    "connected": "Bağlı",
+    "notConnected": "Bağlı Değil",
+    "connect": "Bağla",
+    "disconnect": "Kopar",
+    "manage": "Yönet",
+    "instagramVerify": "Instagram Login ile doğrula",
+    "instagramNotConfigured": "Instagram Login yapılandırılmamış",
+    "instagramDisconnected": "Instagram bağlantısı kaldırıldı",
+    "instagramConfigError": "Instagram Login yapılandırılmamış. Env / Meta App ayarlarını kontrol et.",
+    "instagramUpdateFailed": "Instagram bağlantısı güncellenemedi",
+    "instagramConnectedWithUser": "@{user} bağlandı · {count} içerik alındı",
+    "instagramConnectedCount": "Instagram bağlandı · {count} içerik alındı",
+    "instagramConnectedLowDesc": "Analiz için en az 6 içerik önerilir. Eksik kalanları manuel yükleyebilirsin.",
+    "instagramConnectedNone": "Instagram hesabı bağlandı",
+    "instagramConnectedNoneDesc": "Henüz içerik çekilemedi. 6–12 görsel/video manuel yükleyebilirsin.",
+    "instagramDenied": "Instagram bağlantısı iptal edildi",
+    "instagramError": "Instagram bağlantısı başarısız",
+    "billingTitle": "Fatura ve Plan",
+    "billingSubtitle": "Abonelik ve ödeme bilgilerinizi yönetin.",
+    "currentPlan": "Mevcut plan",
+    "planNormal": "Normal",
+    "planPro": "Pro",
+    "planProDesc": "Gelişmiş analiz araçları ve öncelikli destek dahil.",
+    "planNormalDesc": "Temel analiz özellikleri aktif.",
+    "upgradePro": "Pro'ya yükselt",
+    "paymentInfo": "Ödeme bilgileri",
+    "paymentInfoDesc": "Kayıtlı kart ve fatura geçmişiniz burada görünecek.",
+    "noPaymentMethod": "Henüz kayıtlı bir ödeme yöntemi yok."
+  },
+  "dashboard": {
+    "benchmark": {
+      "loading": "Yükleniyor…",
+      "title": "Stratejik Marka Bilgileri",
+      "infoAria": "Stratejik Marka Bilgileri hakkında",
+      "infoTooltip": "Bu sayfa Brand DNA değildir. Marka vaadi, rakipler, geçmiş içerikler ve güven kanıtlarını toplayarak Brand Intelligence analizini güçlendirir.",
+      "subtitle": "Brand Intelligence analizini güçlendirmek için eksik kaynakları tamamlayın.",
+      "saveAndContinue": "Kaydet ve Devam Et",
+      "skip": "Atla",
+      "completionTitle": "Tamamlanma Durumu",
+      "scoreOutOf": "/ 100",
+      "whyNeededTitle": "Neden gerekli?",
+      "whyNeededBody": "Bu girdiler Brand Tone, Value Proposition, Differentiation ve Trust Building analizlerini daha isabetli hale getirir. Brand DNA’dan farklı olarak burada rekabet, geçmiş iletişim ve güven kanıtları toplanır.",
+      "status": {
+        "Tamamlandı": "Tamamlandı",
+        "Eksik": "Eksik",
+        "Opsiyonel": "Opsiyonel"
+      },
+      "sectionLabels": {
+        "brandPromise": "Marka Vaadi",
+        "competitors": "Rakip Kaynakları",
+        "historical": "Geçmiş İçerikler",
+        "trustProofs": "Güven Kanıtları"
+      },
+      "brandPromise": {
+        "title": "Marka Vaadi",
+        "subtitle": "Markanı farklılaştıran ana değeri tek cümleyle yaz.",
+        "placeholder": "Doğal içerikleri bilimsel testlerle birleştirerek güvenilir cilt bakımı sunar.",
+        "tags": "Value Proposition · Differentiation · Brand Tone"
+      },
+      "competitors": {
+        "title": "Rakip Kaynakları",
+        "subtitle": "Rakip Instagram hesabı veya web sitesi URL’si ekleyin. Instagram’da son paylaşımlar, sitede ise ana sayfa görselleri incelenir.",
+        "placeholder": "@rakiphesap veya https://...",
+        "postsCount": "{count} görsel",
+        "error": "Hata",
+        "pending": "…",
+        "titleReadyIg": "{count} paylaşım alındı",
+        "titleReadyWeb": "{count} site görseli alındı",
+        "titleFailed": "Çekim başarısız",
+        "titlePending": "İçerikler çekiliyor",
+        "refresh": "Yenile",
+        "manualUrlTitle": "Manuel Instagram post URL’si ekle",
+        "manualUrl": "URL",
+        "hint": "Differentiation analizi için kullanılır. Yeşil sayı = çekilen görsel adedi.",
+        "limitHint": "En fazla {max} rakip ({current}/{max}). Bağlı marka hesabını rakip olarak ekleyemezsin.",
+        "manualPostPrompt": "{input} için Instagram post URL’si yapıştırın"
+      },
+      "brandAccount": {
+        "title": "Marka Hesabı Bağla",
+        "subtitle": "Kendi Instagram’ını bağla, kendi web siteni tara veya geçmiş içeriklerini manuel yükle.",
+        "connected": "Bağlı{username} · Kopar",
+        "connectIg": "Instagram Hesabını Bağla",
+        "igHint": "Instagram’a giriş yapıp hesabını doğrularsın; başkasının kullanıcı adını yazarak bağlanamazsın.",
+        "websitePlaceholder": "https://www.marka.com",
+        "scan": "Tara",
+        "orManual": "veya manuel yükle",
+        "uploadMedia": "Görsel / Video Yükle",
+        "hint": "Tara: kendi sitenin ana sayfasındaki görselleri geçmiş içerik olarak kaydeder (Brand Consistency / Memory). Instagram bağlamak istemezsen son 6 içeriği aşağıdan manuel yükleyebilirsin.",
+        "mediaCount": " · {count} içerik kayıtlı"
+      },
+      "trustProofs": {
+        "title": "Güven Kanıtları",
+        "subtitle": "Sertifika, test sonucu, müşteri yorumu veya garanti belgesi yükleyin.",
+        "uploadLabel": "PDF, PNG, JPG veya WEBP yükle",
+        "uploadHint": "Dermatolojik test, ISO/GMP, müşteri yorumu · max 10 dosya, 10 MB",
+        "tags": "Trust Building · Conversion Potential"
+      },
+      "posting": {
+        "title": "Paylaşım Ortalamanız",
+        "subtitle": "Bu ay analiz ettiğiniz içerikler",
+        "perMonth": "/ ay",
+        "yourRhythm": "Sizin ritminiz",
+        "postsCount": "{count} paylaşım",
+        "you": "Siz",
+        "spacer": "0 / 0"
+      },
+      "sectorAvg": {
+        "title": "Sektör Paylaşım Ortalaması",
+        "subtitle": "Sektör aylık analiz ortalaması",
+        "badge": "Katalog ortalama",
+        "perMonth": "/ ay",
+        "reference": "Sektör referansı",
+        "postsCount": "{count} paylaşım",
+        "you": "Siz",
+        "footer": "Sektör ritmi bu. Hadi yeni analiz yap, kendi çizgini ölç."
+      },
+      "performance": {
+        "idle": {
+          "label": "Başlangıç",
+          "hint": "Hadi ilk analizinle ritmini başlat."
+        },
+        "up": {
+          "label": "Sektörün üstünde",
+          "hint": "Güçlü tempo. Yeni analizle ivmeyi koru."
+        },
+        "flat": {
+          "label": "Sektörle aynı",
+          "hint": "Dengedesin. Bir analiz daha ile öne geç."
+        },
+        "down": {
+          "label": "Sektörün altında",
+          "hint": "Hadi yeni analiz yap, sektör ritmine yetiş."
+        }
+      },
+      "cta": {
+        "body": "Brand Intelligence için daha güçlü analiz hazır. Kaynakları tamamladıkça analiz güven seviyesi artar.",
+        "backToAnalysis": "Analize Dön"
+      },
+      "toasts": {
+        "loadError": "Benchmark verileri yüklenemedi",
+        "igConnectedWithUser": "@{user} bağlandı · {posts} içerik alındı",
+        "igConnectedWithPosts": "Instagram bağlandı · {posts} içerik alındı",
+        "igLowPostsDesc": "Analiz için en az {min} içerik önerilir. Eksik kalanları manuel yükleyebilirsin.",
+        "igConnectedNoPosts": "Instagram hesabı bağlandı",
+        "igConnectedNoPostsDesc": "Henüz içerik çekilemedi. En fazla 6 görsel/video manuel yükleyebilirsin.",
+        "igDenied": "Instagram bağlantısı iptal edildi",
+        "igNotConfigured": "Instagram Login henüz yapılandırılmamış",
+        "igConnectFailed": "Instagram bağlantısı başarısız",
+        "saved": "Kaydedildi",
+        "saveFailed": "Kaydedilemedi",
+        "competitorOwnBrand": "Bağlı marka hesabını rakip olarak ekleyemezsin. Rakipler için başka bir hesap/site kullan.",
+        "competitorDuplicate": "Bu rakip zaten listede.",
+        "competitorMax": "En fazla {max} rakip ekleyebilirsin.",
+        "competitorAdded": "Rakip eklendi, içerikler çekiliyor",
+        "competitorAddFailed": "Rakip eklenemedi",
+        "competitorRemoveFailed": "Rakip silinemedi",
+        "competitorRefreshing": "Rakip içerikleri yenileniyor",
+        "competitorRefreshFailed": "Yenileme başlatılamadı",
+        "postAdded": "Post eklendi",
+        "postAddFailed": "Post eklenemedi",
+        "igDisconnected": "Instagram bağlantısı kaldırıldı",
+        "igLoginNotConfigured": "Instagram Login yapılandırılmamış. Şimdilik manuel içerik yükleyebilirsin.",
+        "igConnectError": "Instagram bağlanamadı",
+        "websiteRequired": "Web sitesi URL’si girin",
+        "scannedImages": "{count} görsel tarandı",
+        "scanFailed": "Tarama başarısız",
+        "trustUploaded": "Güven kanıtı yüklendi",
+        "uploadFailed": "Yükleme başarısız",
+        "deleteFailed": "Silinemedi",
+        "mediaUploaded": "İçerikler yüklendi"
+      }
+    },
+    "brandDna": {
+      "loading": "Yükleniyor…",
+      "title": "Brand DNA",
+      "subtitle": "Markanızı Score AI'a öğretin. Ne kadar net tanımlarsanız analizler o kadar isabetli olur.",
+      "saving": "Kaydediliyor…",
+      "unsavedLeaveConfirm": "Değişiklikler kaydedilmedi. Sayfadan ayrılmak istiyor musunuz?",
+      "selectPlaceholder": "Seçin",
+      "selectOptionsAria": "{label} seçenekleri",
+      "status": {
+        "Tamamlandı": "Tamamlandı",
+        "Eksik": "Eksik"
+      },
+      "scoreLabels": {
+        "Zayıf": "Zayıf",
+        "Orta": "Orta",
+        "İyi": "İyi",
+        "Mükemmel": "Mükemmel"
+      },
+      "scoreHeadline": {
+        "strong": "Brand DNA'nız güçlü ve tutarlı.",
+        "good": "Brand DNA'nız iyi durumda.",
+        "forming": "Brand DNA'nız şekilleniyor.",
+        "incomplete": "Brand DNA'nızı tamamlayın."
+      },
+      "scoreDescription": {
+        "high": "Bu sayede analizler daha isabetli ve içerik önerileri daha değerli olacak.",
+        "mid": "Eksik bölümleri tamamladıkça skorlama referansınız güçlenecek.",
+        "low": "Logo, renk, tipografi ve ton tanımları analiz isabetini doğrudan etkiler."
+      },
+      "updatedNever": "Henüz kaydedilmedi",
+      "updatedAt": "Son güncelleme: {date}",
+      "completionTitle": "Tamamlanma Durumu",
+      "scoreOutOf": "/100",
+      "whyImportantTitle": "Neden Önemli?",
+      "whyImportantBody": "Score AI, analizleri bu referans bilgilerine göre yapar. Ne kadar eksiksiz tanımlarsanız, sonuçlar o kadar isabetli ve değerli olur.",
+      "whyImportantFooter": "Brand Intelligence skorları bu referansa göre şekillenir.",
+      "ctaReady": "Brand DNA'nız hazır!",
+      "ctaIncomplete": "Brand DNA'yı tamamlayın",
+      "ctaBody": "Analizi başlatın, markanızın benzersiz kimliği doğrultusunda değerlendirilsin.",
+      "ctaButton": "Test Analizi Yap",
+      "sections": {
+        "logo": {
+          "title": "Logo",
+          "subtitle": "Marka logonuzu yükleyin.",
+          "alt": "Marka logosu",
+          "empty": "Henüz logo yüklenmedi",
+          "uploading": "İşleniyor…",
+          "upload": "Logo Yükle",
+          "removeAria": "Logoyu kaldır",
+          "hint": "SVG, PNG, JPG (max. 5MB)"
+        },
+        "colors": {
+          "title": "Renk Paleti",
+          "subtitle": "Markanızın ana renklerini seçin.",
+          "maxColors": "Maks. {max} renk",
+          "removeTitle": "{color} — kaldır",
+          "removeAria": "{color} rengini kaldır",
+          "addTitle": "Renk ekle",
+          "addAria": "Renk ekle",
+          "add": "Ekle",
+          "pickerAria": "Renk seç",
+          "hexPlaceholder": "#FFFFFF",
+          "pickerHint": "Renk seçin veya HEX girip Ekle'ye basın",
+          "invalidHex": "Geçersiz HEX (#RGB veya #RRGGBB)",
+          "invalidHexLong": "Geçerli bir HEX kodu girin (#RGB veya #RRGGBB, örn. #FFFFFF)",
+          "invalidHexShort": "Geçerli bir HEX kodu girin (#RGB veya #RRGGBB)",
+          "duplicate": "Bu renk zaten palette",
+          "maxReached": "En fazla {max} renk ekleyebilirsiniz"
+        },
+        "typography": {
+          "title": "Tipografi",
+          "subtitle": "Markanın yazı stilini seçin.",
+          "headingLabel": "Başlık Fontu",
+          "headingPlaceholder": "Başlık fontu seçin",
+          "bodyLabel": "Gövde Fontu",
+          "bodyPlaceholder": "Gövde fontu seçin",
+          "previewHint": "Google Font'ta aynı ailede fontlar önerilir."
+        },
+        "personality": {
+          "title": "Marka Kişiliği",
+          "subtitle": "Markanızı en iyi tanımlayan kimlikleri seçin.",
+          "maxHint": "En fazla 5 ({count}/5)"
+        },
+        "tone": {
+          "title": "Tone of Voice",
+          "subtitle": "İletişim tonunuzu en iyi yansıtan seçimleri işaretleyin.",
+          "maxHint": "En fazla 5 ({count}/5)"
+        },
+        "audience": {
+          "title": "Hedef Kitle",
+          "subtitle": "Hedef kitlenizi seçin.",
+          "customPlaceholder": "Diğer hedef kitleleri yazın...",
+          "customMax": "En fazla {max} özel hedef kitle",
+          "charCount": "{count}/80",
+          "add": "Ekle",
+          "customMaxToast": "En fazla {max} özel hedef kitle ekleyebilirsiniz",
+          "totalMaxToast": "En fazla 8 hedef kitle seçebilirsiniz"
+        },
+        "sector": {
+          "title": "Sektör",
+          "subtitle": "Faaliyet gösterdiğiniz sektörü seçin.",
+          "label": "Sektör",
+          "placeholder": "Sektör seçin",
+          "otherLabel": "Sektörünüzü yazın",
+          "otherPlaceholder": "Sektörünüzü yazın...",
+          "otherValue": "Diğer"
+        },
+        "keywords": {
+          "title": "Marka Anahtar Kelimeleri",
+          "subtitle": "Markanızla ilişkilendirdiğiniz kelimeleri ekleyin.",
+          "maxHint": "En fazla {max}",
+          "removeAria": "{keyword} anahtar kelimesini kaldır",
+          "placeholder": "Anahtar kelime ekleyin...",
+          "add": "Ekle",
+          "count": "{count}/{max} eklendi"
+        }
+      },
+      "completionLabels": {
+        "logo": "Logo",
+        "colors": "Renk Paleti",
+        "typography": "Tipografi",
+        "personality": "Marka Kişiliği",
+        "toneOfVoice": "Tone of Voice",
+        "audience": "Hedef Kitle",
+        "sector": "Sektör",
+        "keywords": "Anahtar Kelimeler"
+      },
+      "options": {
+        "personality": [
+          "Lüks",
+          "Yenilikçi",
+          "Kurumsal",
+          "Samimi",
+          "Modern",
+          "Teknik",
+          "Yaratıcı",
+          "Eğlenceli",
+          "Genç",
+          "Sürdürülebilir",
+          "Doğal",
+          "Dinamik",
+          "Temiz",
+          "Sade",
+          "Özgün",
+          "Sıcak",
+          "Vizyoner",
+          "Otantik",
+          "Güvenilir",
+          "Kendinden Emin"
+        ],
+        "tone": [
+          "Profesyonel",
+          "Kendine Güvenen",
+          "Samimi",
+          "Dürüst",
+          "İlham Verici",
+          "Dostça",
+          "Teknik",
+          "Lüks",
+          "Eğitici",
+          "Direkt",
+          "Konuşma Dili",
+          "Kurumsal",
+          "Sıcak",
+          "Cesur",
+          "Yenilikçi",
+          "Royal",
+          "Minimal",
+          "Empatik",
+          "Motivasyonel",
+          "Otoriter"
+        ],
+        "audience": [
+          "B2B",
+          "B2C",
+          "Profesyoneller",
+          "Ebeveynler",
+          "Doktorlar",
+          "Mühendisler",
+          "Öğrenciler",
+          "Yöneticiler"
+        ],
+        "sector": [
+          "Moda ve Giyim",
+          "Güzellik ve Kozmetik",
+          "Yeme-İçme / Restoran",
+          "Spor ve Fitness",
+          "Turizm ve Seyahat",
+          "Teknoloji ve Elektronik",
+          "Eğitim ve Online Kurslar",
+          "Sağlık ve Wellness",
+          "Oyun / E-Spor",
+          "E-Ticaret ve Perakende",
+          "Diğer"
+        ]
+      },
+      "toasts": {
+        "loadError": "Brand DNA verileri yüklenemedi",
+        "saveError": "Brand DNA kaydedilemedi",
+        "logoTooLarge": "Logo en fazla 5MB olabilir",
+        "logoUnsupported": "SVG, PNG veya JPG yükleyin",
+        "logoUploaded": "Logo yüklendi",
+        "logoUploadFailed": "Logo yüklenemedi",
+        "logoRemoved": "Logo kaldırıldı",
+        "logoRemoveFailed": "Logo silinemedi"
+      }
+    },
+    "creativeMemory": {
+      "title": "Creative Memory",
+      "subtitle": "Geçmiş analizlerinizden öğrenilen AI içgörüler",
+      "kpi": {
+        "totalAnalyses": "Toplam Analiz",
+        "insightfulContent": "İçgörülü İçerik",
+        "avgScore": "Ortalama Skor",
+        "monthlyChange": "Aylık Değişim"
+      },
+      "pointsChange": "{change} puan",
+      "scoreRange": {
+        "ariaLabel": "Skor aralığı",
+        "optionsAria": "Skor aralığı seçenekleri",
+        "option": "Skor: {label}",
+        "all": "Tümü"
+      },
+      "postInsights": "Post İçgörüleri",
+      "searchPlaceholder": "Başlıkta ara…",
+      "loadError": "Creative Memory yüklenirken bir hata oluştu.",
+      "loading": "İçgörüler yükleniyor…",
+      "empty": {
+        "title": "Henüz kaydedilmiş içgörü yok",
+        "body": "Analiz tamamlandıkça her postun AI içgörüsü burada toplanır.",
+        "newAnalysis": "Yeni analiz başlat",
+        "goToAnalyses": "Analizlere git"
+      },
+      "noFilterResults": "Bu filtrelerde gösterilecek içgörü bulunamadı.",
+      "prev": "Önceki",
+      "next": "Sonraki",
+      "detail": {
+        "loading": "İçgörü yükleniyor…",
+        "loadError": "İçgörü yüklenirken bir hata oluştu.",
+        "notFound": "İçgörü bulunamadı.",
+        "analysisDetail": "Analiz Detayı",
+        "postFallback": "Gönderi",
+        "aiInsight": "Score AI İçgörüsü",
+        "noInsight": "Bu analiz için henüz AI içgörüsü oluşmadı.",
+        "loadingDetails": "Detaylar yükleniyor…",
+        "strengths": "Güçlü Yönler",
+        "weaknesses": "Eksikler",
+        "actions": "Öncelikli Aksiyonlar",
+        "emptyRecords": "Kayıt yok"
+      }
+    },
+    "analysisDetail": {
+      "tabs": {
+        "overview": "Genel Bakış",
+        "microCriteria": "Mikro Kriterler",
+        "suggestions": "Score AI Önerileri",
+        "comparison": "Karşılaştırma",
+        "insights": "İçgörüler"
+      },
+      "loading": "Analiz detayları yükleniyor...",
+      "notFound": "Bu analiz bulunamadı.",
+      "loadError": "Analiz detayları yüklenemedi.",
+      "fetchError": "Analiz alınamadı",
+      "notFoundShort": "Analiz bulunamadı.",
+      "titleEmpty": "Başlık boş olamaz.",
+      "titleSaveError": "Başlık kaydedilemedi.",
+      "saveTitleAria": "Başlığı kaydet",
+      "cancelEditAria": "Düzenlemeyi iptal et",
+      "editTitleAria": "Başlığı düzenle",
+      "titleHint": "Enter ile kaydet, Esc ile iptal.",
+      "download": "İndir",
+      "downloadFailed": "İndirme başarısız",
+      "openReport": "Raporu Aç",
+      "microCriteria": {
+        "title": "Mikro Kriterler",
+        "subtitle": "Kategorilere göre objektif değerlendirme"
+      },
+      "overview": {
+        "overallScore": "Genel Score",
+        "pointsChange": "+{change} puan",
+        "vsPrevious": "Önceki analize göre",
+        "shortEvaluation": "Kısa Değerlendirme",
+        "highlightedStrength": "Öne Çıkan Güçlü Yön",
+        "contentPreview": "İçerik Önizleme",
+        "viewContent": "İçeriği Görüntüle",
+        "categoryPerformance": "Kategorilere Göre Performans",
+        "scoreDistribution": "Score Dağılımı",
+        "analysisInfo": "Analiz Bilgileri",
+        "infoId": "Analiz ID",
+        "infoDate": "Analiz Tarihi",
+        "infoPlatform": "Platform",
+        "infoContentType": "İçerik Türü",
+        "suggestions": "Score AI Önerileri",
+        "benchmarkComparison": "Benchmark Karşılaştırması",
+        "weak": "Zayıf",
+        "medium": "Orta",
+        "good": "İyi",
+        "great": "Harika"
+      },
+      "suggestions": {
+        "gainPotential": "+{gain} puan potansiyeli",
+        "moreForSuggestions": "Daha fazlası için Score AI Önerileri",
+        "showLess": "Daha az göster",
+        "showMore": "+{count} öneriyi daha göster",
+        "title": "Score AI Önerileri ({count})",
+        "subtitle": "Bu öneriler kriter bazlı potansiyel artış hesaplarından üretilir.",
+        "totals": "Listelenen toplam: +{listed} puan · Hedef artış: +{target} puan",
+        "viewResult": "Sonucu Gör"
+      },
+      "comparison": {
+        "moreForBenchmark": "Daha fazlası için Benchmark",
+        "fallback": {
+          "promiseLabel": "Marka vaadi",
+          "promiseText": "İçeriğinizin vaat ve konumlandırmayla ne kadar örtüştüğünü görün.",
+          "competitorsLabel": "Rakip ayrışması",
+          "competitorsText": "Rakiplerinize göre nerede öne çıktığınızı ve nerede geride kaldığınızı görün.",
+          "trustLabel": "Güven kanıtları",
+          "trustText": "Güven sinyalleri ve marka tutarlılığına göre eksik alanları netleştirin."
+        }
+      },
+      "insights": {
+        "creativeMemory": "Creative Memory",
+        "aiInsight": "Score AI İçgörüsü",
+        "noInsight": "Bu analiz için henüz AI içgörüsü oluşmadı.",
+        "strength": "Güçlü yön",
+        "suggestions": "Öneriler"
+      },
+      "benchmarkCard": {
+        "title": "Benchmark karşılaştırması",
+        "subtitle": "Marka vaadi, rakipler, geçmiş içerik ve güven kanıtlarına göre",
+        "empty": "Bu analiz için henüz Benchmark odaklı yorum yok. Benchmark’ı doldurup yeni bir analiz çalıştırdığınızda rakip, vaat ve güven karşılaştırması burada görünür.",
+        "gaps": "Benchmark’a göre eksikler",
+        "strengths": "Benchmark’a göre güçlü yönler",
+        "actions": "Benchmark odaklı aksiyonlar",
+        "cta": "Benchmark"
+      }
+    },
+    "analysisResult": {
+      "backLabel": "Analiz",
+      "downloadFailed": "İndirme başarısız",
+      "loadError": "Analiz sonucu yüklenemedi.",
+      "fetchError": "Sonuç alınamadı",
+      "processing": {
+        "failedTitle": "Analiz tamamlanamadı",
+        "processingTitle": "Analiz işleniyor…",
+        "failedBody": "Yüklenen dosya formatı veya içerik işleme adımında bir sorun oluştu.",
+        "processingBody": "İşlem tamamlandığında skor ve AI detayları otomatik olarak güncellenecek.",
+        "goToDetail": "Analiz Detayına Git",
+        "refresh": "Yenile"
+      },
+      "title": "Analiz tamamlandı!",
+      "subtitle": "İçeriğiniz {count} mikro kritere göre analiz edildi.",
+      "download": "İndir",
+      "shareTitleFallback": "Score AI Analizi",
+      "openInCanva": "Canva'da Aç",
+      "canvaTitleReady": "Canva Sihirli Katmanlar sayfasını aç",
+      "canvaTitleNeedImage": "Önce potansiyel görseli üretin",
+      "currentContent": "Mevcut İçeriğiniz",
+      "previewAlt": "İçerik önizleme",
+      "contentAlt": "İçerik",
+      "potentialAlt": "{title} potansiyel",
+      "weaknessFallback": "Geliştirilebilecek alanlar kriter analizinde listelendi.",
+      "potential": "Potansiyel",
+      "potentialTarget": "Potansiyel Hedef (Score AI)",
+      "actionFallback": "Bu skor, mevcut eksiklerin optimize edilmesiyle ulaşılabilecek potansiyel seviyeyi temsil eder.",
+      "potentialNotEligible": "Potansiyel üretim uygun değil",
+      "potentialGeneratedOnce": "Potansiyel gorsel bir kez uretildi",
+      "potentialGenerating": "Potansiyel gorsel uretiliyor...",
+      "potentialGenerate": "Potansiyel Gorsel Uret",
+      "viewResult": "Sonucu Gör",
+      "retryLabel": "Tekrar deneyin:",
+      "newAnalysis": "Yeni analiz başlat",
+      "generationFailed": "Uretim adimi basarisiz oldu.",
+      "potentialGenerateError": "Potansiyel gorsel uretilemedi.",
+      "potentialGenerateFailed": "Potansiyel gorsel uretimi basarisiz oldu.",
+      "analysisDataMissing": "Guncel analiz verisi alinamadi.",
+      "aiComment": "Score AI Yorumu",
+      "aiCommentFallback": "Detaylı AI yorumu oluşturuluyor.",
+      "strengths": "Güçlü yönler",
+      "weaknesses": "Eksikler",
+      "actions": "Öncelikli aksiyonlar",
+      "updating": "Sonuç verileri güncelleniyor...",
+      "analysisFallback": "Analiz",
+      "fileSuffixPotential": "potansiyel",
+      "fileSuffixOriginal": "orijinal",
+      "metrics": {
+        "attention": "Dikkat Çekicilik",
+        "clarity": "Netlik",
+        "emotionalImpact": "Duygusal Etki",
+        "engagementPotential": "Etkileşim Potansiyeli"
+      },
+      "potentialModal": {
+        "closeAria": "Kapat",
+        "previewAlt": "Potansiyel görsel önizleme",
+        "previewPreparing": "Önizleme hazırlanıyor",
+        "title": "Optimize edilmiş görseliniz oluşturuldu",
+        "description": "<highlight>{title}</highlight> için potansiyel skora göre son çıktı hazır. Beğendiyseniz kullanın; üzerinde oynamak istediğiniz alanlar için Canva Sihirli Katmanlar sayfasına gidin.",
+        "current": "Mevcut",
+        "potential": "Potansiyel",
+        "estimatedGain": "Tahmini skor artışı: <gain>{signedGain} puan</gain>",
+        "body1": "Sol taraftaki görsel, skor analizindeki eksiklere göre üretilmiş potansiyel kreatifinizdir.",
+        "body2": "Değiştirmek istediğiniz katmanlar için Canva Sihirli Katmanlar’a geçebilir; görseli saklamak için üstteki <download>İndir</download> butonunu kullanabilirsiniz.",
+        "openingCanva": "Canva açılıyor...",
+        "editInCanva": "Canva'da Sihirli Katmanlarla Düzenle",
+        "closeLiked": "Sonucu beğendim, kapat"
+      }
+    },
+    "overview": {
+      "greetings": {
+        "morning": "Günaydın",
+        "afternoon": "İyi Günler",
+        "evening": "İyi Akşamlar",
+        "night": "İyi Geceler"
+      },
+      "defaultUserName": "Kullanıcı",
+      "scoreChangeSubtitle": "Son analizinden bu yana içerik skorun {change} puan değişti.",
+      "newAnalysis": "Yeni Analiz",
+      "firstAnalysisBanner": "Henüz analiziniz yok. <bold>İlk analizinizi başlatın.</bold> Score AI içerik skorunuzu saniyeler içinde çıkarır.",
+      "startAnalysis": "Analiz Başlat",
+      "dismiss": "Kapat",
+      "avgScore": "Ortalama Score",
+      "thisMonth": "bu ay",
+      "last7Days": "Son 7 Gün",
+      "avgScoreTooltip": "Ort. Score",
+      "vsPrevious7Days": "Geçen 7 güne göre",
+      "aiInsight": "AI İçgörüsü",
+      "aiInsightDefault": "İlk analizinizi tamamladıktan sonra kişiselleştirilmiş içgörüler burada görünecek.",
+      "aiInsightEmpty": "İlk analizinizi başlatarak kişiselleştirilmiş içgörüler alın.",
+      "aiInsightCompare": "{top} içerikleri daha güçlü performans gösteriyor; {weak} alanında gelişim fırsatı var.",
+      "aiInsightTopOnly": "{top} en güçlü alanınız. Detaylı içgörüler Creative Memory'de.",
+      "aiInsightFallback": "Son analizlerinizden net aksiyon noktaları oluştu. Detaylar Creative Memory'de.",
+      "aiInsightExpandAria": "AI içgörüsü metnini genişlet veya daralt",
+      "viewAllInsights": "Tüm içgörüleri gör",
+      "recentAnalyses": "Son Analizler",
+      "viewAll": "Tümünü Gör",
+      "recentEmpty": "Henüz analiz bulunmuyor. İlk analizi başlatmak için “Yeni Analiz”e tıklayın.",
+      "topCategories": "En Güçlü Kategoriler",
+      "topCategoriesEmpty": "Kategori performansı ilk sonuçlarla birlikte oluşacak.",
+      "mostImproved": "En Çok Gelişim Gösteren Alanlar",
+      "mostImprovedEmpty": "Gelişim alanları henüz hesaplanmadı.",
+      "quickActions": "Hızlı Aksiyonlar",
+      "quickActionNewAnalysis": "Yeni Analiz Başlat",
+      "quickActionBrandDna": "Brand DNA'yı Güncelle",
+      "quickActionBenchmark": "Benchmark Karşılaştır",
+      "quickActionCreativeMemory": "Creative Memory",
+      "scoreAiThisWeek": "Score AI Bu Hafta",
+      "weeklyInsightDefault": "Analizler tamamlandıkça haftalık AI özeti burada görüntülenir.",
+      "viewFullReport": "Tüm raporu görüntüle",
+      "loadError": "Dashboard verileri yüklenemedi.",
+      "points": "puan",
+      "stable": "Sabit",
+      "noImage": "Görsel yok",
+      "detail": "Detay"
+    },
+    "analyses": {
+      "title": "Analizler",
+      "subtitle": "Geçmiş analizlerinizi görüntüleyin ve detaylarına erişin.",
+      "searchPlaceholder": "Analiz ara...",
+      "dateRange": "Tarih Aralığı",
+      "dateRangeAria": "Tarih aralığı",
+      "scoreRange": "Score Aralığı",
+      "scoreRangeAria": "Score aralığı",
+      "clearFilters": "Filtreleri Temizle",
+      "selectAnalyses": "Analiz Seç",
+      "deleteSelected": "Seçilenleri Sil ({count})",
+      "deleting": "Siliniyor...",
+      "cancel": "Vazgeç",
+      "selectAllAria": "Tümünü seç",
+      "selectAnalysisAria": "Analizi seç",
+      "columnContent": "İçerik",
+      "columnDate": "Tarih",
+      "columnScore": "Score",
+      "columnStatus": "Durum",
+      "dateLabel": "Tarih:",
+      "scoreLabel": "Score:",
+      "empty": "Henüz analiz bulunamadı. Yeni analiz başlatıp içerik yükleyebilirsiniz.",
+      "loading": "Yükleniyor...",
+      "noResults": "Sonuç yok",
+      "resultsRange": "{from}-{to} / {total} analiz",
+      "prevAria": "Önceki",
+      "nextAria": "Sonraki",
+      "pageSizeAria": "Sayfa başına analiz",
+      "optionsAria": "{label} seçenekleri",
+      "deleteConfirmTitle": "Analizleri silmek istediğinize emin misiniz?",
+      "deleteConfirmBody": "<count></count> analiz kalıcı olarak silinecek. Bu işlem geri alınamaz.",
+      "deleteConfirm": "Evet, Sil",
+      "loadError": "Analizler yüklenirken bir hata oluştu.",
+      "deleteFailed": "Silme işlemi başarısız oldu.",
+      "deleteError": "Analizler silinirken bir hata oluştu.",
+      "dateRanges": {
+        "7d": "Son 7 Gün",
+        "30d": "Son 30 Gün",
+        "90d": "Son 90 Gün",
+        "all": "Tümü"
+      },
+      "scoreRanges": {
+        "all": "Tümü",
+        "0-49": "0 - 49",
+        "50-69": "50 - 69",
+        "70-84": "70 - 84",
+        "85-100": "85 - 100"
+      },
+      "pageSizes": {
+        "10": "10 / sayfa",
+        "20": "20 / sayfa",
+        "50": "50 / sayfa"
+      }
+    },
+    "newAnalysis": {
+      "title": "İlk analizinizi oluşturalım.",
+      "subtitle": "İçeriğinizi yükleyin, Score AI saniyeler içinde analiz edip geliştirsin.",
+      "uploadTitle": "Görselinizi veya videonuzu yükleyin",
+      "uploadFormats": "PNG • JPG • WEBP • MP4 • Maksimum 20 MB",
+      "selectFile": "Dosya Seç",
+      "removeFileAria": "Seçili dosyayı kaldır",
+      "or": "veya",
+      "instagramUrlLabel": "Instagram Post URL:",
+      "urlPlaceholder": "https://instagram.com/p/...",
+      "startAnalysis": "Analizi Baslat",
+      "processing": "Analiz Isleniyor...",
+      "redirectHint": "İşlem tamamlandığında rapor ekranına otomatik yönlendirilirsiniz.",
+      "overlayTitle": "Analiz işleniyor",
+      "overlaySubtitle": "Lütfen sayfayı kapatmayın, sonuçlar hazırlanıyor.",
+      "stepLabel": "İşlem adımı",
+      "validationEmpty": "Lütfen bir görsel/video seçin veya bir post linki yapıştırın.",
+      "errorProcessing": "Analiz baslatildi fakat isleme sirasinda hata olustu. Lutfen farkli bir gorsel deneyin.",
+      "errorNoRedirect": "Analiz isleme alindi fakat yonlendirme verisi alinamadi.",
+      "errorGeneric": "Analiz baslatilirken bir hata olustu. Lutfen tekrar deneyin.",
+      "features": {
+        "0": {
+          "title": "31 Mikro Kriter",
+          "desc": "Tüm kriterlere göre analiz edilir."
+        },
+        "1": {
+          "title": "30 sn Ortalama Süre",
+          "desc": "Hızlı ve detaylı analiz."
+        },
+        "2": {
+          "title": "AI Önerileri",
+          "desc": "Akıllı önerilerle içeriğinizi geliştirin."
+        },
+        "3": {
+          "title": "Brand DNA",
+          "desc": "Marka dilinizi öğrenip analize entegre eder."
+        },
+        "4": {
+          "title": "Canva Entegrasyonu",
+          "desc": "Sonucu Canva'da düzenleyin."
+        }
+      },
+      "loadingSteps": {
+        "0": "Gorsel yukleniyor...",
+        "1": "Icerik kaydi olusturuluyor...",
+        "2": "AI kategori analizleri baslatiliyor...",
+        "3": "Skorlar hesaplaniyor...",
+        "4": "Rapor ekranina yonlendiriliyor..."
+      }
+    },
+    "notifications": {
+      "title": "Bildirimler",
+      "ariaLabel": "Bildirimler",
+      "unreadCount": "{count} okunmamış",
+      "allRead": "Hepsi okundu",
+      "markAllRead": "Okundu",
+      "markAllReadTitle": "Tümünü okundu yap",
+      "closeAria": "Kapat",
+      "loading": "Yükleniyor…",
+      "emptyTitle": "Bildirim yok",
+      "emptyBody": "Analiz ve hatırlatmalar burada görünür.",
+      "openAria": "Bildirimi aç",
+      "openTitle": "Aç",
+      "removeAria": "Bildirimi kaldır",
+      "removeTitle": "Kaldır",
+      "openAction": "Aç",
+      "viewAction": "Görüntüle",
+      "relativeJustNow": "Az önce",
+      "relativeMinutes": "{count} dk",
+      "relativeHours": "{count} sa",
+      "relativeDays": "{count} g"
+    },
+    "share": {
+      "button": "Paylaş",
+      "copyLink": "Bağlantıyı kopyala",
+      "copied": "Bağlantı kopyalandı",
+      "createdWith": "{title} - Score AI ile oluşturuldu."
+    }
+  }
+}

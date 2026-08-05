@@ -1,0 +1,1716 @@
+{
+  "meta": {
+    "title": "Score AI | Measure, Understand, Improve Your Content",
+    "description": "AI-powered platform to analyze, score, and improve your content performance."
+  },
+  "common": {
+    "brand": "Score AI"
+  },
+  "landing": {
+    "nav": {
+      "menuItems": [
+        "Features",
+        "How It Works?"
+      ],
+      "menuOpen": "Open menu",
+      "menuClose": "Close menu",
+      "toTop": "Back to top",
+      "joinWaitlist": "Join Waitlist"
+    },
+    "waitlist": {
+      "emailPlaceholder": "Enter your email address",
+      "joinLabel": "Join Waitlist",
+      "joiningLabel": "Joining...",
+      "securityNote": "No spam. You can unsubscribe anytime.",
+      "invalidEmail": "Please enter a valid email address.",
+      "joinSuccess": "You have joined the waitlist!",
+      "alreadyJoined": "This email is already on the waitlist.",
+      "genericError": "Something went wrong. Please try again.",
+      "permissionError": "Missing Firestore permissions. Please update Firebase rules.",
+      "mailRejectedError": "Mail server rejected the recipient. Check DNS/SPF settings.",
+      "accessWaitlist": "The app is currently in waitlist mode. Join the waitlist for early access.",
+      "accessInviteRequired": "This area is in early access. An invite link is required.",
+      "accessInviteInvalid": "Invite link is invalid or already used.",
+      "accessInviteExpired": "Invite link has expired.",
+      "accessGraderClosed": "The free grader is not open yet. Join the waitlist for early access."
+    },
+    "hero": {
+      "badge": "Measure, understand, improve",
+      "titleMobile": [
+        "Why are your contents not",
+        "performing? Let Score AI",
+        "tell you in seconds."
+      ],
+      "titleDesktopLine1": "Why are your contents not performing?",
+      "titleDesktopLine2": "Let Score AI tell you in seconds.",
+      "desc": "Score AI analyzes your content across 30+ micro criteria, understands your brand, and provides actionable recommendations for better results.",
+      "subtitle": "Join the waitlist and be the first to hear about launch-only advantages.",
+      "waitlistCountLabel": "people on the waitlist.",
+      "screenshotAlt": "Score AI Dashboard — content score comparison"
+    },
+    "scorePreview": {
+      "badge": "AI Does More Than Scoring",
+      "title": "It makes your content better.",
+      "currentLabel": "Current",
+      "currentAlt": "Current content preview",
+      "potentialLabel": "Potential",
+      "suggestedLabel": "Suggested",
+      "suggestedAlt": "Suggested content preview",
+      "improvementsTitle": "Suggested Improvements",
+      "improvements": [
+        "Strengthen the headline",
+        "Add a CTA to increase engagement",
+        "Use brand colors more visibly",
+        "Improve visual hierarchy",
+        "Optimize text length"
+      ],
+      "updateInCanva": "Update in Canva",
+      "updateHint": "Open and update the design in one click.",
+      "averageImprovementBadge": "Average improvement with Score AI",
+      "stats": [
+        {
+          "value": "+12",
+          "label": "Score increase"
+        },
+        {
+          "value": "%28",
+          "label": "More engagement"
+        },
+        {
+          "value": "%18",
+          "label": "Higher conversion"
+        }
+      ],
+      "ctaLine1": "Improve your content,",
+      "ctaLine2": "achieve higher performance.",
+      "chartAria": "Performance trend chart"
+    },
+    "features": {
+      "badge": "Features",
+      "titleBefore": "Everything you need for better content.",
+      "titleHighlight": "",
+      "title": "Everything you need for better content.",
+      "desc": "Score AI understands your brand, analyzes your content, and boosts performance with personalized actionable suggestions.",
+      "brandDna": {
+        "title": "Brand DNA",
+        "titleHighlight": "DNA",
+        "headlineBefore": "Score AI learns how your brand ",
+        "headlineHighlight": "communicates.",
+        "desc": "It stores your tone, visual language, and successful content patterns over time.",
+        "bullets": [
+          "Extracts your brand DNA.",
+          "Learns from past content.",
+          "Delivers more accurate suggestions with insights.",
+          "Builds a continuously evolving memory for your brand."
+        ],
+        "screenshotAlt": "Score AI Brand DNA screen"
+      },
+      "benchmark": {
+        "title": "Benchmark Engine",
+        "titleHighlight": "Engine",
+        "headlineBefore": "Continuous comparison with the top content in your ",
+        "headlineHighlight": "industry.",
+        "desc": "See your performance and discover improvement opportunities.",
+        "bullets": [
+          "Compare your score with industry averages.",
+          "See your position against leading brands.",
+          "Move forward with data-driven strategies."
+        ],
+        "screenshotAlt": "Score AI Benchmark screen"
+      },
+      "creativeMemory": {
+        "title": "Creative Memory",
+        "titleHighlight": "Memory",
+        "headlineBefore": "Learns from your past posts ",
+        "headlineHighlight": "over time.",
+        "desc": "Remembers what works and produces better suggestions for future content.",
+        "bullets": [
+          "Finds patterns by analyzing your historical data.",
+          "Remembers your best-performing content.",
+          "Learns your content preferences and patterns.",
+          "Provides more accurate, personalized suggestions."
+        ],
+        "screenshotAlt": "Score AI Creative Memory screen"
+      },
+      "pills": [
+        {
+          "title": "AI Content Scoring",
+          "desc": "Measure and score your content quality across 30+ micro criteria."
+        },
+        {
+          "title": "Brand Learning",
+          "desc": "Learns your brand voice, tone, and visual identity."
+        },
+        {
+          "title": "Competitor Analysis",
+          "desc": "Analyze top content in your sector and stay ahead."
+        },
+        {
+          "title": "Content History",
+          "desc": "Track all your content performance in one place."
+        },
+        {
+          "title": "Actionable Suggestions",
+          "desc": "Clearly tells you what to do next with practical recommendations."
+        },
+        {
+          "title": "Creative Copilot",
+          "desc": "Get AI suggestions for headlines, copy, CTAs, and more."
+        }
+      ]
+    },
+    "productVideo": {
+      "badge": "Discover the Product",
+      "titleBefore": "See how ",
+      "titleHighlight": "Score AI works",
+      "titleAfter": ".",
+      "desc": "Analyze your content, improve it, and get better results.",
+      "screenshotAlt": "Score AI product demo",
+      "playAria": "Open product video",
+      "highlights": [
+        {
+          "title": "AI-Powered Analysis",
+          "desc": "Measures your content quality across 30+ micro criteria."
+        },
+        {
+          "title": "Smart Suggestions",
+          "desc": "Provides actionable recommendations to improve your content."
+        },
+        {
+          "title": "Better Results",
+          "desc": "Improves performance and helps you reach goals faster."
+        }
+      ],
+      "modalTitle": "Discover the Product - Video",
+      "close": "Close",
+      "iframeTitle": "Score AI product video"
+    },
+    "howItWorks": {
+      "badge": "How It Works?",
+      "titleBefore": "Optimize your content workflow in ",
+      "titleHighlight": "5 steps",
+      "titleAfter": ".",
+      "desc": "Score AI analyzes your content, learns your brand, and improves performance with actionable suggestions.",
+      "steps": [
+        {
+          "title": "Upload Your Content",
+          "desc": "Add your content with image, video, text, or URL."
+        },
+        {
+          "title": "Analyzed with 30+ Micro Criteria",
+          "desc": "Your content is deeply analyzed with 30+ micro criteria."
+        },
+        {
+          "title": "See Your Score",
+          "desc": "View your overall score and discover improvement opportunities."
+        },
+        {
+          "title": "Get AI Suggestions",
+          "desc": "AI gives you tailored suggestions to improve your content."
+        },
+        {
+          "title": "Apply and Publish in One Click",
+          "desc": "Apply suggestions in Canva, design, and publish."
+        }
+      ],
+      "step1": {
+        "uploadLabel": "Upload your content",
+        "orPasteLink": "or paste a link",
+        "exampleUrl": "https://example.com/content"
+      },
+      "step2": {
+        "criteriaTitle": "Analysis Criteria",
+        "criteria": [
+          {
+            "label": "Hook Strength",
+            "score": "92"
+          },
+          {
+            "label": "CTA Effectiveness",
+            "score": "79"
+          },
+          {
+            "label": "Storytelling",
+            "score": "84"
+          },
+          {
+            "label": "Visual Quality",
+            "score": "93"
+          },
+          {
+            "label": "Readability",
+            "score": "88"
+          }
+        ]
+      },
+      "step3": {
+        "readyToPublish": "Ready to Publish",
+        "pointsVsLastMonth": "+12 points vs last month",
+        "improvementArea": "Improvement Area",
+        "itemsLabel": "items"
+      },
+      "step4": {
+        "suggestedImprovements": "Suggested Improvements",
+        "items": [
+          "Use a stronger opening sentence",
+          "Add a CTA to increase engagement",
+          "Make the first line more attention-grabbing",
+          "Position the visual at the top",
+          "Reflect brand tone more clearly"
+        ]
+      },
+      "step5": {
+        "canvaPreviewAlt": "Canva suggestion preview",
+        "openInCanva": "Open in Canva",
+        "editDownloadShare": "Edit, download, and share"
+      }
+    },
+    "audience": {
+      "badge": "Who Should Use It?",
+      "title": "For everyone who wants to produce better content.",
+      "desc": "Score AI analyzes your content according to your needs and helps you improve.",
+      "visualPlaceholder": "Visual",
+      "visualAltSuffix": "visual",
+      "cards": [
+        {
+          "title": "Small businesses without a marketing team",
+          "desc": "Grow on social media without needing a professional content team."
+        },
+        {
+          "title": "Businesses active on social media",
+          "desc": "Improve your regular posts and get higher engagement."
+        },
+        {
+          "title": "Local service businesses",
+          "desc": "Stand out with trustworthy, professional, and effective content."
+        },
+        {
+          "title": "Personal brands",
+          "desc": "Strengthen your personal brand and reach wider audiences."
+        },
+        {
+          "title": "E-commerce businesses",
+          "desc": "Promote your products with better content and increase sales."
+        }
+      ]
+    },
+    "faq": {
+      "badge": "FAQ",
+      "title": "Frequently Asked Questions",
+      "titleBefore": "Frequently Asked ",
+      "titleHighlight": "Questions",
+      "desc": "Everything you wonder about Score AI.",
+      "items": [
+        {
+          "question": "What exactly does Score AI do?",
+          "answer": "Score AI analyzes your content with 30+ micro criteria, gives a 0-100 score, and provides actionable suggestions to improve performance. It learns your brand, derives insights from past data, and speeds up your content workflow."
+        },
+        {
+          "question": "Is my content secure?",
+          "answer": "Yes. Your content is stored securely and is not shared with third parties."
+        },
+        {
+          "question": "Is Score AI free?",
+          "answer": "During beta, users on the waitlist will get early access and special pricing. Details will be shared before launch."
+        },
+        {
+          "question": "When will it be available?",
+          "answer": "Access will be granted gradually based on waitlist order."
+        }
+      ]
+    },
+    "cta": {
+      "badge": "Final Step",
+      "title": "Your content deserves better.",
+      "desc": "Analyze and improve your content with Score AI, and get better results in every post.",
+      "perks": {
+        "earlyAccess": "Early access",
+        "freeBeta": "Free beta",
+        "noSpam": "No spam. Stay safe."
+      },
+      "stats": [
+        {
+          "value": "1,000+",
+          "label": "People on waitlist",
+          "sub": "We keep growing every day."
+        },
+        {
+          "value": "60 sec",
+          "label": "First Analysis",
+          "sub": "Fast, easy, and fully automated."
+        },
+        {
+          "value": "40",
+          "label": "Micro Criteria",
+          "sub": "Detailed quality analysis."
+        },
+        {
+          "value": "24/7",
+          "label": "Instant Analysis",
+          "sub": "Evaluate your content anytime."
+        }
+      ]
+    },
+    "quote": {
+      "title": "It does more than analyze. It improves.",
+      "body": "Analyzes your content with 30+ micro quality criteria, learns your brand, and provides actionable suggestions to boost performance.",
+      "closing": "Every post becomes stronger than the previous one.",
+      "imageAlt": "Footer insight visual"
+    },
+    "footer": {
+      "tagline": "We help brands get better results with AI-powered content analysis.",
+      "rights": "© 2026 Score AI. All rights reserved.",
+      "disclosure": "Score AI is an initiative of Nera Reklam Pazarlama Yazılım Teknoloji Limited Şirketi.",
+      "mapsAria": "Open Tallinn, Estonia in Google Maps",
+      "mailAria": "Send email to Score AI team",
+      "location": "Tallinn, Estonia",
+      "columns": [
+        {
+          "title": "PRODUCT",
+          "links": [
+            {
+              "label": "Features",
+              "id": "ozellikler"
+            },
+            {
+              "label": "How It Works?",
+              "id": "nasil-calisir"
+            }
+          ]
+        },
+        {
+          "title": "RESOURCES",
+          "links": [
+            {
+              "label": "Blog",
+              "href": "/blog"
+            },
+            {
+              "label": "FAQ",
+              "id": "faq"
+            }
+          ]
+        },
+        {
+          "title": "COMPANY",
+          "links": [
+            {
+              "label": "About",
+              "href": "https://www.nerasocial.com/hakkimizda",
+              "newTab": true
+            },
+            {
+              "label": "Contact",
+              "href": "https://www.nerasocial.com/iletisim",
+              "newTab": true
+            },
+            {
+              "label": "Privacy Policy",
+              "href": "https://www.nerasocial.com/gizlilik-politikasi",
+              "newTab": true
+            },
+            {
+              "label": "Terms",
+              "href": "https://www.nerasocial.com/kullanim-kosullari",
+              "newTab": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "analyzer": {
+    "eyebrow": "Free Content Analysis",
+    "heroTitle": "Instant Content Quality Audit",
+    "heroBody": "Upload your visual; Score grades it against 30+ objective criteria, shows gaps, and explains improvement potential.",
+    "bullets": [
+      "See detailed analysis results in about 30 seconds",
+      "See Score AI suggestions and action areas",
+      "Evaluation against 30+ objective criteria"
+    ],
+    "heroPointCta": "Start your first free analysis here",
+    "freeAnalysis": "Free analysis",
+    "criteriaBadge": "30+ criteria",
+    "emailLabel": "Your email",
+    "emailPlaceholder": "you@company.com",
+    "emailHint": "So we can share the result and next steps with you.",
+    "emailLockedTitle": "Enter your email first",
+    "emailLockedHint": "File selection unlocks once your email is valid.",
+    "emailError": "Please enter a valid email address.",
+    "dropTitle": "Drag your image here",
+    "dropHint": "PNG · JPG · WEBP · Max 20 MB",
+    "selectFile": "Choose file",
+    "analyzeCta": "Analyze for free",
+    "freeUsedCta": "Free credit used",
+    "freeUsedNoticeBefore": "The free analysis credit has already been used in this browser. To continue,",
+    "freeUsedLogin": "sign in",
+    "freeUsedOr": "or",
+    "freeUsedSignup": "sign up",
+    "freeUsedNoticeAfter": ".",
+    "viewReportCta": "View your report",
+    "selectFileError": "Please select an image to analyze.",
+    "freeUsedError": "Your free analysis credit was already used. Sign in and continue from the dashboard for new analyses.",
+    "freeUsedApiError": "You have completed your first free analysis. Create a free account to save the result.",
+    "genericSubmitError": "Something went wrong while starting the analysis.",
+    "features": [
+      {
+        "t": "Score",
+        "d": "Measure content quality against 31 objective criteria."
+      },
+      {
+        "t": "Understand",
+        "d": "See critical issues, gaps, and improvement potential."
+      },
+      {
+        "t": "Improve",
+        "d": "Sign up, refine with Score, and export the output."
+      }
+    ],
+    "positioningTitle": "The Quality Layer After Production",
+    "positioningP1": "Canva, ChatGPT, or Adobe create content. Score AI checks it before you publish.",
+    "positioningP2": "Upload your content. Let Score AI analyze it, show what needs improvement, and make it ready to share.",
+    "visualSlotLabel": "Visual slot",
+    "visualSlotHintBefore": "Add a PNG at",
+    "visualSlotPath": "public/analyzer/hero-visual-en.png",
+    "moreInfoTitle": "More information",
+    "moreInfo": [
+      {
+        "q": "What is Content Analyzer?",
+        "paragraphs": [
+          {
+            "text": "Content Analyzer is a free tool that analyzes your content before you publish. Upload your content, evaluate it against 30+ objective criteria, and discover your strengths along with areas to improve in seconds.",
+            "bold": [
+              "30+ objective criteria"
+            ]
+          }
+        ]
+      },
+      {
+        "q": "Is Score AI a competitor to Canva or ChatGPT?",
+        "paragraphs": [
+          {
+            "text": "No. We do not put Score against Canva, ChatGPT, or Adobe. Score is the quality layer that comes after content production tools. It is the control and improvement system content goes through before publishing: evaluate with objective criteria, identify gaps, and prepare brand-specific publish-ready output. In other words, it does not replace production tools. It is the AI-powered quality and optimization layer that makes their output measurable, consistent, and ready to publish."
+          }
+        ]
+      },
+      {
+        "q": "Who is it for?",
+        "paragraphs": [
+          {
+            "text": "Anyone who creates content regularly. If you want to analyze content made with tools like ChatGPT, Canva, or Adobe before sharing, see the gaps, and make it stronger, Content Analyzer is for you. It is used most by marketing teams, brands, content creators, and social media managers."
+          }
+        ]
+      },
+      {
+        "q": "What happens after the first analysis?",
+        "paragraphs": [
+          {
+            "text": "In Analyzer you see your score, category breakdown, Score AI suggestions, and gaps. Create a free account to keep the report and continue analyzing and improving. After signup or login, the guest-session analysis is automatically transferred into your dashboard account. You do not land on an empty panel; you go straight to that analysis. From the second piece of content onward, you continue inside Score AI with credits or membership. The first experience is free; ongoing operations scale with Score AI."
+          }
+        ]
+      }
+    ],
+    "loadingSteps": [
+      "Preparing image...",
+      "Analyzing against 31 criteria...",
+      "Calculating category scores...",
+      "Identifying improvement areas...",
+      "Putting the final touches on your report..."
+    ],
+    "loadingTips": [
+      "Great content is not only beautiful, it is measurable.",
+      "Brand consistency comes from a system, not a single post.",
+      "Score is the quality layer after production.",
+      "31 criteria replace subjective 'looks good' feedback."
+    ],
+    "waitingTitle": "Your content is being analyzed",
+    "waitingProgress": "Progress",
+    "analysisDone": "Analysis complete",
+    "contentScoreFallback": "Content score",
+    "criteriaLabel": "criteria",
+    "detailCta": "See details, sign up",
+    "overallScore": "Overall Score",
+    "potentialShort": "Points Potential Improvement",
+    "potentialTitle": "Potential Score",
+    "potentialGainLabel": "Potential gain",
+    "saveReportTitle": "Save the full report",
+    "saveReportBody": "Transfer this analysis to your dashboard with a free account.",
+    "freeSignup": "Sign up free",
+    "shortEval": "Quick evaluation",
+    "strength": "Strength",
+    "contentPreview": "Content preview",
+    "scoreDistribution": "Score distribution",
+    "suggestions": "Score AI suggestions",
+    "gainPotentialLabel": "point potential",
+    "suggestionsMoreCta": "Continue in Score AI for more suggestions and a full action plan",
+    "suggestionFallbackAction": "Strengthen this criterion — it’s one of the fastest ways to raise your score.",
+    "insightTitle": "Score AI insight",
+    "insightSuggestionsLabel": "Suggestions",
+    "criteriaPanelTitle": "Micro Criteria",
+    "criteriaPanelSubtitle": "Objective evaluation by category",
+    "finalCtaTitle": "Sign Up Free for a Detailed Improvement Plan",
+    "finalCtaBody": "This report is transferred to your account automatically. Create a free account for full criteria detail and Score-powered improvements.",
+    "hasAccount": "I already have an account, sign in",
+    "removeFileAria": "Remove selected file",
+    "metaTitle": "Content Analyzer | Free Content Analysis",
+    "metaDescription": "Upload your content. Let Score analyze it, explain improvement areas, and get it ready to publish.",
+    "footerProduct": "PRODUCT",
+    "footerResources": "RESOURCES",
+    "footerCompany": "COMPANY",
+    "footerFeatures": "Features",
+    "footerHowItWorks": "How It Works?",
+    "footerBlog": "Blog",
+    "footerFaq": "FAQ",
+    "footerAbout": "About",
+    "footerContact": "Contact",
+    "footerPrivacy": "Privacy Policy",
+    "footerTerms": "Terms",
+    "footerTagline": "Measure, understand, and improve your content.",
+    "footerRights": "All rights reserved.",
+    "footerEmailLabel": "Email",
+    "footerLocationLabel": "Location",
+    "footerLocation": "Tallinn, Estonia"
+  },
+  "cookie": {
+    "body": "We use cookies to run our website, analyze your use of our services, manage your preferences, and personalize your experience. By accepting cookies, you’ll get relevant content, social features, and an enhanced browsing experience. To manage your choices, click “Cookie Settings.” Necessary cookies are required for core functionality and cannot be rejected. For more information, see our",
+    "policy": "Privacy Policy",
+    "allowAll": "Allow all cookies",
+    "denyAll": "Deny all",
+    "settings": "Cookie settings",
+    "save": "Save preferences",
+    "back": "Back",
+    "settingsTitle": "Cookie preferences",
+    "analyticsTitle": "Analytics",
+    "analyticsDesc": "Helps us understand traffic and how the product is used.",
+    "marketingTitle": "Marketing",
+    "marketingDesc": "Used to personalize relevant content and ad experiences.",
+    "dialogLabel": "Cookie consent"
+  },
+  "blog": {
+    "header": {
+      "menuOpen": "Open menu",
+      "menuClose": "Close menu"
+    },
+    "menu": {
+      "features": "Features",
+      "howItWorks": "How It Works?",
+      "waitlist": "Join Waitlist"
+    },
+    "hero": {
+      "badge": "BLOG",
+      "title": "Score AI Blog",
+      "desc": "Content performance, AI-first creative workflows, and practical growth insights."
+    },
+    "empty": "No published articles yet. They will appear here soon.",
+    "read": "Read article",
+    "readTime": "{minutes} min",
+    "back": "All articles",
+    "footer": {
+      "product": "PRODUCT",
+      "resources": "RESOURCES",
+      "company": "COMPANY",
+      "features": "Features",
+      "howItWorks": "How It Works?",
+      "blog": "Blog",
+      "faq": "FAQ",
+      "about": "About",
+      "contact": "Contact",
+      "privacy": "Privacy Policy",
+      "terms": "Terms",
+      "rights": "© 2026 Score AI. All rights reserved.",
+      "disclosure": "Score AI is an initiative of Nera Reklam Pazarlama Yazılım Teknoloji Limited Şirketi.",
+      "mapsLabel": "Open Tallinn, Estonia in Google Maps",
+      "mapsText": "Tallinn, Estonia",
+      "mailLabel": "Send email to Score AI team",
+      "desc": "We help brands get better results with AI-powered content analysis."
+    }
+  },
+  "privacy": {
+    "metaTitle": "Privacy Policy | Score AI",
+    "metaDescription": "Score AI privacy policy — how we use account, analysis, and Instagram connection data.",
+    "home": "← Score AI",
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated: July 30, 2026",
+    "switchLanguage": "Türkçe",
+    "sections": [
+      {
+        "heading": "1. Scope",
+        "paragraphs": [
+          "This policy explains what data Score AI (<strong>usescore.net</strong>) collects and how we use it when you use our service."
+        ]
+      },
+      {
+        "heading": "2. Data we collect",
+        "items": [
+          "Account details (name, email, session)",
+          "Content you upload and analysis results",
+          "Brand intelligence inputs (brand promise, competitor sources, trust proofs)",
+          "When you connect Instagram: Instagram username, account ID, access token, and recent media selected for analysis (post images/thumbnails and related metadata)"
+        ]
+      },
+      {
+        "heading": "3. How Instagram data is used",
+        "paragraphs": [
+          "Instagram is connected only through the user-initiated <strong>Instagram Login</strong> flow. Users cannot connect an account by typing someone else’s public username.",
+          "We use Instagram data to:"
+        ],
+        "items": [
+          "Analyze brand consistency and content quality",
+          "Build historical / creative memory signals",
+          "Generate scores and recommendations shown to you"
+        ],
+        "paragraphsAfter": [
+          "We do not sell Instagram data for advertising. We retain access only as needed to provide the service; disconnecting Instagram removes the stored access token."
+        ]
+      },
+      {
+        "heading": "4. Third parties",
+        "paragraphs": [
+          "We use infrastructure providers (hosting, authentication, AI processing) to operate the product. Instagram data is accessed via Meta’s Instagram APIs under the permissions you grant."
+        ]
+      },
+      {
+        "heading": "5. Your rights",
+        "paragraphs": [
+          "You may delete your account, disconnect Instagram, or contact us about data requests at <a class=\"font-medium text-brand-dark underline\" href=\"mailto:info@usescore.net\">info@usescore.net</a>."
+        ]
+      },
+      {
+        "heading": "6. Contact",
+        "paragraphs": [
+          "Score AI — usescore.net<br />Email: info@usescore.net"
+        ]
+      }
+    ]
+  },
+  "liveSupport": {
+    "button": "Live Support",
+    "title": "Live Support",
+    "subtitle": "Don't hesitate to ask what's on your mind!",
+    "agent": "Support Agent",
+    "available": "Available",
+    "openAria": "Open live support window",
+    "closeAria": "Close live support window",
+    "chatAria": "Chat with support agent on WhatsApp"
+  },
+  "shell": {
+    "nav": {
+      "overview": "Overview",
+      "analyses": "Analyses",
+      "newAnalysis": "New Analysis",
+      "brandDna": "Brand DNA",
+      "benchmark": "Benchmark",
+      "creativeMemory": "Creative Memory",
+      "settings": "Settings"
+    },
+    "plan": {
+      "normal": "Normal",
+      "pro": "Pro"
+    },
+    "help": {
+      "title": "Help Center",
+      "subtitle": "Support and contact"
+    },
+    "logout": {
+      "title": "Log out",
+      "subtitle": "Securely sign out of your account",
+      "confirmTitle": "Are you sure you want to log out?",
+      "confirmBody": "You will be securely signed out. Sign back in anytime to continue where you left off.",
+      "cancel": "Cancel",
+      "confirm": "Yes, log out",
+      "confirming": "Signing out...",
+      "success": "Signed out.",
+      "error": "Could not sign out."
+    },
+    "menu": {
+      "open": "Open menu",
+      "close": "Close menu"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Sign in to your account",
+      "welcome": "Welcome",
+      "welcomeBack": "Welcome back",
+      "email": "Email",
+      "password": "Password",
+      "rememberMe": "Remember me",
+      "submit": "Sign in",
+      "submitting": "Signing in...",
+      "noAccount": "Don't have an account?",
+      "signupLink": "Sign up",
+      "forgotPassword": "Forgot password?",
+      "success": "Signed in successfully.",
+      "orContinueWith": "or",
+      "loading": "Loading…",
+      "emailPlaceholder": "you@company.com",
+      "emailPasswordRequired": "Enter your email and password to continue."
+    },
+    "signup": {
+      "title": "Create your account",
+      "subtitle": "Join Score AI and take your content to the next level.",
+      "submit": "Sign up",
+      "submitting": "Creating account...",
+      "hasAccount": "Already have an account?",
+      "loginLink": "Sign in",
+      "success": "Account created. A verification link was sent to your email.",
+      "loading": "Loading…",
+      "name": "Full name",
+      "namePlaceholder": "Your name",
+      "email": "Email",
+      "emailPlaceholder": "you@company.com",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "confirmPlaceholder": "Again",
+      "google": "Sign up with Google",
+      "terms": "I have read and accept the <terms>Terms of Use</terms> and <privacy>Privacy Policy</privacy>.",
+      "fieldsRequired": "Name, email, and password are required to continue.",
+      "passwordMismatch": "Passwords do not match. Please check and try again.",
+      "termsRequired": "You must accept the terms of use and privacy policy to continue."
+    },
+    "forgot": {
+      "title": "Forgot your password?",
+      "subtitle": "Enter your registered email and we'll send you a reset link.",
+      "submit": "Send",
+      "submitting": "Sending...",
+      "success": "If that email is registered, a reset link was sent. Check your inbox and spam folder.",
+      "backToLogin": "Back to sign in",
+      "backToLoginShort": "Back to sign in",
+      "email": "Email",
+      "emailPlaceholder": "you@company.com",
+      "emailRequired": "Email address is required."
+    },
+    "verify": {
+      "title": "Verify your email",
+      "subtitle": "Please verify your email address to secure your account.",
+      "resend": "Resend email",
+      "resending": "Sending…",
+      "checkInbox": "Check your inbox",
+      "refreshed": "Verification status updated.",
+      "bodyWithEmail": "We sent a verification link to <highlight>{address}</highlight>. After clicking it, continue with the button below.",
+      "bodyWithoutEmail": "Check your verification email. After clicking the link, you can continue here.",
+      "continue": "I've verified, continue",
+      "checking": "Checking…",
+      "logout": "Sign out",
+      "backToLogin": "Back to sign in",
+      "resendSuccess": "Verification email resent.",
+      "notVerifiedTitle": "Not verified yet",
+      "notVerifiedDescription": "Click the link in the email, then try again.",
+      "sessionMissing": "No session found. Please sign in again.",
+      "checkFailed": "Verification check failed.",
+      "verifiedSuccess": "Email verified."
+    },
+    "fields": {
+      "password": "Password",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "passwordHint": "At least 6 characters",
+      "pleaseWait": "Please wait…",
+      "googleConnecting": "Connecting to Google…",
+      "ruleMinLength": "At least 8 characters",
+      "ruleMixed": "Must include uppercase, lowercase, and a number",
+      "ruleSpecial": "Must include a special character (!@#$%^&*)"
+    },
+    "google": "Continue with Google",
+    "shell": {
+      "headline": "Thousands of brands elevate their content with <brand>Score AI</brand>.",
+      "tagline": "Improve your content and grow engagement with AI-powered analysis.",
+      "ratingLabel": "4.9/5",
+      "ratingCount": "(120+ reviews)",
+      "mainQuote": "With Score AI we can clearly see how our content performs. Thanks to the recommendations, our engagement rate rose by <pct>35%</pct>.",
+      "mainAuthor": "Selin K.",
+      "mainRole": "Digital Marketing Manager · Terra Niva",
+      "quote1": "We completely changed our content strategy. Score AI was a game changer for us.",
+      "quote1Name": "Mert A.",
+      "quote1Role": "Growth Lead, Eco Alacay",
+      "quote2": "It's easy to use and the recommendations are spot on. It saves time and drives results.",
+      "quote2Name": "Buse T.",
+      "quote2Role": "Social Media Specialist, GreenO Organics",
+      "statAnalyses": "Pieces of content analyzed",
+      "statEngagement": "Engagement improved",
+      "statBrands": "Happy brands",
+      "statSatisfaction": "Customer satisfaction",
+      "sslNote": "Your data is protected with 256-bit SSL. Secure and private.",
+      "simpleTitle": "Your account is secure.",
+      "simpleBody": "Score AI analyzes your content across 40 micro-criteria and boosts performance with actionable recommendations.",
+      "simpleBullet1": "Password reset links are single-use.",
+      "simpleBullet2": "Links expire after a limited time.",
+      "simpleBullet3": "Your actions are protected end to end."
+    },
+    "errors": {
+      "emailAlreadyInUse": "This email is already registered. Try signing in.",
+      "invalidEmail": "Enter a valid email address.",
+      "weakPassword": "Password must be at least 6 characters.",
+      "wrongCredentials": "Incorrect email or password. If you signed up with Google, use the Google button below.",
+      "tooManyRequests": "Too many attempts. Please try again shortly.",
+      "popupClosed": "Google sign-in was cancelled. You can try again.",
+      "popupBlocked": "Your browser blocked the pop-up. Allow pop-ups and try again.",
+      "unauthorizedDomain": "This domain is not authorized in Firebase (Authorized domains).",
+      "invalidApiKey": "Invalid Firebase API key. Refresh NEXT_PUBLIC_FIREBASE_API_KEY from Firebase Console.",
+      "operationNotAllowed": "This sign-in method is disabled in Firebase. Enable the provider.",
+      "accountExistsDifferent": "This email is registered with Google. Please continue with Google.",
+      "networkFailed": "Network error. Check your internet connection.",
+      "requiresRecentLogin": "Please sign in again to continue this action.",
+      "expiredActionCode": "This link has expired. Request a new one.",
+      "invalidActionCode": "This link is invalid or was already used.",
+      "userDisabled": "This account has been disabled.",
+      "sessionFailed": "Could not create a session. Check Firebase Admin / USER_SESSION_SECRET.",
+      "sessionSecret": "USER_SESSION_SECRET is missing or too short.",
+      "emailRequired": "This account has no email. Try another Google account.",
+      "authIncomplete": "Authentication could not be completed. Please try again.",
+      "adminNotConfigured": "Server Firebase Admin config is missing (.env.local).",
+      "firebaseAdminBad": "Firebase Admin configuration is invalid.",
+      "generic": "Something went wrong. Please try again."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your account and platform settings.",
+    "profile": "Profile",
+    "security": "Security",
+    "notifications": "Notifications",
+    "integrations": "Integrations",
+    "billing": "Billing & Plan",
+    "selectPlaceholder": "Select",
+    "language": "Language",
+    "languagePlaceholder": "Select language",
+    "timezone": "Timezone",
+    "timezonePlaceholder": "Select timezone",
+    "country": "Country",
+    "countryPlaceholder": "Select country",
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Profile updated.",
+    "loadError": "Could not load profile. Please sign in again.",
+    "loadFailed": "Something went wrong while loading your profile.",
+    "photoTypeError": "Only PNG, JPEG, JPG, WEBP, or GIF files are allowed.",
+    "photoSizeError": "Image must be 5 MB or smaller.",
+    "photoSaveError": "Could not save profile photo.",
+    "profileSaveError": "Could not save profile.",
+    "profileSaveFailed": "Something went wrong while saving your profile.",
+    "firstName": "First name",
+    "firstNamePlaceholder": "Your first name",
+    "lastName": "Last name",
+    "lastNamePlaceholder": "Your last name",
+    "company": "Company",
+    "companyPlaceholder": "Company or brand name",
+    "sector": "Sector",
+    "sectorPlaceholder": "Select sector",
+    "languageUpdated": "Interface language updated.",
+    "profileTitle": "Profile Information",
+    "profileSubtitle": "Update your account and brand details.",
+    "photoChangeAria": "Change profile photo",
+    "photoChange": "Change Photo",
+    "photoHint": "PNG, JPEG, JPG or WEBP · max 5 MB",
+    "photoSelected": "New photo selected — it becomes permanent after you save.",
+    "email": "Email",
+    "emailVerified": "Your email address is verified",
+    "emailUnverified": "Your email address is not verified yet.",
+    "securityTitle": "Security Settings",
+    "securitySubtitle": "Update your password and manage account security.",
+    "changePassword": "Change Password",
+    "changePasswordGoogle": "This account is linked with Google. Password management is handled through your Google account.",
+    "changePasswordHint": "Verify your current password for security.",
+    "active": "Active",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm New Password",
+    "passwordStrong": "Strong password: includes uppercase, number, and symbol",
+    "passwordMedium": "Medium strength: create a more secure password",
+    "passwordRequired": "Current and new password are required.",
+    "passwordMinLength": "New password must be at least 6 characters.",
+    "passwordMismatch": "New passwords do not match.",
+    "passwordUpdated": "Your password has been updated.",
+    "passwordUpdating": "Updating…",
+    "passwordUpdate": "Update Password",
+    "notificationsTitle": "Notification Settings",
+    "notificationsSubtitle": "Manage email, reminder, and in-app notification preferences.",
+    "emailNotifications": "Email Notifications",
+    "emailNotificationsDesc": "Important updates are sent to your email.",
+    "analysisResults": "Analysis results",
+    "analysisResultsDesc": "You'll get an email when a report is ready.",
+    "appNotifications": "App Notifications",
+    "appNotificationsDesc": "Shown in the bell icon at the top right.",
+    "instantAlerts": "Instant alerts",
+    "instantAlertsDesc": "Reminders and important updates appear in the app.",
+    "analysisStatus": "Analysis status",
+    "analysisStatusDesc": "A notification and popup appear when analysis completes.",
+    "reminders": "Reminders",
+    "remindersDesc": "Get reminders when you haven't signed in for a while or an analysis is incomplete.",
+    "emailReminders": "Email reminders",
+    "emailRemindersDesc": "Email if no sign-in for 3 days or an analysis is incomplete.",
+    "appReminders": "App reminders",
+    "appRemindersDesc": "The same reminders also appear in top-right notifications.",
+    "notifSaved": "Notification preferences saved",
+    "notifSaveFailed": "Could not save notification preferences",
+    "saveNotifications": "Save Notifications",
+    "integrationsTitle": "Integrations",
+    "integrationsSubtitle": "Connect your content and social media tools with ScoreAI.",
+    "connectableApps": "Connectable Apps",
+    "connectableAppsDesc": "Basic design and social media connections in the first phase.",
+    "instagramDesc": "Track scores for posts and Reels content.",
+    "instagramMeta": "Business/Creator · Facebook not required",
+    "linkedinDesc": "Score and improve company page content.",
+    "linkedinMeta": "Integration coming soon",
+    "comingSoon": "Coming soon",
+    "connected": "Connected",
+    "notConnected": "Not connected",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "manage": "Manage",
+    "instagramVerify": "Verify with Instagram Login",
+    "instagramNotConfigured": "Instagram Login not configured",
+    "instagramDisconnected": "Instagram disconnected",
+    "instagramConfigError": "Instagram Login is not configured. Check Env / Meta App settings.",
+    "instagramUpdateFailed": "Could not update Instagram connection",
+    "instagramConnectedWithUser": "@{user} connected · {count} items fetched",
+    "instagramConnectedCount": "Instagram connected · {count} items fetched",
+    "instagramConnectedLowDesc": "At least 6 items are recommended for analysis. You can upload the rest manually.",
+    "instagramConnectedNone": "Instagram account connected",
+    "instagramConnectedNoneDesc": "No content was fetched yet. You can upload 6–12 images/videos manually.",
+    "instagramDenied": "Instagram connection cancelled",
+    "instagramError": "Instagram connection failed",
+    "billingTitle": "Billing & Plan",
+    "billingSubtitle": "Manage your subscription and payment details.",
+    "currentPlan": "Current plan",
+    "planNormal": "Normal",
+    "planPro": "Pro",
+    "planProDesc": "Advanced analysis tools and priority support included.",
+    "planNormalDesc": "Basic analysis features are active.",
+    "upgradePro": "Upgrade to Pro",
+    "paymentInfo": "Payment details",
+    "paymentInfoDesc": "Your saved card and billing history will appear here.",
+    "noPaymentMethod": "No payment method saved yet."
+  },
+  "dashboard": {
+    "benchmark": {
+      "loading": "Loading…",
+      "title": "Strategic Brand Inputs",
+      "infoAria": "About Strategic Brand Inputs",
+      "infoTooltip": "This page is not Brand DNA. It collects your brand promise, competitors, historical content, and trust proofs to strengthen Brand Intelligence analysis.",
+      "subtitle": "Complete the missing sources to strengthen Brand Intelligence analysis.",
+      "saveAndContinue": "Save and Continue",
+      "skip": "Skip",
+      "completionTitle": "Completion Status",
+      "scoreOutOf": "/ 100",
+      "whyNeededTitle": "Why is this needed?",
+      "whyNeededBody": "These inputs make Brand Tone, Value Proposition, Differentiation, and Trust Building analysis more accurate. Unlike Brand DNA, this page collects competition, past communication, and trust proofs.",
+      "status": {
+        "Tamamlandı": "Complete",
+        "Eksik": "Missing",
+        "Opsiyonel": "Optional"
+      },
+      "sectionLabels": {
+        "brandPromise": "Brand Promise",
+        "competitors": "Competitor Sources",
+        "historical": "Historical Content",
+        "trustProofs": "Trust Proofs"
+      },
+      "brandPromise": {
+        "title": "Brand Promise",
+        "subtitle": "Write the core value that differentiates your brand in one sentence.",
+        "placeholder": "Trusted skincare powered by natural ingredients and scientific testing.",
+        "tags": "Value Proposition · Differentiation · Brand Tone"
+      },
+      "competitors": {
+        "title": "Competitor Sources",
+        "subtitle": "Add a competitor Instagram account or website URL. We review recent posts on Instagram, or homepage images on websites.",
+        "placeholder": "@competitor or https://...",
+        "postsCount": "{count} images",
+        "error": "Error",
+        "pending": "…",
+        "titleReadyIg": "{count} posts fetched",
+        "titleReadyWeb": "{count} site images fetched",
+        "titleFailed": "Fetch failed",
+        "titlePending": "Fetching content",
+        "refresh": "Refresh",
+        "manualUrlTitle": "Add a manual Instagram post URL",
+        "manualUrl": "URL",
+        "hint": "Used for Differentiation analysis. Green number = images fetched.",
+        "limitHint": "Up to {max} competitors ({current}/{max}). You can’t add your connected brand account as a competitor.",
+        "manualPostPrompt": "Paste an Instagram post URL for {input}"
+      },
+      "brandAccount": {
+        "title": "Connect Brand Account",
+        "subtitle": "Connect your Instagram, scan your website, or upload historical content manually.",
+        "connected": "Connected{username} · Disconnect",
+        "connectIg": "Connect Instagram Account",
+        "igHint": "You’ll sign in to Instagram to verify your account; you can’t connect someone else’s username.",
+        "websitePlaceholder": "https://www.brand.com",
+        "scan": "Scan",
+        "orManual": "or upload manually",
+        "uploadMedia": "Upload Image / Video",
+        "hint": "Scan: saves homepage images from your site as historical content (Brand Consistency / Memory). If you prefer not to connect Instagram, you can upload your last 6 posts manually below.",
+        "mediaCount": " · {count} items saved"
+      },
+      "trustProofs": {
+        "title": "Trust Proofs",
+        "subtitle": "Upload certificates, test results, customer reviews, or warranty documents.",
+        "uploadLabel": "Upload PDF, PNG, JPG, or WEBP",
+        "uploadHint": "Dermatology tests, ISO/GMP, customer reviews · max 10 files, 10 MB",
+        "tags": "Trust Building · Conversion Potential"
+      },
+      "posting": {
+        "title": "Your Posting Average",
+        "subtitle": "Content you analyzed this month",
+        "perMonth": "/ month",
+        "yourRhythm": "Your rhythm",
+        "postsCount": "{count} posts",
+        "you": "You",
+        "spacer": "0 / 0"
+      },
+      "sectorAvg": {
+        "title": "Sector Posting Average",
+        "subtitle": "Sector monthly analysis average",
+        "badge": "Catalog average",
+        "perMonth": "/ month",
+        "reference": "Sector reference",
+        "postsCount": "{count} posts",
+        "you": "You",
+        "footer": "That’s the sector rhythm. Run a new analysis and measure your own line."
+      },
+      "performance": {
+        "idle": {
+          "label": "Getting started",
+          "hint": "Start your rhythm with your first analysis."
+        },
+        "up": {
+          "label": "Above sector",
+          "hint": "Strong pace. Keep the momentum with a new analysis."
+        },
+        "flat": {
+          "label": "On par with sector",
+          "hint": "You’re even. One more analysis to pull ahead."
+        },
+        "down": {
+          "label": "Below sector",
+          "hint": "Run a new analysis and catch the sector rhythm."
+        }
+      },
+      "cta": {
+        "body": "Stronger analysis is ready for Brand Intelligence. As you complete sources, analysis confidence increases.",
+        "backToAnalysis": "Back to Analysis"
+      },
+      "toasts": {
+        "loadError": "Could not load Benchmark data",
+        "igConnectedWithUser": "@{user} connected · {posts} items fetched",
+        "igConnectedWithPosts": "Instagram connected · {posts} items fetched",
+        "igLowPostsDesc": "At least {min} items are recommended for analysis. You can upload the rest manually.",
+        "igConnectedNoPosts": "Instagram account connected",
+        "igConnectedNoPostsDesc": "No content was fetched yet. You can upload up to 6 images/videos manually.",
+        "igDenied": "Instagram connection was cancelled",
+        "igNotConfigured": "Instagram Login is not configured yet",
+        "igConnectFailed": "Instagram connection failed",
+        "saved": "Saved",
+        "saveFailed": "Could not save",
+        "competitorOwnBrand": "You can’t add your connected brand account as a competitor. Use another account or site.",
+        "competitorDuplicate": "This competitor is already on the list.",
+        "competitorMax": "You can add up to {max} competitors.",
+        "competitorAdded": "Competitor added, fetching content",
+        "competitorAddFailed": "Could not add competitor",
+        "competitorRemoveFailed": "Could not remove competitor",
+        "competitorRefreshing": "Refreshing competitor content",
+        "competitorRefreshFailed": "Could not start refresh",
+        "postAdded": "Post added",
+        "postAddFailed": "Could not add post",
+        "igDisconnected": "Instagram disconnected",
+        "igLoginNotConfigured": "Instagram Login is not configured. You can upload content manually for now.",
+        "igConnectError": "Could not connect Instagram",
+        "websiteRequired": "Enter a website URL",
+        "scannedImages": "{count} images scanned",
+        "scanFailed": "Scan failed",
+        "trustUploaded": "Trust proof uploaded",
+        "uploadFailed": "Upload failed",
+        "deleteFailed": "Could not delete",
+        "mediaUploaded": "Content uploaded"
+      }
+    },
+    "brandDna": {
+      "loading": "Loading…",
+      "title": "Brand DNA",
+      "subtitle": "Teach Score AI your brand. The clearer you define it, the more accurate analyses become.",
+      "saving": "Saving…",
+      "unsavedLeaveConfirm": "Changes are not saved. Do you want to leave this page?",
+      "selectPlaceholder": "Select",
+      "selectOptionsAria": "{label} options",
+      "status": {
+        "Tamamlandı": "Complete",
+        "Eksik": "Missing"
+      },
+      "scoreLabels": {
+        "Zayıf": "Weak",
+        "Orta": "Fair",
+        "İyi": "Good",
+        "Mükemmel": "Excellent"
+      },
+      "scoreHeadline": {
+        "strong": "Your Brand DNA is strong and consistent.",
+        "good": "Your Brand DNA is in good shape.",
+        "forming": "Your Brand DNA is taking shape.",
+        "incomplete": "Complete your Brand DNA."
+      },
+      "scoreDescription": {
+        "high": "Analyses will be more accurate and content suggestions more valuable.",
+        "mid": "As you complete missing sections, your scoring reference gets stronger.",
+        "low": "Logo, color, typography, and tone definitions directly affect analysis accuracy."
+      },
+      "updatedNever": "Not saved yet",
+      "updatedAt": "Last updated: {date}",
+      "completionTitle": "Completion Status",
+      "scoreOutOf": "/100",
+      "whyImportantTitle": "Why It Matters",
+      "whyImportantBody": "Score AI runs analyses against these reference inputs. The more complete your definition, the more accurate and valuable the results.",
+      "whyImportantFooter": "Brand Intelligence scores are shaped by this reference.",
+      "ctaReady": "Your Brand DNA is ready!",
+      "ctaIncomplete": "Complete Brand DNA",
+      "ctaBody": "Start an analysis and get evaluated against your brand’s unique identity.",
+      "ctaButton": "Run Test Analysis",
+      "sections": {
+        "logo": {
+          "title": "Logo",
+          "subtitle": "Upload your brand logo.",
+          "alt": "Brand logo",
+          "empty": "No logo uploaded yet",
+          "uploading": "Processing…",
+          "upload": "Upload Logo",
+          "removeAria": "Remove logo",
+          "hint": "SVG, PNG, JPG (max. 5MB)"
+        },
+        "colors": {
+          "title": "Color Palette",
+          "subtitle": "Choose your brand’s primary colors.",
+          "maxColors": "Max. {max} colors",
+          "removeTitle": "{color} — remove",
+          "removeAria": "Remove color {color}",
+          "addTitle": "Add color",
+          "addAria": "Add color",
+          "add": "Add",
+          "pickerAria": "Pick a color",
+          "hexPlaceholder": "#FFFFFF",
+          "pickerHint": "Pick a color or enter HEX and press Add",
+          "invalidHex": "Invalid HEX (#RGB or #RRGGBB)",
+          "invalidHexLong": "Enter a valid HEX code (#RGB or #RRGGBB, e.g. #FFFFFF)",
+          "invalidHexShort": "Enter a valid HEX code (#RGB or #RRGGBB)",
+          "duplicate": "This color is already in the palette",
+          "maxReached": "You can add up to {max} colors"
+        },
+        "typography": {
+          "title": "Typography",
+          "subtitle": "Choose your brand’s type style.",
+          "headingLabel": "Heading Font",
+          "headingPlaceholder": "Select a heading font",
+          "bodyLabel": "Body Font",
+          "bodyPlaceholder": "Select a body font",
+          "previewHint": "Fonts from the same Google Fonts family are recommended."
+        },
+        "personality": {
+          "title": "Brand Personality",
+          "subtitle": "Select the identities that best describe your brand.",
+          "maxHint": "Up to 5 ({count}/5)"
+        },
+        "tone": {
+          "title": "Tone of Voice",
+          "subtitle": "Mark the choices that best reflect your communication tone.",
+          "maxHint": "Up to 5 ({count}/5)"
+        },
+        "audience": {
+          "title": "Target Audience",
+          "subtitle": "Select your target audience.",
+          "customPlaceholder": "Write other target audiences...",
+          "customMax": "Up to {max} custom audiences",
+          "charCount": "{count}/80",
+          "add": "Add",
+          "customMaxToast": "You can add up to {max} custom audiences",
+          "totalMaxToast": "You can select up to 8 audiences"
+        },
+        "sector": {
+          "title": "Sector",
+          "subtitle": "Select the sector you operate in.",
+          "label": "Sector",
+          "placeholder": "Select a sector",
+          "otherLabel": "Describe your sector",
+          "otherPlaceholder": "Describe your sector...",
+          "otherValue": "Diğer"
+        },
+        "keywords": {
+          "title": "Brand Keywords",
+          "subtitle": "Add words you associate with your brand.",
+          "maxHint": "Up to {max}",
+          "removeAria": "Remove keyword {keyword}",
+          "placeholder": "Add a keyword...",
+          "add": "Add",
+          "count": "{count}/{max} added"
+        }
+      },
+      "completionLabels": {
+        "logo": "Logo",
+        "colors": "Color Palette",
+        "typography": "Typography",
+        "personality": "Brand Personality",
+        "toneOfVoice": "Tone of Voice",
+        "audience": "Target Audience",
+        "sector": "Sector",
+        "keywords": "Keywords"
+      },
+      "options": {
+        "personality": [
+          "Luxury",
+          "Innovative",
+          "Corporate",
+          "Friendly",
+          "Modern",
+          "Technical",
+          "Creative",
+          "Playful",
+          "Youthful",
+          "Sustainable",
+          "Natural",
+          "Dynamic",
+          "Clean",
+          "Simple",
+          "Original",
+          "Warm",
+          "Visionary",
+          "Authentic",
+          "Reliable",
+          "Confident"
+        ],
+        "tone": [
+          "Professional",
+          "Self-assured",
+          "Friendly",
+          "Honest",
+          "Inspiring",
+          "Approachable",
+          "Technical",
+          "Luxury",
+          "Educational",
+          "Direct",
+          "Conversational",
+          "Corporate",
+          "Warm",
+          "Bold",
+          "Innovative",
+          "Royal",
+          "Minimal",
+          "Empathetic",
+          "Motivational",
+          "Authoritative"
+        ],
+        "audience": [
+          "B2B",
+          "B2C",
+          "Professionals",
+          "Parents",
+          "Doctors",
+          "Engineers",
+          "Students",
+          "Managers"
+        ],
+        "sector": [
+          "Fashion & Apparel",
+          "Beauty & Cosmetics",
+          "Food & Beverage / Restaurant",
+          "Sports & Fitness",
+          "Travel & Tourism",
+          "Technology & Electronics",
+          "Education & Online Courses",
+          "Health & Wellness",
+          "Gaming / Esports",
+          "E-commerce & Retail",
+          "Other"
+        ]
+      },
+      "toasts": {
+        "loadError": "Could not load Brand DNA data",
+        "saveError": "Could not save Brand DNA",
+        "logoTooLarge": "Logo can be up to 5MB",
+        "logoUnsupported": "Upload SVG, PNG, or JPG",
+        "logoUploaded": "Logo uploaded",
+        "logoUploadFailed": "Could not upload logo",
+        "logoRemoved": "Logo removed",
+        "logoRemoveFailed": "Could not remove logo"
+      }
+    },
+    "creativeMemory": {
+      "title": "Creative Memory",
+      "subtitle": "AI insights learned from your past analyses",
+      "kpi": {
+        "totalAnalyses": "Total Analyses",
+        "insightfulContent": "Insightful Content",
+        "avgScore": "Average Score",
+        "monthlyChange": "Monthly Change"
+      },
+      "pointsChange": "{change} pts",
+      "scoreRange": {
+        "ariaLabel": "Score range",
+        "optionsAria": "Score range options",
+        "option": "Score: {label}",
+        "all": "All"
+      },
+      "postInsights": "Post Insights",
+      "searchPlaceholder": "Search by title…",
+      "loadError": "Something went wrong while loading Creative Memory.",
+      "loading": "Loading insights…",
+      "empty": {
+        "title": "No insights saved yet",
+        "body": "As analyses complete, each post’s AI insight is collected here.",
+        "newAnalysis": "Start new analysis",
+        "goToAnalyses": "Go to analyses"
+      },
+      "noFilterResults": "No insights match these filters.",
+      "prev": "Previous",
+      "next": "Next",
+      "detail": {
+        "loading": "Loading insight…",
+        "loadError": "Something went wrong while loading this insight.",
+        "notFound": "Insight not found.",
+        "analysisDetail": "Analysis Detail",
+        "postFallback": "Post",
+        "aiInsight": "Score AI Insight",
+        "noInsight": "No AI insight has been generated for this analysis yet.",
+        "loadingDetails": "Loading details…",
+        "strengths": "Strengths",
+        "weaknesses": "Gaps",
+        "actions": "Priority Actions",
+        "emptyRecords": "No records"
+      }
+    },
+    "analysisDetail": {
+      "tabs": {
+        "overview": "Overview",
+        "microCriteria": "Micro Criteria",
+        "suggestions": "Score AI Suggestions",
+        "comparison": "Comparison",
+        "insights": "Insights"
+      },
+      "loading": "Loading analysis details...",
+      "notFound": "This analysis was not found.",
+      "loadError": "Could not load analysis details.",
+      "fetchError": "Could not fetch analysis",
+      "notFoundShort": "Analysis not found.",
+      "titleEmpty": "Title cannot be empty.",
+      "titleSaveError": "Could not save the title.",
+      "saveTitleAria": "Save title",
+      "cancelEditAria": "Cancel editing",
+      "editTitleAria": "Edit title",
+      "titleHint": "Press Enter to save, Esc to cancel.",
+      "download": "Download",
+      "downloadFailed": "Download failed",
+      "openReport": "Open Report",
+      "microCriteria": {
+        "title": "Micro Criteria",
+        "subtitle": "Objective evaluation by category"
+      },
+      "overview": {
+        "overallScore": "Overall Score",
+        "pointsChange": "+{change} pts",
+        "vsPrevious": "Compared to previous analysis",
+        "shortEvaluation": "Quick Evaluation",
+        "highlightedStrength": "Highlighted Strength",
+        "contentPreview": "Content Preview",
+        "viewContent": "View Content",
+        "categoryPerformance": "Performance by Category",
+        "scoreDistribution": "Score Distribution",
+        "analysisInfo": "Analysis Info",
+        "infoId": "Analysis ID",
+        "infoDate": "Analysis Date",
+        "infoPlatform": "Platform",
+        "infoContentType": "Content Type",
+        "suggestions": "Score AI Suggestions",
+        "benchmarkComparison": "Benchmark Comparison",
+        "weak": "Weak",
+        "medium": "Average",
+        "good": "Good",
+        "great": "Great"
+      },
+      "suggestions": {
+        "gainPotential": "+{gain} pt potential",
+        "moreForSuggestions": "See more in Score AI Suggestions",
+        "showLess": "Show less",
+        "showMore": "Show {count} more suggestions",
+        "title": "Score AI Suggestions ({count})",
+        "subtitle": "These suggestions are generated from criterion-based potential gain calculations.",
+        "totals": "Listed total: +{listed} pts · Target gain: +{target} pts",
+        "viewResult": "View Result"
+      },
+      "comparison": {
+        "moreForBenchmark": "See more in Benchmark",
+        "fallback": {
+          "promiseLabel": "Brand promise",
+          "promiseText": "See how well your content aligns with your promise and positioning.",
+          "competitorsLabel": "Competitive edge",
+          "competitorsText": "See where you stand out and where you fall behind versus competitors.",
+          "trustLabel": "Trust signals",
+          "trustText": "Clarify gaps based on trust signals and brand consistency."
+        }
+      },
+      "insights": {
+        "creativeMemory": "Creative Memory",
+        "aiInsight": "Score AI Insight",
+        "noInsight": "No AI insight has been generated for this analysis yet.",
+        "strength": "Strength",
+        "suggestions": "Suggestions"
+      },
+      "benchmarkCard": {
+        "title": "Benchmark comparison",
+        "subtitle": "Based on brand promise, competitors, past content, and trust signals",
+        "empty": "There is no Benchmark commentary for this analysis yet. Fill in Benchmark and run a new analysis to see competitor, promise, and trust comparisons here.",
+        "gaps": "Gaps vs Benchmark",
+        "strengths": "Strengths vs Benchmark",
+        "actions": "Benchmark-focused actions",
+        "cta": "Benchmark"
+      }
+    },
+    "analysisResult": {
+      "backLabel": "Analysis",
+      "downloadFailed": "Download failed",
+      "loadError": "Could not load the analysis result.",
+      "fetchError": "Could not fetch result",
+      "processing": {
+        "failedTitle": "Analysis could not be completed",
+        "processingTitle": "Analysis in progress…",
+        "failedBody": "There was a problem with the uploaded file format or content processing step.",
+        "processingBody": "Score and AI details will update automatically when processing finishes.",
+        "goToDetail": "Go to Analysis Detail",
+        "refresh": "Refresh"
+      },
+      "title": "Analysis complete!",
+      "subtitle": "Your content was analyzed against {count} micro criteria.",
+      "download": "Download",
+      "shareTitleFallback": "Score AI Analysis",
+      "openInCanva": "Open in Canva",
+      "canvaTitleReady": "Open Canva Magic Layers page",
+      "canvaTitleNeedImage": "Generate the potential image first",
+      "currentContent": "Your Current Content",
+      "previewAlt": "Content preview",
+      "contentAlt": "Content",
+      "potentialAlt": "{title} potential",
+      "weaknessFallback": "Areas to improve are listed in the criteria analysis.",
+      "potential": "Potential",
+      "potentialTarget": "Potential Target (Score AI)",
+      "actionFallback": "This score represents the potential level reachable by optimizing current gaps.",
+      "potentialNotEligible": "Potential generation not eligible",
+      "potentialGeneratedOnce": "Potential image already generated once",
+      "potentialGenerating": "Generating potential image...",
+      "potentialGenerate": "Generate Potential Image",
+      "viewResult": "View Result",
+      "retryLabel": "Try again:",
+      "newAnalysis": "Start new analysis",
+      "generationFailed": "Generation step failed.",
+      "potentialGenerateError": "Could not generate potential image.",
+      "potentialGenerateFailed": "Potential image generation failed.",
+      "analysisDataMissing": "Could not retrieve updated analysis data.",
+      "aiComment": "Score AI Commentary",
+      "aiCommentFallback": "Detailed AI commentary is being generated.",
+      "strengths": "Strengths",
+      "weaknesses": "Gaps",
+      "actions": "Priority actions",
+      "updating": "Updating result data...",
+      "analysisFallback": "Analysis",
+      "fileSuffixPotential": "potential",
+      "fileSuffixOriginal": "original",
+      "metrics": {
+        "attention": "Attention Grab",
+        "clarity": "Clarity",
+        "emotionalImpact": "Emotional Impact",
+        "engagementPotential": "Engagement Potential"
+      },
+      "potentialModal": {
+        "closeAria": "Close",
+        "previewAlt": "Potential image preview",
+        "previewPreparing": "Preparing preview",
+        "title": "Your optimized image is ready",
+        "description": "The final output for <highlight>{title}</highlight> is ready based on the potential score. Use it as-is, or open Canva Magic Layers to tweak specific areas.",
+        "current": "Current",
+        "potential": "Potential",
+        "estimatedGain": "Estimated score gain: <gain>{signedGain} pts</gain>",
+        "body1": "The image on the left is your potential creative, generated from gaps in the score analysis.",
+        "body2": "Switch to Canva Magic Layers for layers you want to change, or use the <download>Download</download> button above to save the image.",
+        "openingCanva": "Opening Canva...",
+        "editInCanva": "Edit with Magic Layers in Canva",
+        "closeLiked": "I like the result, close"
+      }
+    },
+    "overview": {
+      "greetings": {
+        "morning": "Good Morning",
+        "afternoon": "Good Afternoon",
+        "evening": "Good Evening",
+        "night": "Good Night"
+      },
+      "defaultUserName": "User",
+      "scoreChangeSubtitle": "Your content score changed by {change} points since your last analysis.",
+      "newAnalysis": "New Analysis",
+      "firstAnalysisBanner": "You don't have any analyses yet. <bold>Start your first analysis.</bold> Score AI surfaces your content score in seconds.",
+      "startAnalysis": "Start Analysis",
+      "dismiss": "Dismiss",
+      "avgScore": "Average Score",
+      "thisMonth": "this month",
+      "last7Days": "Last 7 Days",
+      "avgScoreTooltip": "Avg. Score",
+      "vsPrevious7Days": "vs previous 7 days",
+      "aiInsight": "AI Insight",
+      "aiInsightDefault": "Personalized insights will appear here after you complete your first analysis.",
+      "aiInsightEmpty": "Start your first analysis to get personalized insights.",
+      "aiInsightCompare": "{top} content is performing stronger; there is room to grow in {weak}.",
+      "aiInsightTopOnly": "{top} is your strongest area. See detailed insights in Creative Memory.",
+      "aiInsightFallback": "Clear action points emerged from your recent analyses. Details are in Creative Memory.",
+      "aiInsightExpandAria": "Expand or collapse AI insight text",
+      "viewAllInsights": "View all insights",
+      "recentAnalyses": "Recent Analyses",
+      "viewAll": "View all",
+      "recentEmpty": "No analyses yet. Click “New Analysis” to start your first one.",
+      "topCategories": "Strongest Categories",
+      "topCategoriesEmpty": "Category performance will appear with your first results.",
+      "mostImproved": "Most Improved Areas",
+      "mostImprovedEmpty": "Improvement areas have not been calculated yet.",
+      "quickActions": "Quick Actions",
+      "quickActionNewAnalysis": "Start New Analysis",
+      "quickActionBrandDna": "Update Brand DNA",
+      "quickActionBenchmark": "Compare Benchmark",
+      "quickActionCreativeMemory": "Creative Memory",
+      "scoreAiThisWeek": "Score AI This Week",
+      "weeklyInsightDefault": "Your weekly AI summary will appear here as analyses complete.",
+      "viewFullReport": "View full report",
+      "loadError": "Could not load dashboard data.",
+      "points": "pts",
+      "stable": "Flat",
+      "noImage": "No image",
+      "detail": "Details"
+    },
+    "analyses": {
+      "title": "Analyses",
+      "subtitle": "Browse past analyses and open their details.",
+      "searchPlaceholder": "Search analyses...",
+      "dateRange": "Date Range",
+      "dateRangeAria": "Date range",
+      "scoreRange": "Score Range",
+      "scoreRangeAria": "Score range",
+      "clearFilters": "Clear Filters",
+      "selectAnalyses": "Select Analyses",
+      "deleteSelected": "Delete Selected ({count})",
+      "deleting": "Deleting...",
+      "cancel": "Cancel",
+      "selectAllAria": "Select all",
+      "selectAnalysisAria": "Select analysis",
+      "columnContent": "Content",
+      "columnDate": "Date",
+      "columnScore": "Score",
+      "columnStatus": "Status",
+      "dateLabel": "Date:",
+      "scoreLabel": "Score:",
+      "empty": "No analyses found. Start a new analysis and upload content.",
+      "loading": "Loading...",
+      "noResults": "No results",
+      "resultsRange": "{from}-{to} / {total} analyses",
+      "prevAria": "Previous",
+      "nextAria": "Next",
+      "pageSizeAria": "Analyses per page",
+      "optionsAria": "{label} options",
+      "deleteConfirmTitle": "Are you sure you want to delete these analyses?",
+      "deleteConfirmBody": "<count></count> analyses will be permanently deleted. This cannot be undone.",
+      "deleteConfirm": "Yes, Delete",
+      "loadError": "Something went wrong while loading analyses.",
+      "deleteFailed": "Delete failed.",
+      "deleteError": "Something went wrong while deleting analyses.",
+      "dateRanges": {
+        "7d": "Last 7 Days",
+        "30d": "Last 30 Days",
+        "90d": "Last 90 Days",
+        "all": "All"
+      },
+      "scoreRanges": {
+        "all": "All",
+        "0-49": "0 - 49",
+        "50-69": "50 - 69",
+        "70-84": "70 - 84",
+        "85-100": "85 - 100"
+      },
+      "pageSizes": {
+        "10": "10 / page",
+        "20": "20 / page",
+        "50": "50 / page"
+      }
+    },
+    "newAnalysis": {
+      "title": "Let's create your first analysis.",
+      "subtitle": "Upload your content and Score AI will analyze and improve it in seconds.",
+      "uploadTitle": "Upload your image or video",
+      "uploadFormats": "PNG • JPG • WEBP • MP4 • Max 20 MB",
+      "selectFile": "Choose File",
+      "removeFileAria": "Remove selected file",
+      "or": "or",
+      "instagramUrlLabel": "Instagram Post URL:",
+      "urlPlaceholder": "https://instagram.com/p/...",
+      "startAnalysis": "Start Analysis",
+      "processing": "Processing Analysis...",
+      "redirectHint": "You'll be redirected to the report screen automatically when it's ready.",
+      "overlayTitle": "Analysis in progress",
+      "overlaySubtitle": "Please don't close this page — results are being prepared.",
+      "stepLabel": "Current step",
+      "validationEmpty": "Please select an image/video or paste a post link.",
+      "errorProcessing": "Analysis started, but an error occurred during processing. Please try a different image.",
+      "errorNoRedirect": "Analysis was queued, but redirect data was unavailable.",
+      "errorGeneric": "Something went wrong while starting the analysis. Please try again.",
+      "features": {
+        "0": {
+          "title": "31 Micro Criteria",
+          "desc": "Analyzed against every criterion."
+        },
+        "1": {
+          "title": "30s Average Time",
+          "desc": "Fast and detailed analysis."
+        },
+        "2": {
+          "title": "AI Recommendations",
+          "desc": "Improve your content with smart suggestions."
+        },
+        "3": {
+          "title": "Brand DNA",
+          "desc": "Learns your brand voice and factors it into the analysis."
+        },
+        "4": {
+          "title": "Canva Integration",
+          "desc": "Edit the result in Canva."
+        }
+      },
+      "loadingSteps": {
+        "0": "Uploading media...",
+        "1": "Creating content record...",
+        "2": "Starting AI category analyses...",
+        "3": "Calculating scores...",
+        "4": "Redirecting to report..."
+      }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "ariaLabel": "Notifications",
+      "unreadCount": "{count} unread",
+      "allRead": "All caught up",
+      "markAllRead": "Read",
+      "markAllReadTitle": "Mark all as read",
+      "closeAria": "Close",
+      "loading": "Loading…",
+      "emptyTitle": "No notifications",
+      "emptyBody": "Analyses and reminders show up here.",
+      "openAria": "Open notification",
+      "openTitle": "Open",
+      "removeAria": "Remove notification",
+      "removeTitle": "Remove",
+      "openAction": "Open",
+      "viewAction": "View",
+      "relativeJustNow": "Just now",
+      "relativeMinutes": "{count}m",
+      "relativeHours": "{count}h",
+      "relativeDays": "{count}d"
+    },
+    "share": {
+      "button": "Share",
+      "copyLink": "Copy link",
+      "copied": "Link copied",
+      "createdWith": "{title} - Created with Score AI."
+    }
+  }
+}

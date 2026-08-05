@@ -1,4 +1,4 @@
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, type Query } from "firebase-admin/firestore";
 import { createHash } from "node:crypto";
 import {
   analyzeCategoryWithAnthropic,
@@ -34,6 +34,22 @@ import {
   type RubricMode,
 } from "@/lib/analysis/rubric";
 import { assessPotentialImageEligibility } from "@/lib/analysis/edge-cases";
+import {
+  attachSignedPreviewUrls,
+  ensureDashboardThumbBackground,
+} from "@/lib/analysis/media-thumb";
+import {
+  analysisCompletedNotification,
+  analysisFailedNotification,
+  buildLocalizedSummaryTexts,
+  contentTypeLabel,
+  formatAnalysisDate,
+  jobStatusLabel,
+  overviewAiInsightText,
+  platformTypeLabel,
+  toAnalysisUiLocale,
+} from "@/lib/analysis/display-copy";
+import { localizeCategoryLabel } from "@/lib/analysis/locale-labels";
 import { getCategoryPrompts } from "@/lib/analysis/prompts";
 import type {
   Analysis,
@@ -43,7 +59,11 @@ import type {
   JobStatus,
   Platform,
 } from "@/lib/analysis/types";
-import { splitDisplayName, userDocIdFromEmail } from "@/lib/user-profile";
+import {
+  normalizeProfileLanguage,
+  splitDisplayName,
+  userDocIdFromEmail,
+} from "@/lib/user-profile";
 import { sendMail } from "@/lib/mail/smtp";
 import {
   analysisCompletedEmail,
@@ -171,23 +191,21 @@ function titleToSlug(title: string): string {
     .replace(/^-|-$/g, "");
 }
 
-function formatDate(valueMs: number): string {
-  if (!valueMs) return "Henüz yok";
-  return new Intl.DateTimeFormat("tr-TR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(valueMs);
-}
-
-function platformTypeToLabel(platform: Platform): string {
-  return platform === "instagram" ? "Instagram Gönderisi" : "LinkedIn Gönderisi";
-}
-
-function scoreToStatus(status: JobStatus): "Geliştirildi" | "İnceleniyor" {
-  return status === "completed" ? "Geliştirildi" : "İnceleniyor";
+async function resolveOwnerUiLocale(ownerEmail: string): Promise<"tr" | "en"> {
+  try {
+    const db = getAdminDb();
+    const snap = await db
+      .collection(COLLECTIONS.users)
+      .doc(userDocIdFromEmail(ownerEmail))
+      .get();
+    const language =
+      typeof snap.data()?.language === "string"
+        ? String(snap.data()?.language)
+        : null;
+    return normalizeProfileLanguage(language);
+  } catch {
+    return "tr";
+  }
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -244,30 +262,9 @@ function buildSummaryTexts(
   categories: Analysis["categories"],
   evaluations: Record<string, CriterionEvaluation>,
   mode: RubricMode = "strategic_brand",
+  locale: "tr" | "en" = "tr",
 ) {
-  const bestCategory = [...categories].sort((a, b) => b.value - a.value)[0];
-  const weakestCriterion = getCriterionDefinitions(mode)
-    .map((criterion) => ({
-      ...criterion,
-      level: evaluations[criterion.id]?.seviye ?? 0,
-    }))
-    .sort((a, b) => a.level - b.level)[0];
-
-  const evaluation = weakestCriterion
-    ? evaluations[weakestCriterion.id]
-    : undefined;
-
-  return {
-    evaluation:
-      "AI analizi tamamlandi. Kategori bazli degerlendirme ve aksiyon oncelikleri olusturuldu.",
-    strength: bestCategory
-      ? `${bestCategory.label} kategorisi en guclu gorunuyor.`
-      : "Kategori bazli guclu alanlar bulunamadi.",
-    insight:
-      weakestCriterion && evaluation
-        ? `${weakestCriterion.label} iyilestirilirse skor artis potansiyeli yuksek. ${evaluation.eksiklikler}`
-        : "En zayif kriter belirlenemedi.",
-  };
+  return buildLocalizedSummaryTexts(categories, evaluations, locale, mode);
 }
 
 function buildRevisionMetrics(categories: Analysis["categories"]) {
@@ -348,6 +345,7 @@ function buildAnalysisCacheKey(params: {
   rubricVersion: string;
   promptVersion: string;
   platformType: string;
+  locale: "tr" | "en";
   brandContext?: string;
   hasStrategicBrand?: boolean;
   hasBrandDna?: boolean;
@@ -359,6 +357,8 @@ function buildAnalysisCacheKey(params: {
       params.rubricVersion,
       params.promptVersion,
       params.platformType,
+      // Commentary language is locale-specific; TR/EN must not share cache hits.
+      `locale:${params.locale}`,
       params.hasStrategicBrand ? "strategic:1" : "strategic:0",
       params.hasBrandDna ? "dna:1" : "dna:0",
       params.brandContext?.trim() ? sha256(params.brandContext.trim()) : "no-brand-context",
@@ -390,19 +390,19 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
     slug: String(data.slug ?? id),
     title: String(data.title ?? "İsimsiz Analiz"),
     platformType: (data.platformType as Platform | undefined) ?? "instagram",
-    platform: String(data.platform ?? platformTypeToLabel("instagram")),
-    date: formatDate(updatedAtMs || createdAtMs),
+    platform: String(data.platform ?? platformTypeLabel("instagram", "tr")),
+    date: formatAnalysisDate(updatedAtMs || createdAtMs, "tr"),
     score: Number(data.score ?? 0),
     potentialScore: Number(data.potentialScore ?? data.score ?? 0),
     change: Number(data.change ?? 0),
-    status: scoreToStatus(status),
+    status: jobStatusLabel(status, "tr"),
     jobStatus: status,
     evaluation: String(data.evaluation ?? "Analiz işleniyor."),
     strength: String(data.strength ?? "Analiz tamamlandığında burada görünecek."),
     insight: String(data.insight ?? "AI içgörüsü hazırlanıyor."),
     categories,
     suggestions: buildSuggestionsFromEvaluations(criteriaEvaluations),
-    contentType: String(data.contentType ?? "Gönderi"),
+    contentType: String(data.contentType ?? contentTypeLabel("tr")),
     criteriaCount: Number(data.criteriaCount ?? RUBRIC_CRITERIA_COUNT),
     sectorAverage: Number(data.sectorAverage ?? 0),
     hasStrategicBrand: Boolean(data.hasStrategicBrand),
@@ -426,10 +426,17 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
       typeof data.claimedAtMs === "number" && Number.isFinite(data.claimedAtMs)
         ? data.claimedAtMs
         : toMillis(data.claimedAt) || undefined,
+    locale: toAnalysisUiLocale(
+      typeof data.locale === "string" ? data.locale : undefined,
+    ),
     sourceUrl:
       typeof data.sourceUrl === "string" ? String(data.sourceUrl) : undefined,
     mediaUrl:
       typeof data.mediaUrl === "string" ? String(data.mediaUrl) : undefined,
+    storagePath:
+      typeof data.storagePath === "string" ? String(data.storagePath) : undefined,
+    mimeType:
+      typeof data.mimeType === "string" ? String(data.mimeType) : undefined,
     potentialImageStatus:
       typeof data.potentialImageStatus === "string"
         ? (data.potentialImageStatus as Analysis["potentialImageStatus"])
@@ -477,22 +484,85 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
   };
 }
 
+/** Lightweight mapper for list/overview cards — skips evaluations & heavy fields. */
+function mapAnalysisListDoc(id: string, data: AnalysisDoc): Analysis {
+  const createdAtMs = toMillis(data.createdAt);
+  const updatedAtMs = toMillis(data.updatedAt);
+  const status = (data.jobStatus as JobStatus | undefined) ?? "pending";
+  const categories = mapMainCategories(
+    (Array.isArray(data.categories) ? data.categories : []) as Analysis["categories"],
+  );
+
+  return {
+    id,
+    slug: String(data.slug ?? id),
+    title: String(data.title ?? "İsimsiz Analiz"),
+    platformType: (data.platformType as Platform | undefined) ?? "instagram",
+    platform: String(data.platform ?? platformTypeLabel("instagram", "tr")),
+    date: formatAnalysisDate(updatedAtMs || createdAtMs, "tr"),
+    score: Number(data.score ?? 0),
+    potentialScore: Number(data.potentialScore ?? data.score ?? 0),
+    change: Number(data.change ?? 0),
+    status: jobStatusLabel(status, "tr"),
+    jobStatus: status,
+    evaluation: "",
+    strength: "",
+    insight: String(data.insight ?? ""),
+    categories,
+    suggestions: [],
+    contentType: String(data.contentType ?? contentTypeLabel("tr")),
+    criteriaCount: Number(data.criteriaCount ?? RUBRIC_CRITERIA_COUNT),
+    sectorAverage: Number(data.sectorAverage ?? 0),
+    hasStrategicBrand: Boolean(data.hasStrategicBrand),
+    rubricVersion: String(data.rubricVersion ?? RUBRIC_VERSION),
+    ownerEmail: String(data.ownerEmail ?? ""),
+    locale: toAnalysisUiLocale(
+      typeof data.locale === "string" ? data.locale : undefined,
+    ),
+    sourceUrl:
+      typeof data.sourceUrl === "string" ? String(data.sourceUrl) : undefined,
+    mediaUrl:
+      typeof data.mediaUrl === "string" ? String(data.mediaUrl) : undefined,
+    storagePath:
+      typeof data.storagePath === "string" ? String(data.storagePath) : undefined,
+    mimeType:
+      typeof data.mimeType === "string" ? String(data.mimeType) : undefined,
+    createdAtMs,
+    updatedAtMs,
+    microCriteria: [],
+    criteriaEvaluations: {},
+  };
+}
+
 async function ensureUserDoc(ownerEmail: string) {
   if (isGuestOwnerEmail(ownerEmail)) return;
 
   const db = getAdminDb();
-  const userId = Buffer.from(ownerEmail).toString("base64url");
+  const email = ownerEmail.trim().toLowerCase();
+  const userId = userDocIdFromEmail(email);
   const ref = db.collection(COLLECTIONS.users).doc(userId);
-  await ref.set(
-    {
-      id: userId,
-      email: ownerEmail,
-      displayName: ownerEmail.split("@")[0],
-      updatedAt: FieldValue.serverTimestamp(),
-      createdAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
+  const existing = await ref.get();
+
+  // Never overwrite profile names — settings / Auth own those fields.
+  if (existing.exists) {
+    await ref.set(
+      {
+        id: userId,
+        email,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+    return;
+  }
+
+  await ref.set({
+    id: userId,
+    email,
+    displayName: email.split("@")[0] || "Kullanıcı",
+    updatedAt: FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
+  });
 }
 
 export async function createAnalysisJob(
@@ -514,10 +584,8 @@ export async function createAnalysisJob(
       : null;
   const locale =
     typeof input.locale === "string" && input.locale.trim()
-      ? input.locale.trim().toLowerCase() === "en"
-        ? "en"
-        : "tr"
-      : null;
+      ? toAnalysisUiLocale(input.locale)
+      : await resolveOwnerUiLocale(input.ownerEmail);
 
   await ensureUserDoc(input.ownerEmail);
 
@@ -561,15 +629,22 @@ export async function createAnalysisJob(
     slug,
     title: normalizedTitle,
     platformType: input.platformType,
-    platform: platformTypeToLabel(input.platformType),
-    contentType: "Gönderi",
+    platform: platformTypeLabel(input.platformType, locale),
+    contentType: contentTypeLabel(locale),
     score: 0,
     potentialScore: 0,
     change: 0,
     sectorAverage: 0,
-    evaluation: "Analiz kuyruğa alındı. Sonuçlar hazırlanıyor.",
-    strength: "İşlem devam ediyor.",
-    insight: "AI analizi sonuçlandığında bu alan güncellenecek.",
+    evaluation:
+      locale === "en"
+        ? "Analysis queued. Results are being prepared."
+        : "Analiz kuyruğa alındı. Sonuçlar hazırlanıyor.",
+    strength:
+      locale === "en" ? "Processing in progress." : "İşlem devam ediyor.",
+    insight:
+      locale === "en"
+        ? "This field will update when the AI analysis finishes."
+        : "AI analizi sonuçlandığında bu alan güncellenecek.",
     suggestions: [],
     categories: zeroCategories,
     microCriteria: zeroMicroCriteria,
@@ -763,9 +838,15 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
         fastPath ? "+fast" : ""
       }`;
       const criteriaCount = getRubricCriteriaCount(rubricMode);
+      const analysisLocale = toAnalysisUiLocale(
+        typeof analysisData.locale === "string"
+          ? analysisData.locale
+          : await resolveOwnerUiLocale(String(jobData.ownerEmail ?? "")),
+      );
       const categoryPrompts = getCategoryPrompts(rubricMode, {
         hasBrandDna,
         compact: fastPath,
+        locale: analysisLocale,
       });
       const criterionIds = getCriterionIds(rubricMode);
 
@@ -778,6 +859,7 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
           typeof analysisData.platformType === "string"
             ? analysisData.platformType
             : "instagram",
+        locale: analysisLocale,
         brandContext,
         hasStrategicBrand,
         hasBrandDna,
@@ -897,7 +979,12 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
       const categories = buildCategoryScoresFromEvaluations(criteriaEvaluations, rubricMode);
       const microCriteria = buildMicroScoresFromEvaluations(criteriaEvaluations, rubricMode);
       const suggestions = buildSuggestionsFromEvaluations(criteriaEvaluations, rubricMode);
-      const summaries = buildSummaryTexts(categories, criteriaEvaluations, rubricMode);
+      const summaries = buildSummaryTexts(
+        categories,
+        criteriaEvaluations,
+        rubricMode,
+        analysisLocale,
+      );
       const revisionRef = db.collection(COLLECTIONS.revisions).doc();
       const previousScore =
         typeof analysisData.score === "number" ? clamp(analysisData.score, 0, 100) : 0;
@@ -995,6 +1082,18 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
         { merge: true },
       );
 
+      // Bake display thumb while the user is still on the waiting screen.
+      if (storagePath && typeof jobData.analysisId === "string") {
+        ensureDashboardThumbBackground({
+          analysisId: String(jobData.analysisId),
+          sourceStoragePath: storagePath,
+          mimeType:
+            (typeof contentData.mimeType === "string" && contentData.mimeType) ||
+            (typeof analysisData.mimeType === "string" && analysisData.mimeType) ||
+            null,
+        });
+      }
+
       try {
         const ownerEmail =
           typeof jobData.ownerEmail === "string" ? jobData.ownerEmail.trim() : "";
@@ -1035,11 +1134,17 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
             }
           }
 
+          const notifyLocale = await resolveOwnerUiLocale(ownerEmail);
+          const completedCopy = analysisCompletedNotification(
+            nextTitle,
+            currentScore,
+            notifyLocale,
+          );
           await createAppNotification({
             ownerEmail,
             type: "analysis_completed",
-            title: "Analiz tamamlandı",
-            body: `"${nextTitle}" hazır · Skor: ${Math.round(currentScore)}/100`,
+            title: completedCopy.title,
+            body: completedCopy.body,
             href: resultHref,
           });
         } else if (contactEmail && isValidGraderContactEmail(contactEmail)) {
@@ -1113,11 +1218,17 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
       ]);
 
       try {
+        const failedOwner = String(jobData.ownerEmail ?? "");
+        const failedLocale = await resolveOwnerUiLocale(failedOwner);
+        const failedCopy = analysisFailedNotification(
+          analysisTitleForNotify,
+          failedLocale,
+        );
         await createAppNotification({
-          ownerEmail: String(jobData.ownerEmail ?? ""),
+          ownerEmail: failedOwner,
           type: "analysis_failed",
-          title: "Analiz başarısız oldu",
-          body: `"${analysisTitleForNotify}" tamamlanamadı. Lütfen tekrar deneyin.`,
+          title: failedCopy.title,
+          body: failedCopy.body,
           href: analysisSlugForNotify
             ? `/dashboard/analiz-sonucu?slug=${encodeURIComponent(analysisSlugForNotify)}`
             : "/dashboard/analizler",
@@ -1134,25 +1245,72 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
   return { processed };
 }
 
+/** Fields enough for cards/lists — avoids downloading huge evaluation payloads. */
+const ANALYSIS_LIST_SELECT_FIELDS = [
+  "slug",
+  "title",
+  "platformType",
+  "platform",
+  "score",
+  "potentialScore",
+  "change",
+  "jobStatus",
+  "categories",
+  "insight",
+  "contentType",
+  "criteriaCount",
+  "sectorAverage",
+  "hasStrategicBrand",
+  "rubricVersion",
+  "ownerEmail",
+  "locale",
+  "sourceUrl",
+  "mediaUrl",
+  "storagePath",
+  "mimeType",
+  "createdAt",
+  "updatedAt",
+] as const;
+
 export async function listAnalysesByUser(
   ownerEmail: string,
   query?: string,
+  options?: { mode?: "full" | "list" },
 ): Promise<Analysis[]> {
   const db = getAdminDb();
-  const snapshot = await db
+  const mode = options?.mode ?? "list";
+  const baseQuery = db
     .collection(COLLECTIONS.analyses)
     .where("ownerEmail", "==", ownerEmail)
-    .orderBy("updatedAt", "desc")
-    .get();
+    .orderBy("updatedAt", "desc");
+  const queryRef: Query =
+    mode === "full"
+      ? baseQuery
+      : baseQuery.select(...ANALYSIS_LIST_SELECT_FIELDS);
 
+  const snapshot = await queryRef.get();
+
+  const mapDoc = mode === "full" ? mapAnalysisDoc : mapAnalysisListDoc;
   const all = snapshot.docs.map((doc) =>
-    mapAnalysisDoc(doc.id, doc.data() as AnalysisDoc),
+    mapDoc(doc.id, doc.data() as AnalysisDoc),
   );
   const normalizedQuery = query?.trim().toLowerCase();
   if (!normalizedQuery) return all;
   return all.filter((analysis) =>
     analysis.title.toLowerCase().includes(normalizedQuery),
   );
+}
+
+/** Locale translation cache from the same Firestore doc (avoids a second get). */
+const analysisLocaleCache = new WeakMap<Analysis, unknown>();
+
+export function getAnalysisLocaleCache(analysis: Analysis): unknown {
+  return analysisLocaleCache.get(analysis);
+}
+
+function attachLocaleCache(analysis: Analysis, data: AnalysisDoc): Analysis {
+  analysisLocaleCache.set(analysis, data.criteriaEvaluationsByLocale ?? null);
+  return analysis;
 }
 
 export async function getAnalysisBySlug(
@@ -1168,7 +1326,8 @@ export async function getAnalysisBySlug(
     .get();
   if (snapshot.empty) return null;
   const doc = snapshot.docs[0]!;
-  return mapAnalysisDoc(doc.id, doc.data() as AnalysisDoc);
+  const data = doc.data() as AnalysisDoc;
+  return attachLocaleCache(mapAnalysisDoc(doc.id, data), data);
 }
 
 export async function getAnalysisBySlugForGuest(
@@ -1194,7 +1353,8 @@ export async function getAnalysisById(
   const db = getAdminDb();
   const doc = await db.collection(COLLECTIONS.analyses).doc(analysisId).get();
   if (!doc.exists) return null;
-  const analysis = mapAnalysisDoc(doc.id, doc.data() as AnalysisDoc);
+  const data = doc.data() as AnalysisDoc;
+  const analysis = attachLocaleCache(mapAnalysisDoc(doc.id, data), data);
   if (analysis.ownerEmail !== ownerEmail) return null;
   return analysis;
 }
@@ -1328,6 +1488,51 @@ function startOfLocalDay(ms: number): number {
   return date.getTime();
 }
 
+/** Shared KPI helpers for overview + list pages (avoids a second full scan). */
+export function computeAnalysesListStats(analyses: Analysis[]): {
+  avgScore: number;
+  monthChange: number;
+  insightCount: number;
+} {
+  const avgScore = average(analyses.map((analysis) => analysis.score));
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const todayStart = startOfLocalDay(now);
+  const currentPeriodStart = todayStart - 6 * dayMs;
+  const previousPeriodStart = todayStart - 13 * dayMs;
+  const currentPeriod = analyses.filter((analysis) => {
+    const timestamp = analysis.updatedAtMs || analysis.createdAtMs;
+    return timestamp >= currentPeriodStart;
+  });
+  const previousPeriod = analyses.filter((analysis) => {
+    const timestamp = analysis.updatedAtMs || analysis.createdAtMs;
+    return timestamp >= previousPeriodStart && timestamp < currentPeriodStart;
+  });
+  let monthChange = round1(
+    averageFloat(currentPeriod.map((analysis) => analysis.score)) -
+      averageFloat(previousPeriod.map((analysis) => analysis.score)),
+  );
+  if (
+    currentPeriod.length > 0 &&
+    previousPeriod.length === 0 &&
+    analyses.length > currentPeriod.length
+  ) {
+    const historicalBaseline = analyses
+      .slice(currentPeriod.length)
+      .map((analysis) => analysis.score);
+    monthChange = round1(
+      averageFloat(currentPeriod.map((analysis) => analysis.score)) -
+        averageFloat(historicalBaseline),
+    );
+  }
+  const insightCount = analyses.filter(
+    (analysis) =>
+      analysis.jobStatus === "completed" && analysis.insight.trim().length > 0,
+  ).length;
+
+  return { avgScore, monthChange, insightCount };
+}
+
 function buildLast7DaysTrend(
   analyses: Analysis[],
 ): Array<{ date: string; score: number }> {
@@ -1396,36 +1601,18 @@ function computeCategoryImprovements(analyses: Analysis[]) {
 export async function getDashboardOverview(
   ownerEmail: string,
 ): Promise<DashboardOverview> {
-  const analyses = await listAnalysesByUser(ownerEmail);
-  const recentAnalyses = analyses.slice(0, 4);
-  const avgScore = average(analyses.map((analysis) => analysis.score));
-  const avgScoreChange = average(analyses.map((analysis) => analysis.change));
-  const now = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
-  const todayStart = startOfLocalDay(now);
-  const currentPeriodStart = todayStart - 6 * dayMs;
-  const previousPeriodStart = todayStart - 13 * dayMs;
-  const currentPeriod = analyses.filter((analysis) => {
-    const timestamp = analysis.updatedAtMs || analysis.createdAtMs;
-    return timestamp >= currentPeriodStart;
-  });
-  const previousPeriod = analyses.filter((analysis) => {
-    const timestamp = analysis.updatedAtMs || analysis.createdAtMs;
-    return timestamp >= previousPeriodStart && timestamp < currentPeriodStart;
-  });
-  let monthChange = round1(
-    averageFloat(currentPeriod.map((analysis) => analysis.score)) -
-      averageFloat(previousPeriod.map((analysis) => analysis.score)),
+  const db = getAdminDb();
+  const [allAnalyses, userSnap] = await Promise.all([
+    listAnalysesByUser(ownerEmail, undefined, { mode: "list" }),
+    db.collection(COLLECTIONS.users).doc(userDocIdFromEmail(ownerEmail)).get(),
+  ]);
+  // Pending/processing rows are created with score 0 — keep them out of overview cards/stats.
+  const analyses = allAnalyses.filter(
+    (analysis) => analysis.jobStatus === "completed",
   );
-  if (currentPeriod.length > 0 && previousPeriod.length === 0 && analyses.length > currentPeriod.length) {
-    const historicalBaseline = analyses
-      .slice(currentPeriod.length)
-      .map((analysis) => analysis.score);
-    monthChange = round1(
-      averageFloat(currentPeriod.map((analysis) => analysis.score)) -
-        averageFloat(historicalBaseline),
-    );
-  }
+  const recentAnalyses = analyses.slice(0, 4);
+  const avgScoreChange = average(analyses.map((analysis) => analysis.change));
+  const { avgScore, monthChange } = computeAnalysesListStats(analyses);
 
   const trendData = buildLast7DaysTrend(analyses);
 
@@ -1444,31 +1631,26 @@ export async function getDashboardOverview(
     .slice(0, 5);
 
   const mostImproved = computeCategoryImprovements(analyses);
+  const userData = userSnap.data() as Record<string, unknown> | undefined;
+  const uiLocale = normalizeProfileLanguage(
+    typeof userData?.language === "string" ? userData.language : null,
+  );
   const topCategory = topCategories[0];
   const weakestCategory = [...topCategories]
     .sort((a, b) => a.value - b.value)[0];
-  let aiInsight: string;
-  if (!analyses.length) {
-    aiInsight = "İlk analizinizi başlatarak kişiselleştirilmiş içgörüler alın.";
-  } else if (
-    topCategory &&
-    weakestCategory &&
-    topCategory.label !== weakestCategory.label
-  ) {
-    aiInsight = `${topCategory.label} içerikleri daha güçlü performans gösteriyor; ${weakestCategory.label} alanında gelişim fırsatı var.`;
-  } else if (topCategory) {
-    aiInsight = `${topCategory.label} en güçlü alanınız. Detaylı içgörüler Creative Memory'de.`;
-  } else {
-    aiInsight =
-      "Son analizlerinizden net aksiyon noktaları oluştu. Detaylar Creative Memory'de.";
-  }
+  const topLabel = topCategory
+    ? localizeCategoryLabel(topCategory.label, uiLocale)
+    : null;
+  const weakLabel = weakestCategory
+    ? localizeCategoryLabel(weakestCategory.label, uiLocale)
+    : null;
+  const aiInsight = overviewAiInsightText({
+    locale: uiLocale,
+    analysisCount: analyses.length,
+    topLabel,
+    weakLabel,
+  });
 
-  const db = getAdminDb();
-  const userSnap = await db
-    .collection(COLLECTIONS.users)
-    .doc(userDocIdFromEmail(ownerEmail))
-    .get();
-  const userData = userSnap.data() as Record<string, unknown> | undefined;
   const profileFirstName =
     (typeof userData?.firstName === "string" && userData.firstName.trim()) ||
     splitDisplayName(
@@ -1479,8 +1661,12 @@ export async function getDashboardOverview(
     ownerEmail === "public@score.local" ||
     emailLocalPart.toLowerCase() === "public";
   const greetingName = isPublicFallbackUser
-    ? "Kullanıcı"
-    : profileFirstName || "Kullanıcı";
+    ? uiLocale === "en"
+      ? "User"
+      : "Kullanıcı"
+    : profileFirstName || (uiLocale === "en" ? "User" : "Kullanıcı");
+
+  await attachSignedPreviewUrls(recentAnalyses);
 
   return {
     greetingName,

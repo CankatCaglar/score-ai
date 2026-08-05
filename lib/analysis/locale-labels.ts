@@ -132,21 +132,32 @@ export function localizeSuggestionText(
   locale: AnalysisUiLocale,
   criterionId?: string | null,
 ): string {
-  if (locale === "en") return text;
+  const replacePrefix = (from: string, to: string) => {
+    if (text.startsWith(`${from}:`) || text.startsWith(`${from}：`)) {
+      return to + text.slice(from.length);
+    }
+    if (text.startsWith(from)) {
+      return to + text.slice(from.length);
+    }
+    return null;
+  };
 
   if (criterionId) {
     const en = CRITERION_LABELS_EN[criterionId];
     const tr = CRITERION_LABELS_TR[criterionId];
-    if (en && tr && text.startsWith(en)) {
-      return tr + text.slice(en.length);
+    if (en && tr) {
+      const swapped =
+        locale === "tr" ? replacePrefix(en, tr) : replacePrefix(tr, en);
+      if (swapped) return swapped;
     }
   }
 
   for (const [id, en] of Object.entries(CRITERION_LABELS_EN)) {
-    if (text.startsWith(`${en}:`) || text.startsWith(`${en}：`)) {
-      const tr = CRITERION_LABELS_TR[id];
-      if (tr) return tr + text.slice(en.length);
-    }
+    const tr = CRITERION_LABELS_TR[id];
+    if (!tr) continue;
+    const swapped =
+      locale === "tr" ? replacePrefix(en, tr) : replacePrefix(tr, en);
+    if (swapped) return swapped;
   }
   return text;
 }

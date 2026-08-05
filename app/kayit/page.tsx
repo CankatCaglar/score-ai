@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Suspense, useState } from "react";
 import { User } from "lucide-react";
 import { toast } from "sonner";
@@ -34,6 +35,7 @@ function markReturningUser() {
 }
 
 function SignupForm() {
+  const t = useTranslations("auth");
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNextPath(searchParams.get("next"));
@@ -48,7 +50,12 @@ function SignupForm() {
   const [feedback, setFeedback] = useState("");
 
   const showFeedback = (message: string) => {
-    if (isSoftAuthFeedback(message) || message.includes("eşleşmiyor")) {
+    if (
+      isSoftAuthFeedback(message) ||
+      message === t("signup.passwordMismatch") ||
+      message.includes("eşleşmiyor") ||
+      message.includes("do not match")
+    ) {
       setFeedback(message);
       return;
     }
@@ -60,19 +67,19 @@ function SignupForm() {
     e.preventDefault();
     setFeedback("");
     if (!name.trim() || !email || !password) {
-      setFeedback("Devam etmek için ad, e-posta ve şifre gerekli.");
+      setFeedback(t("signup.fieldsRequired"));
       return;
     }
     if (password.length < 6) {
-      setFeedback("Şifre en az 6 karakter olmalı.");
+      setFeedback(t("errors.weakPassword"));
       return;
     }
     if (password !== confirm) {
-      setFeedback("Şifreler eşleşmiyor. Lütfen kontrol edin.");
+      setFeedback(t("signup.passwordMismatch"));
       return;
     }
     if (!acceptedTerms) {
-      setFeedback("Devam etmek için kullanım koşullarını ve gizlilik politikasını kabul etmelisiniz.");
+      setFeedback(t("signup.termsRequired"));
       return;
     }
 
@@ -84,7 +91,7 @@ function SignupForm() {
         return;
       }
       markReturningUser();
-      toast.success("Hesap oluşturuldu. E-posta doğrulama bağlantısı gönderildi.");
+      toast.success(t("signup.success"));
       router.replace("/email-dogrula");
       router.refresh();
     } finally {
@@ -102,7 +109,7 @@ function SignupForm() {
         return;
       }
       markReturningUser();
-      toast.success("Giriş başarılı.");
+      toast.success(t("login.success"));
       router.replace(result.emailVerified ? next : "/email-dogrula");
       router.refresh();
     } finally {
@@ -112,17 +119,17 @@ function SignupForm() {
 
   return (
     <AuthShell
-      title="Hesap oluşturun"
-      subtitle="Score AI’ye katılın ve içeriklerinizi bir üst seviyeye taşıyın."
+      title={t("signup.title")}
+      subtitle={t("signup.subtitle")}
       compact
       footer={
         <p className="text-center text-xs text-brand-dark/55 sm:text-sm">
-          Zaten hesabınız var mı?{" "}
+          {t("signup.hasAccount")}{" "}
           <Link
             href={`/giris${next !== "/dashboard" ? `?next=${encodeURIComponent(next)}` : ""}`}
             className="font-semibold text-brand-dark underline-offset-2 hover:underline"
           >
-            Giriş Yap
+            {t("signup.loginLink")}
           </Link>
         </p>
       }
@@ -130,53 +137,53 @@ function SignupForm() {
       <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
         <AuthTextField
           id="signup-name"
-          label="Ad Soyad"
+          label={t("signup.name")}
           value={name}
           onChange={(value) => {
             setName(value);
             if (feedback) setFeedback("");
           }}
-          placeholder="Adınız Soyadınız"
+          placeholder={t("signup.namePlaceholder")}
           autoComplete="name"
           icon={User}
           compact
         />
         <AuthTextField
           id="signup-email"
-          label="E-posta"
+          label={t("signup.email")}
           type="email"
           value={email}
           onChange={(value) => {
             setEmail(value);
             if (feedback) setFeedback("");
           }}
-          placeholder="ornek@sirket.com"
+          placeholder={t("signup.emailPlaceholder")}
           autoComplete="email"
           compact
         />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-1 sm:gap-5.5">
           <AuthPasswordField
             id="signup-password"
-            label="Şifre"
+            label={t("signup.password")}
             value={password}
             onChange={(value) => {
               setPassword(value);
               if (feedback) setFeedback("");
             }}
             autoComplete="new-password"
-            placeholder="En az 6 karakter"
+            placeholder={t("fields.passwordHint")}
             compact
           />
           <AuthPasswordField
             id="signup-confirm"
-            label="Şifre Tekrar"
+            label={t("signup.confirmPassword")}
             value={confirm}
             onChange={(value) => {
               setConfirm(value);
               if (feedback) setFeedback("");
             }}
             autoComplete="new-password"
-            placeholder="Tekrar"
+            placeholder={t("signup.confirmPlaceholder")}
             compact
           />
         </div>
@@ -188,8 +195,8 @@ function SignupForm() {
             setAcceptedTerms(checked);
             if (feedback) setFeedback("");
           }}
-          label={
-            <>
+          label={t.rich("signup.terms", {
+            terms: (chunks) => (
               <a
                 href="https://www.nerasocial.com/kullanim-kosullari"
                 target="_blank"
@@ -197,9 +204,10 @@ function SignupForm() {
                 className="font-medium text-brand-dark underline-offset-2 hover:underline"
                 onClick={(e) => e.stopPropagation()}
               >
-                Kullanım koşullarını
-              </a>{" "}
-              ve{" "}
+                {chunks}
+              </a>
+            ),
+            privacy: (chunks) => (
               <a
                 href="https://www.nerasocial.com/gizlilik-politikasi"
                 target="_blank"
@@ -207,16 +215,15 @@ function SignupForm() {
                 className="font-medium text-brand-dark underline-offset-2 hover:underline"
                 onClick={(e) => e.stopPropagation()}
               >
-                Gizlilik politikasını
-              </a>{" "}
-              okudum, kabul ediyorum.
-            </>
-          }
+                {chunks}
+              </a>
+            ),
+          })}
         />
 
         <AuthFeedback message={feedback} />
         <AuthSubmitButton loading={loading} disabled={!acceptedTerms} compact>
-          Kayıt Ol
+          {t("signup.submit")}
         </AuthSubmitButton>
       </form>
 
@@ -225,7 +232,7 @@ function SignupForm() {
         <GoogleSignInButton
           onClick={handleGoogle}
           loading={googleLoading}
-          label="Google ile kayıt ol"
+          label={t("signup.google")}
           compact
         />
       </div>
@@ -234,10 +241,12 @@ function SignupForm() {
 }
 
 export default function KayitPage() {
+  const t = useTranslations("auth");
+
   return (
     <Suspense
       fallback={
-        <AuthShell title="Hesap oluşturun" subtitle="Yükleniyor…" compact>
+        <AuthShell title={t("signup.title")} subtitle={t("signup.loading")} compact>
           <div className="h-32 animate-pulse rounded-2xl bg-brand-dark/5" />
         </AuthShell>
       }

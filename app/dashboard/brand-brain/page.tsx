@@ -13,6 +13,7 @@ import {
   UploadCloud,
   X,
 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   MAX_BRAND_DNA_COLORS,
@@ -24,9 +25,15 @@ import {
   type BrandDnaCompletion,
   type BrandDnaPublicProfile,
 } from "@/lib/brand-dna/types";
+import {
+  fetchDashboardCached,
+  getDashboardCache,
+  setDashboardCache,
+} from "@/lib/dashboard/client-cache";
 import { withReturnTo } from "@/lib/dashboard/return-navigation";
 
-const personalityOptions = [
+/** Canonical stored values (API / existing profiles). Labels come from i18n. */
+const PERSONALITY_VALUES = [
   "Lüks",
   "Yenilikçi",
   "Kurumsal",
@@ -47,9 +54,9 @@ const personalityOptions = [
   "Otantik",
   "Güvenilir",
   "Kendinden Emin",
-];
+] as const;
 
-const toneOptions = [
+const TONE_VALUES = [
   "Profesyonel",
   "Kendine Güvenen",
   "Samimi",
@@ -70,7 +77,7 @@ const toneOptions = [
   "Empatik",
   "Motivasyonel",
   "Otoriter",
-];
+] as const;
 
 /** Google Fonts'ta en çok kullanılan başlık / display yüzleri */
 const headingFontOptions = [
@@ -120,7 +127,7 @@ const bodyFontOptions = [
   "Urbanist",
 ] as const;
 
-const sectorMainOptions = [
+const SECTOR_VALUES = [
   "Moda ve Giyim",
   "Güzellik ve Kozmetik",
   "Yeme-İçme / Restoran",
@@ -134,7 +141,9 @@ const sectorMainOptions = [
   "Diğer",
 ] as const;
 
-const targetAudience = [
+const OTHER_SECTOR_VALUE = "Diğer";
+
+const AUDIENCE_VALUES = [
   "B2B",
   "B2C",
   "Profesyoneller",
@@ -147,27 +156,26 @@ const targetAudience = [
 
 const MAX_CUSTOM_AUDIENCES = 2;
 
-const COMPLETION_LABELS: { key: keyof BrandDnaCompletion["sections"]; label: string }[] =
-  [
-    { key: "logo", label: "Logo" },
-    { key: "colors", label: "Renk Paleti" },
-    { key: "typography", label: "Tipografi" },
-    { key: "personality", label: "Marka Kişiliği" },
-    { key: "toneOfVoice", label: "Tone of Voice" },
-    { key: "audience", label: "Hedef Kitle" },
-    { key: "sector", label: "Sektör" },
-    { key: "keywords", label: "Anahtar Kelimeler" },
-  ];
+const COMPLETION_KEYS: (keyof BrandDnaCompletion["sections"])[] = [
+  "logo",
+  "colors",
+  "typography",
+  "personality",
+  "toneOfVoice",
+  "audience",
+  "sector",
+  "keywords",
+];
 
 function emptyPublicProfile(): BrandDnaPublicProfile {
   const base = emptyBrandDna("", "");
   return { ...base, completion: computeBrandDnaCompletion(base) };
 }
 
-function formatUpdatedAt(iso: string | null): string {
-  if (!iso) return "Henüz kaydedilmedi";
+function formatUpdatedAt(iso: string | null, locale: string, neverLabel: string): string {
+  if (!iso) return neverLabel;
   try {
-    return new Intl.DateTimeFormat("tr-TR", {
+    return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "tr-TR", {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -177,21 +185,23 @@ function formatUpdatedAt(iso: string | null): string {
   }
 }
 
-function scoreHeadline(score: number, label: string): string {
-  if (score >= 90) return "Brand DNA'nız güçlü ve tutarlı.";
-  if (score >= 70) return "Brand DNA'nız iyi durumda.";
-  if (score >= 40) return "Brand DNA'nız şekilleniyor.";
-  return "Brand DNA'nızı tamamlayın.";
+function scoreHeadline(
+  score: number,
+  messages: { strong: string; good: string; forming: string; incomplete: string },
+): string {
+  if (score >= 90) return messages.strong;
+  if (score >= 70) return messages.good;
+  if (score >= 40) return messages.forming;
+  return messages.incomplete;
 }
 
-function scoreDescription(score: number): string {
-  if (score >= 70) {
-    return "Bu sayede analizler daha isabetli ve içerik önerileri daha değerli olacak.";
-  }
-  if (score >= 40) {
-    return "Eksik bölümleri tamamladıkça skorlama referansınız güçlenecek.";
-  }
-  return "Logo, renk, tipografi ve ton tanımları analiz isabetini doğrudan etkiler.";
+function scoreDescription(
+  score: number,
+  messages: { high: string; mid: string; low: string },
+): string {
+  if (score >= 70) return messages.high;
+  if (score >= 40) return messages.mid;
+  return messages.low;
 }
 
 function SectionCard({
@@ -252,15 +262,17 @@ function BrandSelect({
   value,
   options,
   onChange,
-  placeholder = "Seçin",
+  placeholder,
+  optionsAria,
   allowClear = true,
   disabled = false,
 }: {
   label: string;
   value: string;
-  options: readonly string[];
+  options: readonly { value: string; label: string }[];
   onChange: (value: string) => void;
-  placeholder?: string;
+  placeholder: string;
+  optionsAria: string;
   allowClear?: boolean;
   disabled?: boolean;
 }) {
@@ -288,8 +300,14 @@ function BrandSelect({
   }, [disabled]);
 
   const listItems = allowClear
-    ? [{ key: "__clear__", label: CLEAR_OPTION, value: "" }, ...options.map((o) => ({ key: o, label: o, value: o }))]
-    : options.map((o) => ({ key: o, label: o, value: o }));
+    ? [
+        { key: "__clear__", label: CLEAR_OPTION, value: "" },
+        ...options.map((o) => ({ key: o.value, label: o.label, value: o.value })),
+      ]
+    : options.map((o) => ({ key: o.value, label: o.label, value: o.value }));
+
+  const displayLabel =
+    options.find((o) => o.value === value)?.label ?? value;
 
   return (
     <div ref={rootRef} className={`relative ${disabled ? "opacity-45" : ""}`}>
@@ -306,7 +324,7 @@ function BrandSelect({
         className="flex w-full items-center justify-between gap-2 rounded-xl border border-brand-dark/12 bg-white px-3.5 py-2.5 text-left text-sm font-medium text-brand-dark outline-none transition-colors hover:border-brand-dark/25 focus:border-brand-dark/30 disabled:pointer-events-none disabled:cursor-not-allowed"
       >
         <span className={value ? "" : "text-brand-dark/40"}>
-          {value || placeholder}
+          {value ? displayLabel : placeholder}
         </span>
         <ChevronDown
           className={`size-4 shrink-0 text-brand-dark/40 transition-transform ${
@@ -319,7 +337,7 @@ function BrandSelect({
       {open && !disabled ? (
         <ul
           role="listbox"
-          aria-label={`${label} seçenekleri`}
+          aria-label={optionsAria}
           className="absolute left-0 right-0 z-30 mt-1.5 max-h-56 overflow-auto rounded-xl border border-brand-dark/10 bg-white py-1.5 font-sans shadow-lg shadow-brand-dark/8"
         >
           {listItems.map((item) => {
@@ -356,6 +374,8 @@ function BrandSelect({
 }
 
 export default function BrandBrainPage() {
+  const t = useTranslations("dashboard.brandDna");
+  const locale = useLocale();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
@@ -382,20 +402,61 @@ export default function BrandBrainPage() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextSave = useRef(true);
   const hydrated = useRef(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  const isOtherSector = sectorMain === "Diğer";
+  const isOtherSector = sectorMain === OTHER_SECTOR_VALUE;
+  const personalityLabels = t.raw("options.personality") as string[];
+  const toneLabels = t.raw("options.tone") as string[];
+  const audienceLabels = t.raw("options.audience") as string[];
+  const sectorLabels = t.raw("options.sector") as string[];
+
+  const labelForValue = (values: readonly string[], labels: string[], value: string) => {
+    const idx = values.indexOf(value);
+    return idx >= 0 ? (labels[idx] ?? value) : value;
+  };
+
+  const personalityOptions = PERSONALITY_VALUES.map((value, i) => ({
+    value,
+    label: personalityLabels[i] ?? value,
+  }));
+  const toneOptions = TONE_VALUES.map((value, i) => ({
+    value,
+    label: toneLabels[i] ?? value,
+  }));
+  const sectorOptions = SECTOR_VALUES.map((value, i) => ({
+    value,
+    label: sectorLabels[i] ?? value,
+  }));
+
   const presetAudienceSet = useMemo(
-    () => new Set<string>(targetAudience),
+    () => new Set<string>(AUDIENCE_VALUES),
     [],
   );
   const customAudiences = selectedAudience.filter(
     (item) => !presetAudienceSet.has(item),
   );
   const audienceItems = useMemo(
-    () => [...targetAudience, ...customAudiences],
+    () => [...AUDIENCE_VALUES, ...customAudiences],
     [customAudiences],
   );
+
+  const statusLabel = (status: string) => {
+    if (status === "Tamamlandı" || status === "Eksik") {
+      return t(`status.${status}`);
+    }
+    return status;
+  };
+
+  const scoreLabelText = (label: string) => {
+    if (
+      label === "Zayıf" ||
+      label === "Orta" ||
+      label === "İyi" ||
+      label === "Mükemmel"
+    ) {
+      return t(`scoreLabels.${label}`);
+    }
+    return label;
+  };
 
   const draftProfile = useMemo(
     () => ({
@@ -474,22 +535,27 @@ export default function BrandBrainPage() {
 
   useEffect(() => {
     let cancelled = false;
-    const controller = new AbortController();
     const load = async () => {
-      setLoading(true);
+      if (!getDashboardCache("dashboard:brand-dna")) setLoading(true);
       try {
-        const res = await fetch("/api/dashboard/brand-dna", {
-          cache: "no-store",
-          signal: controller.signal,
+        const data = await fetchDashboardCached<{
+          profile: BrandDnaPublicProfile;
+        }>({
+          key: "dashboard:brand-dna",
+          url: "/api/dashboard/brand-dna",
+          onCache: (cached) => {
+            if (cancelled || !cached.profile) return;
+            applyProfile(cached.profile);
+            hydrated.current = true;
+            setLoading(false);
+          },
         });
-        if (!res.ok) throw new Error("load failed");
-        const data = (await res.json()) as { profile: BrandDnaPublicProfile };
         if (cancelled) return;
         applyProfile(data.profile);
         hydrated.current = true;
       } catch (error) {
         if ((error as Error).name === "AbortError" || cancelled) return;
-        toast.error("Brand DNA verileri yüklenemedi");
+        toast.error(t("toasts.loadError"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -497,9 +563,8 @@ export default function BrandBrainPage() {
     void load();
     return () => {
       cancelled = true;
-      controller.abort();
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!hydrated.current) return;
@@ -508,7 +573,6 @@ export default function BrandBrainPage() {
       return;
     }
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    setHasUnsavedChanges(true);
     saveTimer.current = setTimeout(() => {
       void (async () => {
         setSaving(true);
@@ -533,9 +597,9 @@ export default function BrandBrainPage() {
           const data = (await res.json()) as { profile: BrandDnaPublicProfile };
           skipNextSave.current = true;
           setProfile(data.profile);
-          setHasUnsavedChanges(false);
+          setDashboardCache("dashboard:brand-dna", data);
         } catch {
-          toast.error("Brand DNA kaydedilemedi");
+          toast.error(t("toasts.saveError"));
         } finally {
           setSaving(false);
         }
@@ -555,50 +619,8 @@ export default function BrandBrainPage() {
     sectorSub,
     isOtherSector,
     keywords,
+    t,
   ]);
-
-  useEffect(() => {
-    const shouldWarn = hasUnsavedChanges || saving;
-    if (!shouldWarn) return;
-
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-
-    const onDocumentClick = (event: MouseEvent) => {
-      const target = event.target as Element | null;
-      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
-      if (!anchor) return;
-      if (event.defaultPrevented || event.button !== 0) return;
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-
-      const href = anchor.getAttribute("href");
-      if (!href || href.startsWith("#")) return;
-      try {
-        const url = new URL(href, window.location.origin);
-        if (url.origin !== window.location.origin) return;
-        if (url.pathname.startsWith("/dashboard/brand-brain")) return;
-      } catch {
-        return;
-      }
-
-      const leave = window.confirm(
-        "Değişiklikler kaydedilmedi. Sayfadan ayrılmak istiyor musunuz?",
-      );
-      if (!leave) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    };
-
-    window.addEventListener("beforeunload", onBeforeUnload);
-    document.addEventListener("click", onDocumentClick, true);
-    return () => {
-      window.removeEventListener("beforeunload", onBeforeUnload);
-      document.removeEventListener("click", onDocumentClick, true);
-    };
-  }, [hasUnsavedChanges, saving]);
 
   const toggleMulti = (
     value: string,
@@ -641,12 +663,12 @@ export default function BrandBrainPage() {
     }
 
     if (customAudiences.length >= MAX_CUSTOM_AUDIENCES) {
-      toast.error(`En fazla ${MAX_CUSTOM_AUDIENCES} özel hedef kitle ekleyebilirsiniz`);
+      toast.error(t("sections.audience.customMaxToast", { max: MAX_CUSTOM_AUDIENCES }));
       return;
     }
 
     if (selectedAudience.length >= 8) {
-      toast.error("En fazla 8 hedef kitle seçebilirsiniz");
+      toast.error(t("sections.audience.totalMaxToast"));
       return;
     }
 
@@ -657,23 +679,22 @@ export default function BrandBrainPage() {
   const addColor = () => {
     const trimmed = colorDraft.trim();
     if (!isValidHexColor(trimmed)) {
-      const message =
-        "Geçerli bir HEX kodu girin (#RGB veya #RRGGBB, örn. #FFFFFF)";
+      const message = t("sections.colors.invalidHexLong");
       setColorError(message);
       toast.error(message);
       return;
     }
     const normalized = normalizeHexColor(trimmed);
     if (!normalized) {
-      setColorError("Geçerli bir HEX kodu girin (#RGB veya #RRGGBB)");
+      setColorError(t("sections.colors.invalidHexShort"));
       return;
     }
     if (colors.includes(normalized)) {
-      setColorError("Bu renk zaten palette");
+      setColorError(t("sections.colors.duplicate"));
       return;
     }
     if (colors.length >= MAX_BRAND_DNA_COLORS) {
-      const message = `En fazla ${MAX_BRAND_DNA_COLORS} renk ekleyebilirsiniz`;
+      const message = t("sections.colors.maxReached", { max: MAX_BRAND_DNA_COLORS });
       setColorError(message);
       toast.error(message);
       return;
@@ -718,16 +739,16 @@ export default function BrandBrainPage() {
           error?: string;
         } | null;
         if (data?.error === "FILE_TOO_LARGE") {
-          throw new Error("Logo en fazla 5MB olabilir");
+          throw new Error(t("toasts.logoTooLarge"));
         }
         if (data?.error === "UNSUPPORTED_TYPE") {
-          throw new Error("SVG, PNG veya JPG yükleyin");
+          throw new Error(t("toasts.logoUnsupported"));
         }
         throw new Error("upload failed");
       }
       const data = (await res.json()) as { profile: BrandDnaPublicProfile };
       applyProfile(data.profile);
-      toast.success("Logo yüklendi");
+      toast.success(t("toasts.logoUploaded"));
     } catch (error) {
       clearLocalPreview();
       setLogoPreviewUrl(
@@ -735,7 +756,7 @@ export default function BrandBrainPage() {
           ? `/api/dashboard/brand-dna/logo?v=${encodeURIComponent(profile.updatedAt || "1")}`
           : null,
       );
-      toast.error(error instanceof Error ? error.message : "Logo yüklenemedi");
+      toast.error(error instanceof Error ? error.message : t("toasts.logoUploadFailed"));
     } finally {
       setLogoBusy(false);
       if (logoInputRef.current) logoInputRef.current.value = "";
@@ -751,9 +772,9 @@ export default function BrandBrainPage() {
       if (!res.ok) throw new Error("delete failed");
       const data = (await res.json()) as { profile: BrandDnaPublicProfile };
       applyProfile(data.profile);
-      toast.success("Logo kaldırıldı");
+      toast.success(t("toasts.logoRemoved"));
     } catch {
-      toast.error("Logo silinemedi");
+      toast.error(t("toasts.logoRemoveFailed"));
     } finally {
       setLogoBusy(false);
     }
@@ -764,9 +785,9 @@ export default function BrandBrainPage() {
       <div className="space-y-5 px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
-            Brand DNA
+            {t("title")}
           </h1>
-          <p className="mt-1 text-sm text-brand-dark/55">Yükleniyor…</p>
+          <p className="mt-1 text-sm text-brand-dark/55">{t("loading")}</p>
         </div>
       </div>
     );
@@ -777,33 +798,32 @@ export default function BrandBrainPage() {
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-brand-dark">
-            Brand DNA
+            {t("title")}
           </h1>
           <p className="mt-1 text-sm text-brand-dark/55">
-            Markanızı Score AI&apos;a öğretin. Ne kadar net tanımlarsanız analizler o
-            kadar isabetli olur.
+            {t("subtitle")}
           </p>
         </div>
         {saving ? (
-          <p className="text-xs font-medium text-brand-dark/40">Kaydediliyor…</p>
+          <p className="text-xs font-medium text-brand-dark/40">{t("saving")}</p>
         ) : null}
       </div>
 
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:items-stretch">
-          <SectionCard title="Logo" subtitle="Marka logonuzu yükleyin.">
+          <SectionCard title={t("sections.logo.title")} subtitle={t("sections.logo.subtitle")}>
             <div className="flex h-full min-h-0 flex-1 flex-col rounded-xl border border-brand-dark/10 bg-bg-offwhite p-3.5">
               <div className="relative flex min-h-32 w-full flex-1 items-center justify-center overflow-hidden rounded-lg border border-dashed border-brand-dark/15 bg-white px-4 py-4">
                 {logoPreviewUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={logoPreviewUrl}
-                    alt="Marka logosu"
+                    alt={t("sections.logo.alt")}
                     className="max-h-full max-w-full object-contain object-center"
                   />
                 ) : (
                   <p className="text-center text-xs text-brand-dark/40">
-                    Henüz logo yüklenmedi
+                    {t("sections.logo.empty")}
                   </p>
                 )}
               </div>
@@ -826,7 +846,7 @@ export default function BrandBrainPage() {
                     className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-xs font-semibold text-brand-dark transition-colors hover:bg-brand-dark/5 disabled:opacity-50"
                   >
                     <UploadCloud className="size-3.5" strokeWidth={2} />
-                    {logoBusy ? "İşleniyor…" : "Logo Yükle"}
+                    {logoBusy ? t("sections.logo.uploading") : t("sections.logo.upload")}
                   </button>
                   {profile.logo ? (
                     <button
@@ -834,25 +854,25 @@ export default function BrandBrainPage() {
                       disabled={logoBusy}
                       onClick={() => void removeLogo()}
                       className="inline-flex items-center justify-center rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-brand-dark/60 transition-colors hover:bg-brand-dark/5 disabled:opacity-50"
-                      aria-label="Logoyu kaldır"
+                      aria-label={t("sections.logo.removeAria")}
                     >
                       <Trash2 className="size-3.5" strokeWidth={2} />
                     </button>
                   ) : null}
                 </div>
                 <p className="mt-2 text-center text-[11px] text-brand-dark/40">
-                  SVG, PNG, JPG (max. 5MB)
+                  {t("sections.logo.hint")}
                 </p>
               </div>
             </div>
           </SectionCard>
 
           <SectionCard
-            title="Renk Paleti"
-            subtitle="Markanızın ana renklerini seçin."
+            title={t("sections.colors.title")}
+            subtitle={t("sections.colors.subtitle")}
             right={
               <span className="shrink-0 text-[11px] font-medium text-brand-dark/40">
-                Maks. {MAX_BRAND_DNA_COLORS} renk
+                {t("sections.colors.maxColors", { max: MAX_BRAND_DNA_COLORS })}
               </span>
             }
           >
@@ -869,8 +889,8 @@ export default function BrandBrainPage() {
                       <button
                         type="button"
                         onClick={() => removeColor(color)}
-                        title={`${color} — kaldır`}
-                        aria-label={`${color} rengini kaldır`}
+                        title={t("sections.colors.removeTitle", { color })}
+                        aria-label={t("sections.colors.removeAria", { color })}
                         className="absolute right-1 top-1 flex size-5 cursor-pointer items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity hover:bg-black/70 focus-visible:opacity-100 group-hover:opacity-100"
                       >
                         <X className="size-3" strokeWidth={2.5} />
@@ -886,8 +906,8 @@ export default function BrandBrainPage() {
                     <button
                       type="button"
                       onClick={openColorPicker}
-                      title="Renk ekle"
-                      aria-label="Renk ekle"
+                      title={t("sections.colors.addTitle")}
+                      aria-label={t("sections.colors.addAria")}
                       aria-expanded={colorPickerOpen}
                       className={`flex aspect-square w-full min-h-14 cursor-pointer items-center justify-center rounded-xl border border-dashed transition-colors sm:min-h-6 ${
                         colorPickerOpen
@@ -898,7 +918,7 @@ export default function BrandBrainPage() {
                       <Plus className="size-5" strokeWidth={1.75} />
                     </button>
                     <p className="mt-1.5 w-full text-center text-[10px] font-medium leading-tight text-brand-dark/40">
-                      Ekle
+                      {t("sections.colors.add")}
                     </p>
                   </div>
                 ) : null}
@@ -916,7 +936,7 @@ export default function BrandBrainPage() {
                         setColorError(null);
                       }}
                       className="size-9 shrink-0 cursor-pointer rounded-lg border border-brand-dark/12 bg-white p-1"
-                      aria-label="Renk seç"
+                      aria-label={t("sections.colors.pickerAria")}
                     />
                     <input
                       ref={colorHexInputRef}
@@ -931,7 +951,7 @@ export default function BrandBrainPage() {
                         setColorError(
                           isValidHexColor(next)
                             ? null
-                            : "Geçersiz HEX (#RGB veya #RRGGBB)",
+                            : t("sections.colors.invalidHex"),
                         );
                       }}
                       onKeyDown={(e) => {
@@ -956,7 +976,7 @@ export default function BrandBrainPage() {
                       className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-xs font-semibold text-brand-dark transition-colors hover:bg-brand-dark/5 disabled:opacity-50"
                     >
                       <Plus className="size-3.5" strokeWidth={2.2} />
-                      Ekle
+                      {t("sections.colors.add")}
                     </button>
                   </div>
                   {colorError ? (
@@ -965,7 +985,7 @@ export default function BrandBrainPage() {
                     </p>
                   ) : (
                     <p className="text-[11px] text-brand-dark/40">
-                      Renk seçin veya HEX girip Ekle&apos;ye basın
+                      {t("sections.colors.pickerHint")}
                     </p>
                   )}
                 </div>
@@ -973,28 +993,37 @@ export default function BrandBrainPage() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Tipografi" subtitle="Markanın yazı stilini seçin.">
+          <SectionCard
+            title={t("sections.typography.title")}
+            subtitle={t("sections.typography.subtitle")}
+          >
             <div className="flex h-full flex-col gap-3">
               <BrandSelect
-                label="Başlık Fontu"
+                label={t("sections.typography.headingLabel")}
                 value={headingFont}
-                options={headingFontOptions}
+                options={headingFontOptions.map((value) => ({ value, label: value }))}
                 onChange={setHeadingFont}
-                placeholder="Başlık fontu seçin"
+                placeholder={t("sections.typography.headingPlaceholder")}
+                optionsAria={t("selectOptionsAria", {
+                  label: t("sections.typography.headingLabel"),
+                })}
                 allowClear
               />
               <BrandSelect
-                label="Gövde Fontu"
+                label={t("sections.typography.bodyLabel")}
                 value={bodyFont}
-                options={bodyFontOptions}
+                options={bodyFontOptions.map((value) => ({ value, label: value }))}
                 onChange={setBodyFont}
-                placeholder="Gövde fontu seçin"
+                placeholder={t("sections.typography.bodyPlaceholder")}
+                optionsAria={t("selectOptionsAria", {
+                  label: t("sections.typography.bodyLabel"),
+                })}
                 allowClear
               />
               <div className="mt-auto rounded-lg border border-brand-dark/10 bg-bg-offwhite p-3">
                 <p className="text-2xl leading-none text-brand-dark">Aa</p>
                 <p className="mt-1.5 text-xs leading-relaxed text-brand-dark/60">
-                  Google Font&apos;ta aynı ailede fontlar önerilir.
+                  {t("sections.typography.previewHint")}
                 </p>
               </div>
             </div>
@@ -1003,22 +1032,29 @@ export default function BrandBrainPage() {
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:items-stretch">
           <SectionCard
-            title="Marka Kişiliği"
-            subtitle="Markanızı en iyi tanımlayan kimlikleri seçin."
+            title={t("sections.personality.title")}
+            subtitle={t("sections.personality.subtitle")}
             right={
               <span className="shrink-0 text-[11px] font-medium text-brand-dark/40">
-                En fazla 5 ({selectedPersonality.length}/5)
+                {t("sections.personality.maxHint", {
+                  count: selectedPersonality.length,
+                })}
               </span>
             }
           >
             <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {personalityOptions.map((item) => (
                 <SelectableChip
-                  key={item}
-                  label={item}
-                  active={selectedPersonality.includes(item)}
+                  key={item.value}
+                  label={item.label}
+                  active={selectedPersonality.includes(item.value)}
                   onClick={() =>
-                    toggleMulti(item, setSelectedPersonality, selectedPersonality, 5)
+                    toggleMulti(
+                      item.value,
+                      setSelectedPersonality,
+                      selectedPersonality,
+                      5,
+                    )
                   }
                 />
               ))}
@@ -1026,21 +1062,23 @@ export default function BrandBrainPage() {
           </SectionCard>
 
           <SectionCard
-            title="Tone of Voice"
-            subtitle="İletişim tonunuzu en iyi yansıtan seçimleri işaretleyin."
+            title={t("sections.tone.title")}
+            subtitle={t("sections.tone.subtitle")}
             right={
               <span className="shrink-0 text-[11px] font-medium text-brand-dark/40">
-                En fazla 5 ({selectedTone.length}/5)
+                {t("sections.tone.maxHint", { count: selectedTone.length })}
               </span>
             }
           >
             <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {toneOptions.map((item) => (
                 <SelectableChip
-                  key={item}
-                  label={item}
-                  active={selectedTone.includes(item)}
-                  onClick={() => toggleMulti(item, setSelectedTone, selectedTone, 5)}
+                  key={item.value}
+                  label={item.label}
+                  active={selectedTone.includes(item.value)}
+                  onClick={() =>
+                    toggleMulti(item.value, setSelectedTone, selectedTone, 5)
+                  }
                 />
               ))}
             </div>
@@ -1049,7 +1087,10 @@ export default function BrandBrainPage() {
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-stretch">
           <div className="lg:col-span-7">
-            <SectionCard title="Hedef Kitle" subtitle="Hedef kitlenizi seçin.">
+            <SectionCard
+              title={t("sections.audience.title")}
+              subtitle={t("sections.audience.subtitle")}
+            >
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
                 {audienceItems.map((audience) => {
                   const active = selectedAudience.includes(audience);
@@ -1093,7 +1134,9 @@ export default function BrandBrainPage() {
                           strokeWidth={3}
                         />
                       </span>
-                      <span className="truncate">{audience}</span>
+                      <span className="truncate">
+                        {labelForValue(AUDIENCE_VALUES, audienceLabels, audience)}
+                      </span>
                     </label>
                   );
                 })}
@@ -1108,7 +1151,7 @@ export default function BrandBrainPage() {
                       addCustomAudience();
                     }
                   }}
-                  placeholder="Diğer hedef kitleleri yazın..."
+                  placeholder={t("sections.audience.customPlaceholder")}
                   maxLength={80}
                   rows={2}
                   disabled={customAudiences.length >= MAX_CUSTOM_AUDIENCES}
@@ -1117,8 +1160,12 @@ export default function BrandBrainPage() {
                 <div className="mt-1.5 flex items-center justify-between gap-2">
                   <p className="text-[11px] text-brand-dark/40">
                     {customAudiences.length >= MAX_CUSTOM_AUDIENCES
-                      ? `En fazla ${MAX_CUSTOM_AUDIENCES} özel hedef kitle`
-                      : `${audienceDraft.length}/80`}
+                      ? t("sections.audience.customMax", {
+                          max: MAX_CUSTOM_AUDIENCES,
+                        })
+                      : t("sections.audience.charCount", {
+                          count: audienceDraft.length,
+                        })}
                   </p>
                   {audienceDraft.trim() ? (
                     <button
@@ -1128,7 +1175,7 @@ export default function BrandBrainPage() {
                       className="inline-flex items-center justify-center gap-1 rounded-lg border border-brand-dark/12 bg-white px-3 py-1.5 text-xs font-semibold text-brand-dark transition-colors hover:bg-brand-dark/5 disabled:opacity-50"
                     >
                       <Plus className="size-3.5" strokeWidth={2.2} />
-                      Ekle
+                      {t("sections.audience.add")}
                     </button>
                   ) : null}
                 </div>
@@ -1137,28 +1184,34 @@ export default function BrandBrainPage() {
           </div>
 
           <div className="lg:col-span-5">
-            <SectionCard title="Sektör" subtitle="Faaliyet gösterdiğiniz sektörü seçin.">
+            <SectionCard
+              title={t("sections.sector.title")}
+              subtitle={t("sections.sector.subtitle")}
+            >
               <div className="flex flex-col gap-3 pt-1">
                 <BrandSelect
-                  label="Sektör"
+                  label={t("sections.sector.label")}
                   value={sectorMain}
-                  options={sectorMainOptions}
+                  options={sectorOptions}
                   onChange={(value) => {
                     setSectorMain(value);
                     setSectorSub("");
                   }}
-                  placeholder="Sektör seçin"
+                  placeholder={t("sections.sector.placeholder")}
+                  optionsAria={t("selectOptionsAria", {
+                    label: t("sections.sector.label"),
+                  })}
                   allowClear
                 />
                 {isOtherSector ? (
                   <div>
                     <p className="mb-1.5 text-xs font-medium text-brand-dark/55">
-                      Sektörünüzü yazın
+                      {t("sections.sector.otherLabel")}
                     </p>
                     <input
                       value={sectorSub}
                       onChange={(e) => setSectorSub(e.target.value)}
-                      placeholder="Sektörünüzü yazın..."
+                      placeholder={t("sections.sector.otherPlaceholder")}
                       maxLength={80}
                       className="w-full rounded-xl border border-brand-dark/12 bg-white px-3.5 py-2.5 text-sm font-medium text-brand-dark placeholder:font-normal placeholder:text-brand-dark/35 outline-none transition-colors focus:border-brand-dark/30"
                     />
@@ -1170,11 +1223,11 @@ export default function BrandBrainPage() {
         </div>
 
         <SectionCard
-          title="Marka Anahtar Kelimeleri"
-          subtitle="Markanızla ilişkilendirdiğiniz kelimeleri ekleyin."
+          title={t("sections.keywords.title")}
+          subtitle={t("sections.keywords.subtitle")}
           right={
             <span className="shrink-0 text-[11px] font-medium text-brand-dark/40">
-              En fazla {MAX_BRAND_DNA_KEYWORDS}
+              {t("sections.keywords.maxHint", { max: MAX_BRAND_DNA_KEYWORDS })}
             </span>
           }
         >
@@ -1191,7 +1244,7 @@ export default function BrandBrainPage() {
                     setKeywords((prev) => prev.filter((item) => item !== keyword))
                   }
                   className="text-[#1D6A27]/70 hover:text-[#1D6A27]"
-                  aria-label={`${keyword} anahtar kelimesini kaldır`}
+                  aria-label={t("sections.keywords.removeAria", { keyword })}
                 >
                   ×
                 </button>
@@ -1208,7 +1261,7 @@ export default function BrandBrainPage() {
                   addKeyword();
                 }
               }}
-              placeholder="Anahtar kelime ekleyin..."
+              placeholder={t("sections.keywords.placeholder")}
               className="min-w-0 flex-1 rounded-lg border border-brand-dark/12 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-brand-dark/35 outline-none transition-colors focus:border-brand-dark/30"
             />
             <button
@@ -1217,11 +1270,14 @@ export default function BrandBrainPage() {
               className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-brand-dark/12 bg-white px-4 py-2 text-sm font-semibold text-brand-dark transition-colors hover:bg-brand-dark/5 sm:shrink-0"
             >
               <Plus className="size-4" strokeWidth={2} />
-              Ekle
+              {t("sections.keywords.add")}
             </button>
           </div>
           <p className="mt-1 text-[11px] text-brand-dark/40">
-            {keywords.length}/{MAX_BRAND_DNA_KEYWORDS} eklendi
+            {t("sections.keywords.count", {
+              count: keywords.length,
+              max: MAX_BRAND_DNA_KEYWORDS,
+            })}
           </p>
         </SectionCard>
 
@@ -1257,23 +1313,38 @@ export default function BrandBrainPage() {
                     <p className="text-3xl font-bold tracking-tight text-brand-dark">
                       {score}
                     </p>
-                    <p className="text-xs text-brand-dark/45">/100</p>
+                    <p className="text-xs text-brand-dark/45">{t("scoreOutOf")}</p>
                   </div>
                 </div>
                 <div className="min-w-0 text-center sm:text-left">
                   <span className="inline-flex rounded-full bg-[#42B24D]/12 px-2.5 py-1 text-xs font-semibold text-[#1D6A27]">
-                    {completion.label}
+                    {scoreLabelText(completion.label)}
                   </span>
                   <p className="mt-2 text-sm font-semibold text-brand-dark">
-                    {scoreHeadline(score, completion.label)}
+                    {scoreHeadline(score, {
+                      strong: t("scoreHeadline.strong"),
+                      good: t("scoreHeadline.good"),
+                      forming: t("scoreHeadline.forming"),
+                      incomplete: t("scoreHeadline.incomplete"),
+                    })}
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-brand-dark/55">
-                    {scoreDescription(score)}
+                    {scoreDescription(score, {
+                      high: t("scoreDescription.high"),
+                      mid: t("scoreDescription.mid"),
+                      low: t("scoreDescription.low"),
+                    })}
                   </p>
                 </div>
               </div>
               <p className="mt-auto pt-4 text-center text-xs text-brand-dark/40 sm:text-left">
-                Son güncelleme: {formatUpdatedAt(profile.updatedAt)}
+                {t("updatedAt", {
+                  date: formatUpdatedAt(
+                    profile.updatedAt,
+                    locale,
+                    t("updatedNever"),
+                  ),
+                })}
               </p>
             </section>
           </div>
@@ -1281,19 +1352,19 @@ export default function BrandBrainPage() {
           <div className="lg:col-span-5">
             <section className="flex h-full flex-col rounded-2xl border border-brand-dark/8 bg-white p-4 sm:p-5">
               <h2 className="text-sm font-semibold text-brand-dark">
-                Tamamlanma Durumu
+                {t("completionTitle")}
               </h2>
               <div className="mt-3 grid flex-1 grid-cols-1 content-start gap-1.5 sm:grid-cols-2">
-                {COMPLETION_LABELS.map((item) => {
-                  const status = completion.sections[item.key];
+                {COMPLETION_KEYS.map((key) => {
+                  const status = completion.sections[key];
                   const done = status === "Tamamlandı";
                   return (
                     <div
-                      key={item.key}
+                      key={key}
                       className="flex items-center justify-between gap-2 rounded-lg bg-bg-offwhite px-2.5 py-2"
                     >
                       <span className="truncate text-sm text-brand-dark/70">
-                        {item.label}
+                        {t(`completionLabels.${key}`)}
                       </span>
                       <span
                         className={`inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold ${
@@ -1305,7 +1376,7 @@ export default function BrandBrainPage() {
                         ) : (
                           <AlertCircle className="size-3.5" strokeWidth={2.4} />
                         )}
-                        {status}
+                        {statusLabel(status)}
                       </span>
                     </div>
                   );
@@ -1319,13 +1390,14 @@ export default function BrandBrainPage() {
               <div className="mb-2 inline-flex size-8 items-center justify-center rounded-full bg-[#42B24D]/15">
                 <Info className="size-4 text-[#1D6A27]" strokeWidth={2} />
               </div>
-              <h2 className="text-sm font-semibold text-brand-dark">Neden Önemli?</h2>
+              <h2 className="text-sm font-semibold text-brand-dark">
+                {t("whyImportantTitle")}
+              </h2>
               <p className="mt-2 flex-1 text-sm leading-relaxed text-brand-dark/70">
-                Score AI, analizleri bu referans bilgilerine göre yapar. Ne kadar
-                eksiksiz tanımlarsanız, sonuçlar o kadar isabetli ve değerli olur.
+                {t("whyImportantBody")}
               </p>
               <p className="mt-3 text-sm font-semibold text-brand-dark/70">
-                Brand Intelligence skorları bu referansa göre şekillenir.
+                {t("whyImportantFooter")}
               </p>
             </section>
           </div>
@@ -1335,18 +1407,17 @@ export default function BrandBrainPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-dark/8 bg-white p-4">
         <div>
           <p className="text-base font-semibold text-brand-dark">
-            {score >= 70 ? "Brand DNA'nız hazır!" : "Brand DNA'yı tamamlayın"}
+            {score >= 70 ? t("ctaReady") : t("ctaIncomplete")}
           </p>
           <p className="text-sm text-brand-dark/55">
-            Analizi başlatın, markanızın benzersiz kimliği doğrultusunda
-            değerlendirilsin.
+            {t("ctaBody")}
           </p>
         </div>
         <Link
           href={withReturnTo("/dashboard/yeni-analiz", "/dashboard/brand-brain")}
           className="inline-flex items-center gap-2 rounded-lg bg-brand-dark px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
         >
-          Test Analizi Yap
+          {t("ctaButton")}
         </Link>
       </div>
     </div>

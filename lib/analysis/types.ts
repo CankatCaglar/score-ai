@@ -28,7 +28,11 @@ export type CriterionEvaluation = {
   aksiyon_onerisi: string;
 };
 
-export type AnalysisStatus = "Geliştirildi" | "İnceleniyor";
+export type AnalysisStatus =
+  | "Geliştirildi"
+  | "İnceleniyor"
+  | "Improved"
+  | "In review";
 export type JobStatus = "pending" | "processing" | "completed" | "failed";
 
 export type Analysis = {
@@ -60,8 +64,15 @@ export type Analysis = {
   ownerEmail: string;
   guestId?: string;
   claimedAtMs?: number;
+  /** Language used when AI commentary was generated (`tr` | `en`). */
+  locale?: "tr" | "en";
   sourceUrl?: string;
   mediaUrl?: string;
+  /** Signed GCS preview for list cards (thumb when available). */
+  previewUrl?: string;
+  /** Server-only while resolving preview; stripped before JSON response. */
+  storagePath?: string;
+  mimeType?: string;
   potentialImageStatus?: "idle" | "processing" | "completed" | "failed";
   potentialImageUrl?: string;
   potentialImageMimeType?: string;
