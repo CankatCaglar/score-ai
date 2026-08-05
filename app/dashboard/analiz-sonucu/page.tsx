@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { useLocale, useTranslations } from "next-intl";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   analysisCompletedNotification,
   getDisplaySummary,
@@ -30,6 +37,7 @@ import {
 } from "lucide-react";
 import {
   AnalysisWaitingScreen,
+  readGraderWaitStart,
   resolveWaitPreviewUrl,
 } from "@/app/[locale]/analyzer/shared";
 import "@/app/[locale]/analyzer/grader.css";
@@ -211,6 +219,17 @@ function MetricRow({
   );
 }
 
+/** True when yeni-analiz bound a wait clock for this result (client navigations). */
+function hasDashboardWaitBridge(id: string | null, slug: string | null): boolean {
+  if (id && readGraderWaitStart(id) != null) return true;
+  if (slug && readGraderWaitStart(slug) != null) return true;
+  return false;
+}
+
+function subscribeNoop() {
+  return () => undefined;
+}
+
 function AnalizSonucuPageContent() {
   const t = useTranslations("dashboard.analysisResult");
   const tNotifications = useTranslations("dashboard.notifications");
@@ -223,6 +242,12 @@ function AnalizSonucuPageContent() {
   const initialCached = initialCacheKey
     ? getDashboardCache<ResultPayload>(initialCacheKey)
     : null;
+  // Server snapshot must be false — never read sessionStorage during SSR/hydration.
+  const waitBridge = useSyncExternalStore(
+    subscribeNoop,
+    () => hasDashboardWaitBridge(id, slug),
+    () => false,
+  );
   const [loading, setLoading] = useState(!initialCached?.analysis);
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<ResultPayload | null>(
@@ -299,11 +324,17 @@ function AnalizSonucuPageContent() {
         } else if (status === "completed" || status === "failed") {
           const watched = isAnalysisWatchActive();
           markAnalysisWatchIdle();
-          invalidateDashboardCache("dashboard:overview");
           const justFinished =
             previous === "pending" ||
             previous === "processing" ||
             (previous === null && watched);
+          // Drop list/overview caches so Analizler / Overview show the new row
+          // without a manual refresh.
+          if (justFinished) {
+            invalidateDashboardCache("dashboard:");
+          } else {
+            invalidateDashboardCache("dashboard:overview");
+          }
           if (status === "completed" && justFinished && data.analysis) {
             const copy = analysisCompletedNotification(
               data.analysis.title,
@@ -542,8 +573,14 @@ function AnalizSonucuPageContent() {
     !!payload?.analysis &&
     payload.analysis.jobStatus !== "completed" &&
     payload.analysis.jobStatus !== "failed";
-  // Only from jobStatus — never sessionStorage (causes SSR/client hydration mismatch).
-  const showWaitingScreen = isJobInFlight;
+  // Bridge the yeni-analiz → analiz-sonucu soft-nav gap: keep the wait UI up
+  // until the first result payload arrives (jobStatus alone is null before then).
+  const showWaitingScreen =
+    isJobInFlight ||
+    (waitBridge &&
+      jobStatus !== "completed" &&
+      jobStatus !== "failed" &&
+      (loading || !payload?.analysis));
 
   if (!loading && payload?.analysis && jobStatus === "failed") {
     return (
@@ -592,6 +629,7 @@ function AnalizSonucuPageContent() {
           tipIndex={tipIndex}
           previewUrl={waitingPreview}
           waitKey={waitKey}
+          brand="dashboard"
         />
       </div>
     );
@@ -940,13 +978,11 @@ function AnalizSonucuPageContent() {
 }
 
 export default function AnalizSonucuPage() {
-  const t = useTranslations("dashboard.analysisResult");
   return (
     <Suspense
       fallback={
-        <div className="px-4 pb-8 pt-2 text-sm text-brand-dark/60 sm:px-6 lg:px-8 lg:pt-4">
-          {t("updating")}
-        </div>
+        // Match wait-screen chrome so soft-nav doesn't flash the cream dashboard shell.
+        <div className="fixed inset-0 z-50 bg-brand-dark" aria-hidden />
       }
     >
       <AnalizSonucuPageContent />

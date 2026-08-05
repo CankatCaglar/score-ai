@@ -8,11 +8,11 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Bot,
-  Camera,
   ImageIcon,
   Loader2,
   Target,
 } from "lucide-react";
+import { FaInstagram, FaLinkedinIn } from "react-icons/fa6";
 import { ScoreRing } from "@/app/dashboard/analizler/ScoreRing";
 import {
   contentTypeLabel,
@@ -325,7 +325,17 @@ export default function CreativeMemoryInsightPage() {
                 {analysis.title}
               </h1>
               <p className="mt-1.5 flex items-center justify-center gap-1.5 text-sm text-brand-dark/50 sm:justify-start">
-                <Camera className="size-3.5" strokeWidth={1.75} />
+                {analysis.platformType === "instagram" ? (
+                  <FaInstagram
+                    className="size-3.5 shrink-0 text-[#E4405F]"
+                    aria-hidden
+                  />
+                ) : (
+                  <FaLinkedinIn
+                    className="size-3.5 shrink-0 text-[#0A66C2]"
+                    aria-hidden
+                  />
+                )}
                 {contentTypeLabel(locale)} ·{" "}
                 {formatAnalysisDate(
                   analysis.updatedAtMs || analysis.createdAtMs,

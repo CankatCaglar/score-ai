@@ -251,6 +251,7 @@ export function GraderClient({
         analysisId?: string;
         slug?: string;
         jobStatus?: string;
+        reused?: boolean;
         mode?: "guest" | "authenticated";
         message?: string;
         error?: string;
@@ -295,6 +296,7 @@ export function GraderClient({
       }
 
       // Same wait clock + preview continue on the report page — no progress reset.
+      // Reused/completed jobs resolve instantly on the report poll.
       await previewReady;
       bindGraderWaitToSlug(data.slug, { analysisId: data.analysisId });
       router.replace({
@@ -520,7 +522,7 @@ export function GraderClient({
                           }
                         }}
                         placeholder={t("emailPlaceholder")}
-                        className={`w-full rounded-xl border bg-bg-offwhite py-3 pl-10 pr-3.5 text-sm text-brand-dark outline-none transition placeholder:text-brand-dark/35 ${
+                        className={`w-full rounded-xl border bg-bg-offwhite py-3 pl-10 pr-3.5 text-base text-brand-dark outline-none transition placeholder:text-brand-dark/35 ${
                           emailReady
                             ? "border-brand-neon focus:border-brand-neon"
                             : "border-transparent focus:border-brand-dark/15"

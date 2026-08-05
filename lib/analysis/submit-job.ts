@@ -1,9 +1,15 @@
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import {
+  cloneCompletedAnalysisFromSource,
   createAnalysisJob,
+  findReusableAnalysisForImage,
+  fingerprintImageBytes,
+  getBrandContextForAnalysisOwner,
   processPendingAnalysisJobs,
 } from "@/lib/analysis/repository";
+import { toAnalysisUiLocale } from "@/lib/analysis/display-copy";
+import { isGuestOwnerEmail } from "@/lib/grader-auth";
 import {
   getAdminDb,
   getAdminStorage,
@@ -19,6 +25,8 @@ export type AnalysisJobSubmissionResult =
       analysisId: string;
       slug: string;
       jobStatus: string;
+      /** Same image + unchanged brand context — new row, scores cloned, no LLM. */
+      reused?: boolean;
     }
   | {
       ok: false;
@@ -580,25 +588,18 @@ export async function runAnalysisJobSubmission(input: {
   let originalFileName: string | undefined;
   let sizeBytes: number | undefined;
   let resolvedFromUrlAsMedia = false;
+  let imageBytes: Buffer | null = null;
 
   if (hasFile && file instanceof File) {
-    const uploaded = await uploadInputFile(ownerEmail, file);
-    mediaUrl = uploaded.mediaUrl;
-    storagePath = uploaded.storagePath;
-    mimeType = file.type || undefined;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    imageBytes = buffer;
     originalFileName = file.name;
+    mimeType = file.type || undefined;
     sizeBytes = file.size;
   } else if (hasUrl) {
     try {
       const downloaded = await downloadImageFromSourceUrl(sourceUrl);
-      const uploaded = await uploadInputBytes(
-        ownerEmail,
-        downloaded.bytes,
-        downloaded.mimeType,
-        downloaded.originalFileName,
-      );
-      mediaUrl = uploaded.mediaUrl;
-      storagePath = uploaded.storagePath;
+      imageBytes = downloaded.bytes;
       mimeType = downloaded.mimeType;
       originalFileName = downloaded.originalFileName;
       sizeBytes = downloaded.bytes.length;
@@ -617,18 +618,98 @@ export async function runAnalysisJobSubmission(input: {
     }
   }
 
+  const analysisLocale = toAnalysisUiLocale(
+    locale ??
+      (formData.has("locale") ? String(formData.get("locale")) : "tr"),
+  );
+  const isGuest =
+    Boolean(guestId) || isGuestOwnerEmail(ownerEmail);
+  const imageFingerprint = imageBytes
+    ? fingerprintImageBytes(imageBytes)
+    : null;
+
+  if (hasFile && file instanceof File && imageBytes) {
+    const uploaded = await uploadInputBytes(
+      ownerEmail,
+      imageBytes,
+      mimeType || file.type || "image/jpeg",
+      originalFileName || file.name,
+    );
+    mediaUrl = uploaded.mediaUrl;
+    storagePath = uploaded.storagePath;
+  } else if (hasUrl && imageBytes) {
+    const uploaded = await uploadInputBytes(
+      ownerEmail,
+      imageBytes,
+      mimeType || "image/jpeg",
+      originalFileName || "image.jpg",
+    );
+    mediaUrl = uploaded.mediaUrl;
+    storagePath = uploaded.storagePath;
+  }
+
   const title = guessTitle(hasUrl ? sourceUrl : undefined, originalFileName);
+  const resolvedLocale =
+    locale ??
+    (formData.has("locale")
+      ? String(formData.get("locale")).toLowerCase() === "en"
+        ? "en"
+        : "tr"
+      : undefined);
+
+  // Clone into a new analysis row (billing/history) when scores can be reused.
+  if (imageFingerprint) {
+    const brand = await getBrandContextForAnalysisOwner(ownerEmail, {
+      guest: isGuest,
+    });
+    const reusable = await findReusableAnalysisForImage({
+      ownerEmail,
+      imageFingerprint,
+      locale: analysisLocale,
+      brandContext: brand.brandContext,
+      hasStrategicBrand: brand.hasStrategicBrand,
+      hasBrandDna: brand.hasBrandDna,
+    });
+    if (reusable) {
+      try {
+        const cloned = await cloneCompletedAnalysisFromSource({
+          sourceAnalysisId: reusable.sourceAnalysisId,
+          ownerEmail,
+          guestId,
+          contactEmail,
+          locale: resolvedLocale,
+          title,
+          platformType,
+          sourceType: hasFile || resolvedFromUrlAsMedia ? "upload" : "url",
+          sourceUrl: hasUrl ? sourceUrl : undefined,
+          mediaUrl,
+          storagePath,
+          mimeType,
+          originalFileName,
+          sizeBytes,
+          imageFingerprint,
+        });
+        return {
+          ok: true,
+          status: 200,
+          ...cloned,
+          jobStatus: "completed",
+          reused: true,
+        };
+      } catch (error) {
+        console.error(
+          "[runAnalysisJobSubmission] clone from cache failed; falling back to full job",
+          error instanceof Error ? error.message : error,
+        );
+      }
+    }
+  }
+
   const result = await createAnalysisJob({
     ownerEmail,
     guestId,
     contactEmail,
-    locale:
-      locale ??
-      (formData.has("locale")
-        ? String(formData.get("locale")).toLowerCase() === "en"
-          ? "en"
-          : "tr"
-        : undefined),
+    locale: resolvedLocale,
     title,
     platformType,
     sourceType: hasFile || resolvedFromUrlAsMedia ? "upload" : "url",

@@ -76,6 +76,7 @@ import {
 import { canSendAnalysisResultEmail } from "@/lib/notifications/types";
 import { isGuestOwnerEmail } from "@/lib/grader-auth";
 import { isValidGraderContactEmail } from "@/lib/grader/email";
+import { seedFingerprintLocaleCaches } from "@/lib/analysis/localize-evaluations";
 
 async function loadMergedBrandContext(ownerEmail: string): Promise<{
   brandContext: string | null;
@@ -131,6 +132,8 @@ const COLLECTIONS = {
   users: "users",
   revisions: "analysis_revisions",
   cache: "analysis_cache",
+  /** ownerEmail|imageFingerprint → latest reusable completed analysis */
+  imageIndex: "analysis_image_index",
 } as const;
 
 type CreateAnalysisJobInput = {
@@ -214,6 +217,377 @@ function clamp(value: number, min: number, max: number) {
 
 function sha256(input: string | Buffer) {
   return createHash("sha256").update(input).digest("hex");
+}
+
+export function fingerprintImageBytes(bytes: Buffer): string {
+  return sha256(bytes);
+}
+
+function brandContextHashOf(brandContext?: string | null): string | null {
+  const trimmed = brandContext?.trim();
+  return trimmed ? sha256(trimmed) : null;
+}
+
+function imageIndexDocId(ownerEmail: string, imageFingerprint: string): string {
+  return `${sha256(ownerEmail.trim().toLowerCase())}_${imageFingerprint}`;
+}
+
+function brandInputsMatch(params: {
+  indexed: {
+    brandContextHash?: string | null;
+    hasStrategicBrand?: boolean;
+    hasBrandDna?: boolean;
+    locale?: string;
+  };
+  brandContextHash: string | null;
+  hasStrategicBrand: boolean;
+  hasBrandDna: boolean;
+  locale: "tr" | "en";
+}): boolean {
+  const indexedLocale = toAnalysisUiLocale(
+    typeof params.indexed.locale === "string" ? params.indexed.locale : "tr",
+  );
+  if (indexedLocale !== params.locale) return false;
+  if (Boolean(params.indexed.hasStrategicBrand) !== params.hasStrategicBrand) {
+    return false;
+  }
+  if (Boolean(params.indexed.hasBrandDna) !== params.hasBrandDna) {
+    return false;
+  }
+  const indexedHash =
+    typeof params.indexed.brandContextHash === "string"
+      ? params.indexed.brandContextHash
+      : null;
+  return indexedHash === params.brandContextHash;
+}
+
+async function upsertAnalysisImageIndex(input: {
+  ownerEmail: string;
+  imageFingerprint: string;
+  analysisId: string;
+  slug: string;
+  locale: "tr" | "en";
+  brandContext?: string | null;
+  hasStrategicBrand: boolean;
+  hasBrandDna: boolean;
+}): Promise<void> {
+  const ownerEmail = input.ownerEmail.trim().toLowerCase();
+  if (!ownerEmail || !input.imageFingerprint) return;
+  const db = getAdminDb();
+  const ref = db
+    .collection(COLLECTIONS.imageIndex)
+    .doc(imageIndexDocId(ownerEmail, input.imageFingerprint));
+  const existing = await ref.get();
+  await ref.set(
+    {
+      ownerEmail,
+      imageFingerprint: input.imageFingerprint,
+      analysisId: input.analysisId,
+      slug: input.slug,
+      locale: input.locale,
+      brandContextHash: brandContextHashOf(input.brandContext),
+      hasStrategicBrand: input.hasStrategicBrand,
+      hasBrandDna: input.hasBrandDna,
+      updatedAt: FieldValue.serverTimestamp(),
+      ...(existing.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
+    },
+    { merge: true },
+  );
+}
+
+/**
+ * Same owner + same image bytes + same Brand DNA/Benchmark/locale →
+ * source analysis whose scores can be cloned (no LLM).
+ */
+export async function findReusableAnalysisForImage(input: {
+  ownerEmail: string;
+  imageFingerprint: string;
+  locale: "tr" | "en";
+  brandContext?: string | null;
+  hasStrategicBrand: boolean;
+  hasBrandDna: boolean;
+}): Promise<{ sourceAnalysisId: string } | null> {
+  const ownerEmail = input.ownerEmail.trim().toLowerCase();
+  if (!ownerEmail || !input.imageFingerprint) return null;
+
+  const db = getAdminDb();
+  const indexRef = db
+    .collection(COLLECTIONS.imageIndex)
+    .doc(imageIndexDocId(ownerEmail, input.imageFingerprint));
+  const indexSnap = await indexRef.get();
+  if (!indexSnap.exists) return null;
+
+  const indexed = (indexSnap.data() ?? {}) as {
+    analysisId?: string;
+    slug?: string;
+    brandContextHash?: string | null;
+    hasStrategicBrand?: boolean;
+    hasBrandDna?: boolean;
+    locale?: string;
+  };
+
+  if (
+    !brandInputsMatch({
+      indexed,
+      brandContextHash: brandContextHashOf(input.brandContext),
+      hasStrategicBrand: input.hasStrategicBrand,
+      hasBrandDna: input.hasBrandDna,
+      locale: input.locale,
+    })
+  ) {
+    return null;
+  }
+
+  const analysisId =
+    typeof indexed.analysisId === "string" ? indexed.analysisId : "";
+  if (!analysisId) return null;
+
+  const analysisSnap = await db
+    .collection(COLLECTIONS.analyses)
+    .doc(analysisId)
+    .get();
+  if (!analysisSnap.exists) return null;
+  const analysis = (analysisSnap.data() ?? {}) as Record<string, unknown>;
+  if (analysis.jobStatus !== "completed") return null;
+  if (
+    typeof analysis.ownerEmail === "string" &&
+    analysis.ownerEmail.trim().toLowerCase() !== ownerEmail
+  ) {
+    return null;
+  }
+
+  return { sourceAnalysisId: analysisId };
+}
+
+/**
+ * New analysis row for billing/history, scores copied from a prior completed run.
+ * Counts as a used credit; does not call Anthropic.
+ */
+export async function cloneCompletedAnalysisFromSource(input: {
+  sourceAnalysisId: string;
+  ownerEmail: string;
+  guestId?: string;
+  contactEmail?: string;
+  locale?: string;
+  title: string;
+  platformType: Platform;
+  sourceType: "url" | "upload";
+  sourceUrl?: string;
+  mediaUrl?: string;
+  storagePath?: string;
+  mimeType?: string;
+  originalFileName?: string;
+  sizeBytes?: number;
+  imageFingerprint: string;
+}): Promise<{ jobId: string; analysisId: string; slug: string }> {
+  const db = getAdminDb();
+  const ownerEmail = input.ownerEmail.trim().toLowerCase();
+  const sourceSnap = await db
+    .collection(COLLECTIONS.analyses)
+    .doc(input.sourceAnalysisId)
+    .get();
+  if (!sourceSnap.exists) {
+    throw new Error("SOURCE_ANALYSIS_NOT_FOUND");
+  }
+  const source = (sourceSnap.data() ?? {}) as Record<string, unknown>;
+  if (source.jobStatus !== "completed") {
+    throw new Error("SOURCE_ANALYSIS_NOT_COMPLETED");
+  }
+
+  const locale =
+    typeof input.locale === "string" && input.locale.trim()
+      ? toAnalysisUiLocale(input.locale)
+      : toAnalysisUiLocale(
+          typeof source.locale === "string" ? source.locale : "tr",
+        );
+  const guestId =
+    typeof input.guestId === "string" && input.guestId.trim()
+      ? input.guestId.trim()
+      : null;
+  const contactEmail =
+    typeof input.contactEmail === "string" && input.contactEmail.trim()
+      ? input.contactEmail.trim().toLowerCase()
+      : null;
+  const normalizedTitle = input.title.trim() || "Yeni Analiz";
+  const slugRoot = titleToSlug(normalizedTitle) || "analiz";
+  const slug = `${slugRoot}-${Date.now().toString(36).slice(-5)}`;
+  const now = FieldValue.serverTimestamp();
+
+  await ensureUserDoc(ownerEmail);
+
+  const contentRef = db.collection(COLLECTIONS.contentItems).doc();
+  await contentRef.set({
+    id: contentRef.id,
+    ownerEmail,
+    guestId,
+    contactEmail,
+    sourceType: input.sourceType,
+    sourceUrl: input.sourceUrl ?? null,
+    mediaUrl: input.mediaUrl ?? null,
+    storagePath: input.storagePath ?? null,
+    mimeType: input.mimeType ?? null,
+    originalFileName: input.originalFileName ?? null,
+    sizeBytes: input.sizeBytes ?? null,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const analysisRef = db.collection(COLLECTIONS.analyses).doc();
+  const jobRef = db.collection(COLLECTIONS.jobs).doc();
+
+  const hasStrategicBrand = source.hasStrategicBrand === true;
+  const hasBrandDna = source.hasBrandDna === true;
+  const brandContext =
+    typeof source.brandContext === "string" ? source.brandContext : null;
+  const score =
+    typeof source.score === "number" ? Math.round(source.score) : 0;
+  const potentialScore =
+    typeof source.potentialScore === "number"
+      ? Math.round(source.potentialScore)
+      : score;
+
+  await analysisRef.set({
+    id: analysisRef.id,
+    ownerEmail,
+    guestId,
+    contactEmail,
+    locale,
+    slug,
+    title:
+      typeof source.title === "string" && source.title.trim()
+        ? source.title.trim()
+        : normalizedTitle,
+    platformType: input.platformType,
+    platform: platformTypeLabel(input.platformType, locale),
+    contentType: contentTypeLabel(locale),
+    score,
+    potentialScore,
+    change:
+      typeof source.change === "number" ? Math.round(source.change) : 0,
+    sectorAverage:
+      typeof source.sectorAverage === "number" ? source.sectorAverage : 0,
+    evaluation: typeof source.evaluation === "string" ? source.evaluation : "",
+    strength: typeof source.strength === "string" ? source.strength : "",
+    insight: typeof source.insight === "string" ? source.insight : "",
+    suggestions: Array.isArray(source.suggestions) ? source.suggestions : [],
+    categories: Array.isArray(source.categories) ? source.categories : [],
+    microCriteria: Array.isArray(source.microCriteria)
+      ? source.microCriteria
+      : [],
+    criteriaEvaluations:
+      source.criteriaEvaluations &&
+      typeof source.criteriaEvaluations === "object" &&
+      !Array.isArray(source.criteriaEvaluations)
+        ? source.criteriaEvaluations
+        : {},
+    criteriaEvaluationsByLocale:
+      source.criteriaEvaluationsByLocale &&
+      typeof source.criteriaEvaluationsByLocale === "object"
+        ? source.criteriaEvaluationsByLocale
+        : {},
+    criteriaCount:
+      typeof source.criteriaCount === "number" ? source.criteriaCount : 0,
+    rubricVersion:
+      typeof source.rubricVersion === "string" ? source.rubricVersion : null,
+    aiRubricVersion:
+      typeof source.aiRubricVersion === "string"
+        ? source.aiRubricVersion
+        : null,
+    promptVersion:
+      typeof source.promptVersion === "string" ? source.promptVersion : null,
+    modelUsed: typeof source.modelUsed === "string" ? source.modelUsed : null,
+    sourceUrl: input.sourceUrl ?? null,
+    mediaUrl: input.mediaUrl ?? null,
+    storagePath: input.storagePath ?? null,
+    mimeType: input.mimeType ?? null,
+    brandContext,
+    hasStrategicBrand,
+    hasBrandDna,
+    brandContextHash: brandContextHashOf(brandContext),
+    imageFingerprint: input.imageFingerprint,
+    reusedFromAnalysisId: input.sourceAnalysisId,
+    potentialImageStatus: "idle",
+    potentialImageUrl: null,
+    potentialImageMimeType: null,
+    potentialImageStoragePath: null,
+    potentialImagePrompt: null,
+    potentialImageModel: null,
+    potentialImageError: null,
+    jobStatus: "completed",
+    jobId: jobRef.id,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await jobRef.set({
+    id: jobRef.id,
+    ownerEmail,
+    guestId,
+    contactEmail,
+    analysisId: analysisRef.id,
+    contentItemId: contentRef.id,
+    status: "completed",
+    errorMessage: null,
+    reusedFromAnalysisId: input.sourceAnalysisId,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await upsertAnalysisImageIndex({
+    ownerEmail,
+    imageFingerprint: input.imageFingerprint,
+    analysisId: analysisRef.id,
+    slug,
+    locale,
+    brandContext,
+    hasStrategicBrand,
+    hasBrandDna,
+  });
+
+  // Share any already-translated evaluation text for this image (no Claude).
+  void seedFingerprintLocaleCaches({
+    ownerEmail,
+    imageFingerprint: input.imageFingerprint,
+    locales: source.criteriaEvaluationsByLocale,
+  }).catch((error) => {
+    console.error(
+      "[cloneCompletedAnalysisFromSource] seedFingerprintLocaleCaches failed",
+      error instanceof Error ? error.message : error,
+    );
+  });
+
+  if (input.storagePath) {
+    ensureDashboardThumbBackground({
+      analysisId: analysisRef.id,
+      sourceStoragePath: input.storagePath,
+      mimeType: input.mimeType ?? null,
+    });
+  }
+
+  return {
+    jobId: jobRef.id,
+    analysisId: analysisRef.id,
+    slug,
+  };
+}
+
+/** Brand context used at submit-time for reuse checks (guest = none). */
+export async function getBrandContextForAnalysisOwner(
+  ownerEmail: string,
+  options?: { guest?: boolean },
+): Promise<{
+  brandContext: string | null;
+  hasStrategicBrand: boolean;
+  hasBrandDna: boolean;
+}> {
+  if (options?.guest || isGuestOwnerEmail(ownerEmail)) {
+    return {
+      brandContext: null,
+      hasStrategicBrand: false,
+      hasBrandDna: false,
+    };
+  }
+  return loadMergedBrandContext(ownerEmail);
 }
 
 function getModelIdForCache(fast = false) {
@@ -391,7 +765,7 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
     title: String(data.title ?? "İsimsiz Analiz"),
     platformType: (data.platformType as Platform | undefined) ?? "instagram",
     platform: String(data.platform ?? platformTypeLabel("instagram", "tr")),
-    date: formatAnalysisDate(updatedAtMs || createdAtMs, "tr"),
+    date: formatAnalysisDate(createdAtMs || updatedAtMs, "tr"),
     score: Number(data.score ?? 0),
     potentialScore: Number(data.potentialScore ?? data.score ?? 0),
     change: Number(data.change ?? 0),
@@ -499,7 +873,7 @@ function mapAnalysisListDoc(id: string, data: AnalysisDoc): Analysis {
     title: String(data.title ?? "İsimsiz Analiz"),
     platformType: (data.platformType as Platform | undefined) ?? "instagram",
     platform: String(data.platform ?? platformTypeLabel("instagram", "tr")),
-    date: formatAnalysisDate(updatedAtMs || createdAtMs, "tr"),
+    date: formatAnalysisDate(createdAtMs || updatedAtMs, "tr"),
     score: Number(data.score ?? 0),
     potentialScore: Number(data.potentialScore ?? data.score ?? 0),
     change: Number(data.change ?? 0),
@@ -748,8 +1122,9 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
 
       const isGuestAnalysis =
         Boolean(analysisData.guestId) || isGuestOwnerEmail(jobData.ownerEmail);
-      // Grader / guest = image-only, no Brand DNA / Benchmark — optimize for ≤30s.
-      const fastPath = isGuestAnalysis;
+      // Same Sonnet model + full prompts as dashboard so guest→register scores match.
+      // Guest still skips Brand DNA / Benchmark (image-only product surface).
+      const fastPath = false;
 
       let imageBase64: string | undefined;
       let imageMediaType:
@@ -811,7 +1186,7 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
       }
 
       // Guest/grader: skip Brand DNA / Benchmark lookups entirely.
-      const merged = fastPath
+      const merged = isGuestAnalysis
         ? {
             brandContext: null as string | null,
             hasStrategicBrand: false,
@@ -834,9 +1209,7 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
 
       const rubricMode = resolveRubricMode(hasStrategicBrand);
       const rubricVersion = getRubricVersion(rubricMode);
-      const promptVersion = `${getPromptVersion(rubricMode, { hasBrandDna })}${
-        fastPath ? "+fast" : ""
-      }`;
+      const promptVersion = getPromptVersion(rubricMode, { hasBrandDna });
       const criteriaCount = getRubricCriteriaCount(rubricMode);
       const analysisLocale = toAnalysisUiLocale(
         typeof analysisData.locale === "string"
@@ -845,7 +1218,7 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
       );
       const categoryPrompts = getCategoryPrompts(rubricMode, {
         hasBrandDna,
-        compact: fastPath,
+        compact: false,
         locale: analysisLocale,
       });
       const criterionIds = getCriterionIds(rubricMode);
@@ -892,30 +1265,71 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
         typeof analysisData.title === "string" ? analysisData.title.trim() : "";
       const titleCustomized = analysisData.titleCustomized === true;
       let nextTitle = currentTitle || "Yeni Analiz";
+      // Cache hit / guest: never pay Claude just to rename "Yeni Analiz".
       const shouldGenerateTitle =
+        !cachedEvaluations &&
+        !isGuestAnalysis &&
         !titleCustomized &&
         (isTechnicalAnalysisTitle(nextTitle) || nextTitle === "Yeni Analiz");
 
-      // Guest/grader: skip extra title vision call — keep wall-clock under ~30s.
-      const titlePromise =
-        shouldGenerateTitle && !fastPath
-          ? generateContentTitleWithAnthropic({
-              imageBase64,
-              imageMediaType,
-              imageUrl,
-              brandContext,
-              platformType:
-                typeof analysisData.platformType === "string"
-                  ? analysisData.platformType
-                  : "instagram",
-            }).catch((titleError) => {
-              console.error(
-                "[processPendingAnalysisJobs] title generation failed",
-                titleError instanceof Error ? titleError.message : titleError,
-              );
-              return null;
-            })
-          : Promise.resolve(null);
+      // Prefer an existing title for this image fingerprint over a new vision call.
+      if (
+        !shouldGenerateTitle &&
+        imageFingerprint &&
+        (isTechnicalAnalysisTitle(nextTitle) || nextTitle === "Yeni Analiz") &&
+        !titleCustomized
+      ) {
+        try {
+          const indexed = await db
+            .collection(COLLECTIONS.imageIndex)
+            .doc(
+              imageIndexDocId(String(jobData.ownerEmail ?? ""), imageFingerprint),
+            )
+            .get();
+          const priorId =
+            typeof indexed.data()?.analysisId === "string"
+              ? String(indexed.data()?.analysisId)
+              : "";
+          if (priorId && priorId !== String(jobData.analysisId)) {
+            const prior = await db
+              .collection(COLLECTIONS.analyses)
+              .doc(priorId)
+              .get();
+            const priorTitle =
+              typeof prior.data()?.title === "string"
+                ? String(prior.data()?.title).trim()
+                : "";
+            if (
+              priorTitle &&
+              !isTechnicalAnalysisTitle(priorTitle) &&
+              priorTitle !== "Yeni Analiz"
+            ) {
+              nextTitle = priorTitle;
+            }
+          }
+        } catch {
+          // keep nextTitle
+        }
+      }
+
+      const titlePromise = shouldGenerateTitle
+        ? generateContentTitleWithAnthropic({
+            imageBase64,
+            imageMediaType,
+            imageUrl,
+            brandContext,
+            platformType:
+              typeof analysisData.platformType === "string"
+                ? analysisData.platformType
+                : "instagram",
+          }).catch((titleError) => {
+            console.error(
+              "[processPendingAnalysisJobs] title generation failed",
+              titleError instanceof Error ? titleError.message : titleError,
+            );
+            return null;
+          })
+        : Promise.resolve(null);
 
       if (cachedEvaluations) {
         criteriaEvaluations = cachedEvaluations;
@@ -1024,10 +1438,40 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
           insight: summaries.insight,
           jobStatus: "completed",
           revisionId: revisionRef.id,
+          imageFingerprint: imageFingerprint ?? null,
+          brandContextHash: brandContextHashOf(brandContext),
           updatedAt: now,
         },
         { merge: true },
       );
+
+      if (imageFingerprint) {
+        const ownerEmailForIndex = String(jobData.ownerEmail ?? "");
+        await upsertAnalysisImageIndex({
+          ownerEmail: ownerEmailForIndex,
+          imageFingerprint,
+          analysisId: String(jobData.analysisId),
+          slug:
+            typeof analysisData.slug === "string" && analysisData.slug
+              ? analysisData.slug
+              : analysisSlugForNotify,
+          locale: analysisLocale,
+          brandContext,
+          hasStrategicBrand,
+          hasBrandDna,
+        });
+        // Seed source-locale evals so later EN/TR opens can share without Claude.
+        void seedFingerprintLocaleCaches({
+          ownerEmail: ownerEmailForIndex,
+          imageFingerprint,
+          locales: { [analysisLocale]: criteriaEvaluations },
+        }).catch((error) => {
+          console.error(
+            "[processPending] seedFingerprintLocaleCaches failed",
+            error instanceof Error ? error.message : error,
+          );
+        });
+      }
 
       await revisionRef.set({
         id: revisionRef.id,
@@ -1294,6 +1738,13 @@ export async function listAnalysesByUser(
   const all = snapshot.docs.map((doc) =>
     mapDoc(doc.id, doc.data() as AnalysisDoc),
   );
+  // Stable "newest first" by creation time — title edits / locale cache writes
+  // must not reshuffle the list (those only bump updatedAt).
+  all.sort((a, b) => {
+    const delta = (b.createdAtMs || 0) - (a.createdAtMs || 0);
+    if (delta !== 0) return delta;
+    return b.id.localeCompare(a.id);
+  });
   const normalizedQuery = query?.trim().toLowerCase();
   if (!normalizedQuery) return all;
   return all.filter((analysis) =>
@@ -1455,10 +1906,75 @@ export async function transferGuestAnalysesToUser(input: {
     await batch.commit();
   }
 
+  // Point image-reuse index at the claimed owner so dashboard re-upload
+  // returns the same scores instead of burning a second LLM run.
+  for (const doc of analysesSnap.docs) {
+    const data = doc.data() as Record<string, unknown>;
+    let imageFingerprint =
+      typeof data.imageFingerprint === "string" ? data.imageFingerprint : "";
+    const slug = typeof data.slug === "string" ? data.slug : "";
+    const storagePath =
+      typeof data.storagePath === "string" ? data.storagePath : "";
+    if (!slug || data.jobStatus !== "completed") continue;
+
+    // Older guest analyses may lack fingerprint — derive once from storage.
+    if (!imageFingerprint && storagePath) {
+      try {
+        const storage = getAdminStorage();
+        const bucket = storage.bucket(getAdminStorageBucketName());
+        const [bytes] = await bucket.file(storagePath).download();
+        imageFingerprint = fingerprintImageBytes(bytes);
+        await doc.ref.set(
+          {
+            imageFingerprint,
+            brandContextHash: brandContextHashOf(
+              typeof data.brandContext === "string" ? data.brandContext : null,
+            ),
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+      } catch (error) {
+        console.error(
+          "[transferGuestAnalysesToUser] fingerprint backfill failed",
+          doc.id,
+          error instanceof Error ? error.message : error,
+        );
+      }
+    }
+
+    if (!imageFingerprint) continue;
+    try {
+      await upsertAnalysisImageIndex({
+        ownerEmail,
+        imageFingerprint,
+        analysisId: doc.id,
+        slug,
+        locale: toAnalysisUiLocale(
+          typeof data.locale === "string" ? data.locale : "tr",
+        ),
+        brandContext:
+          typeof data.brandContext === "string" ? data.brandContext : null,
+        hasStrategicBrand: data.hasStrategicBrand === true,
+        hasBrandDna: data.hasBrandDna === true,
+      });
+    } catch (error) {
+      console.error(
+        "[transferGuestAnalysesToUser] image index upsert failed",
+        doc.id,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+
   const mapped = analysesSnap.docs.map((doc) =>
     mapAnalysisDoc(doc.id, doc.data() as AnalysisDoc),
   );
-  mapped.sort((a, b) => b.updatedAtMs - a.updatedAtMs);
+  mapped.sort((a, b) => {
+    const delta = (b.createdAtMs || 0) - (a.createdAtMs || 0);
+    if (delta !== 0) return delta;
+    return b.id.localeCompare(a.id);
+  });
   const primary = mapped[0] ?? null;
 
   return {
@@ -1501,11 +2017,11 @@ export function computeAnalysesListStats(analyses: Analysis[]): {
   const currentPeriodStart = todayStart - 6 * dayMs;
   const previousPeriodStart = todayStart - 13 * dayMs;
   const currentPeriod = analyses.filter((analysis) => {
-    const timestamp = analysis.updatedAtMs || analysis.createdAtMs;
+    const timestamp = analysis.createdAtMs || analysis.updatedAtMs;
     return timestamp >= currentPeriodStart;
   });
   const previousPeriod = analyses.filter((analysis) => {
-    const timestamp = analysis.updatedAtMs || analysis.createdAtMs;
+    const timestamp = analysis.createdAtMs || analysis.updatedAtMs;
     return timestamp >= previousPeriodStart && timestamp < currentPeriodStart;
   });
   let monthChange = round1(
@@ -1542,7 +2058,7 @@ function buildLast7DaysTrend(
   const scoresByDay = new Map<number, number[]>();
 
   for (const analysis of analyses) {
-    const timestamp = analysis.updatedAtMs || analysis.createdAtMs;
+    const timestamp = analysis.createdAtMs || analysis.updatedAtMs;
     if (!timestamp) continue;
     const dayStart = startOfLocalDay(timestamp);
     if (dayStart < windowStart || dayStart > todayStart) continue;

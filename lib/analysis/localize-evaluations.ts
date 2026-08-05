@@ -1,6 +1,7 @@
 import "server-only";
 
 import Anthropic from "@anthropic-ai/sdk";
+import { createHash } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { getFastAnthropicModel } from "@/lib/ai/anthropic";
 import type { AnalysisUiLocale } from "@/lib/analysis/locale-labels";
@@ -8,7 +9,11 @@ import { detectEvaluationsLocale } from "@/lib/analysis/locale-detect";
 import type { CriterionEvaluation } from "@/lib/analysis/types";
 import { getAdminDb } from "@/lib/firebase-admin";
 
-const COLLECTIONS = { analyses: "analyses" } as const;
+const COLLECTIONS = {
+  analyses: "analyses",
+  /** Shared TR/EN evaluation text per owner+image — survives clone rows. */
+  evalLocales: "analysis_eval_locales",
+} as const;
 const TRANSLATE_TIMEOUT_MS = 12_000;
 
 type TextFields = Pick<
@@ -99,13 +104,7 @@ async function translateEvaluationTexts(
     system: [
       {
         type: "text",
-        text: [
-          `Translate Score AI criterion commentary into ${targetLanguage}.`,
-          "Return JSON only with the same keys.",
-          "Each value: { mevcut_durum, eksiklikler, aksiyon_onerisi }.",
-          "Keep quoted creative copy in the creative's original language.",
-          "No markdown, no extra keys.",
-        ].join(" "),
+        text: `You translate Score AI criterion evaluation fields into ${targetLanguage}. Return ONLY a JSON object keyed by criterion id. Each value must be {"mevcut_durum":"...","eksiklikler":"...","aksiyon_onerisi":"..."}. Keep meaning; do not invent scores.`,
       },
     ],
     messages: [
@@ -115,15 +114,12 @@ async function translateEvaluationTexts(
       },
     ],
   });
-
   const raw = response.content
     .filter((block) => block.type === "text")
-    .map((block) => block.text)
+    .map((block) => (block.type === "text" ? block.text : ""))
     .join("\n");
   const parsed = asTextMap(extractJsonObject(raw));
-  if (!parsed) {
-    throw new Error("Translated evaluations JSON was empty.");
-  }
+  if (!parsed) throw new Error("Translation JSON empty.");
   return parsed;
 }
 
@@ -160,27 +156,191 @@ function readCachedEvaluationsFromRoot(
   if (!cached || typeof cached !== "object" || Array.isArray(cached)) {
     return null;
   }
-  const cachedEvals = cached as Record<string, CriterionEvaluation>;
-  const cachedLang = detectEvaluationsLocale(cachedEvals);
-  if (cachedLang && cachedLang !== targetLocale) return null;
-  return cachedEvals;
+  // Trust the locale key. Heuristic re-detect used to reject valid EN caches
+  // (brand/Turkish loanwords) and re-bill Haiku on every open.
+  return cached as Record<string, CriterionEvaluation>;
 }
 
-async function readCachedEvaluations(
-  analysisId: string,
+function evalLocaleDocId(ownerEmail: string, imageFingerprint: string): string {
+  return `${createHash("sha256")
+    .update(ownerEmail.trim().toLowerCase())
+    .digest("hex")}_${imageFingerprint}`;
+}
+
+async function readFingerprintLocaleCache(
+  ownerEmail: string,
+  imageFingerprint: string,
   targetLocale: AnalysisUiLocale,
-  preloadedLocaleCache?: unknown,
 ): Promise<Record<string, CriterionEvaluation> | null> {
-  if (preloadedLocaleCache !== undefined) {
-    return readCachedEvaluationsFromRoot(preloadedLocaleCache, targetLocale);
+  if (!ownerEmail || !imageFingerprint) return null;
+  const db = getAdminDb();
+  const snap = await db
+    .collection(COLLECTIONS.evalLocales)
+    .doc(evalLocaleDocId(ownerEmail, imageFingerprint))
+    .get();
+  if (!snap.exists) return null;
+  return readCachedEvaluationsFromRoot(snap.data()?.locales, targetLocale);
+}
+
+async function writeFingerprintLocaleCache(input: {
+  ownerEmail: string;
+  imageFingerprint: string;
+  targetLocale: AnalysisUiLocale;
+  evaluations: Record<string, CriterionEvaluation>;
+}): Promise<void> {
+  if (!input.ownerEmail || !input.imageFingerprint) return;
+  const db = getAdminDb();
+  const ref = db
+    .collection(COLLECTIONS.evalLocales)
+    .doc(evalLocaleDocId(input.ownerEmail, input.imageFingerprint));
+  const existing = await ref.get();
+  await ref.set(
+    {
+      ownerEmail: input.ownerEmail.trim().toLowerCase(),
+      imageFingerprint: input.imageFingerprint,
+      locales: {
+        [input.targetLocale]: input.evaluations,
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+      ...(existing.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
+    },
+    { merge: true },
+  );
+}
+
+/** Seed/share locale maps for an image so clones never re-translate. */
+export async function seedFingerprintLocaleCaches(input: {
+  ownerEmail: string;
+  imageFingerprint: string;
+  locales: unknown;
+}): Promise<void> {
+  if (
+    !input.ownerEmail ||
+    !input.imageFingerprint ||
+    !input.locales ||
+    typeof input.locales !== "object"
+  ) {
+    return;
   }
+  const root = input.locales as Record<string, unknown>;
+  for (const key of ["tr", "en"] as const) {
+    const evals = readCachedEvaluationsFromRoot(root, key);
+    if (!evals) continue;
+    await writeFingerprintLocaleCache({
+      ownerEmail: input.ownerEmail,
+      imageFingerprint: input.imageFingerprint,
+      targetLocale: key,
+      evaluations: evals,
+    });
+  }
+}
+
+async function loadAnalysisMeta(analysisId: string): Promise<{
+  ownerEmail: string;
+  imageFingerprint: string;
+  reusedFromAnalysisId: string;
+  localeRoot: unknown;
+}> {
   const db = getAdminDb();
   const snap = await db.collection(COLLECTIONS.analyses).doc(analysisId).get();
   const data = (snap.data() ?? {}) as Record<string, unknown>;
-  return readCachedEvaluationsFromRoot(
-    data.criteriaEvaluationsByLocale,
+  return {
+    ownerEmail:
+      typeof data.ownerEmail === "string" ? data.ownerEmail.trim().toLowerCase() : "",
+    imageFingerprint:
+      typeof data.imageFingerprint === "string" ? data.imageFingerprint : "",
+    reusedFromAnalysisId:
+      typeof data.reusedFromAnalysisId === "string"
+        ? data.reusedFromAnalysisId.trim()
+        : "",
+    localeRoot: data.criteriaEvaluationsByLocale,
+  };
+}
+
+async function persistLocaleOnAnalysis(
+  analysisId: string,
+  targetLocale: AnalysisUiLocale,
+  localized: Record<string, CriterionEvaluation>,
+  sourceLocale?: AnalysisUiLocale,
+  sourceEvaluations?: Record<string, CriterionEvaluation>,
+): Promise<void> {
+  const db = getAdminDb();
+  const ref = db.collection(COLLECTIONS.analyses).doc(analysisId);
+  const snap = await ref.get();
+  const data = (snap.data() ?? {}) as Record<string, unknown>;
+  const root =
+    data.criteriaEvaluationsByLocale &&
+    typeof data.criteriaEvaluationsByLocale === "object"
+      ? (data.criteriaEvaluationsByLocale as Record<string, unknown>)
+      : {};
+  const next: Record<string, unknown> = {
+    ...root,
+    [targetLocale]: localized,
+  };
+  if (sourceLocale && sourceEvaluations) {
+    next[sourceLocale] =
+      (root[sourceLocale] as Record<string, CriterionEvaluation> | undefined) ??
+      sourceEvaluations;
+  }
+  await ref.set({ criteriaEvaluationsByLocale: next }, { merge: true });
+}
+
+/**
+ * Resolve locale evaluations without Claude when possible:
+ * 1) this analysis doc  2) same-image fingerprint store  3) clone parent
+ */
+async function resolveCachedLocaleEvaluations(input: {
+  analysisId: string;
+  targetLocale: AnalysisUiLocale;
+  preloadedLocaleCache?: unknown;
+}): Promise<Record<string, CriterionEvaluation> | null> {
+  const { analysisId, targetLocale } = input;
+
+  if (input.preloadedLocaleCache !== undefined) {
+    const fromPreload = readCachedEvaluationsFromRoot(
+      input.preloadedLocaleCache,
+      targetLocale,
+    );
+    if (fromPreload) return fromPreload;
+  }
+
+  const meta = await loadAnalysisMeta(analysisId);
+  if (input.preloadedLocaleCache === undefined) {
+    const fromSelf = readCachedEvaluationsFromRoot(meta.localeRoot, targetLocale);
+    if (fromSelf) return fromSelf;
+  }
+
+  const fromFingerprint = await readFingerprintLocaleCache(
+    meta.ownerEmail,
+    meta.imageFingerprint,
     targetLocale,
   );
+  if (fromFingerprint) {
+    await persistLocaleOnAnalysis(analysisId, targetLocale, fromFingerprint);
+    return fromFingerprint;
+  }
+
+  if (meta.reusedFromAnalysisId && meta.reusedFromAnalysisId !== analysisId) {
+    const parentMeta = await loadAnalysisMeta(meta.reusedFromAnalysisId);
+    const fromParent = readCachedEvaluationsFromRoot(
+      parentMeta.localeRoot,
+      targetLocale,
+    );
+    if (fromParent) {
+      await persistLocaleOnAnalysis(analysisId, targetLocale, fromParent);
+      if (meta.ownerEmail && meta.imageFingerprint) {
+        await writeFingerprintLocaleCache({
+          ownerEmail: meta.ownerEmail,
+          imageFingerprint: meta.imageFingerprint,
+          targetLocale,
+          evaluations: fromParent,
+        });
+      }
+      return fromParent;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -209,11 +369,11 @@ export async function peekEvaluationsForLocale(input: {
     return { evaluations, needsTranslate: false };
   }
 
-  const cached = await readCachedEvaluations(
+  const cached = await resolveCachedLocaleEvaluations({
     analysisId,
     targetLocale,
-    input.preloadedLocaleCache,
-  );
+    preloadedLocaleCache: input.preloadedLocaleCache,
+  });
   if (cached) {
     return { evaluations: cached, needsTranslate: false };
   }
@@ -242,7 +402,10 @@ export async function resolveEvaluationsForLocale(input: {
     return evaluations;
   }
 
-  const cached = await readCachedEvaluations(analysisId, targetLocale);
+  const cached = await resolveCachedLocaleEvaluations({
+    analysisId,
+    targetLocale,
+  });
   if (cached) return cached;
 
   const ids = selectDisplayEvaluationIds(evaluations);
@@ -261,25 +424,46 @@ export async function resolveEvaluationsForLocale(input: {
     return evaluations;
   }
 
-  const db = getAdminDb();
-  const ref = db.collection(COLLECTIONS.analyses).doc(analysisId);
-
   try {
+    console.info(
+      "[localize-evaluations] Claude translate",
+      analysisId,
+      sourceLocale,
+      "→",
+      targetLocale,
+    );
     const translatedTexts = await withTimeout(
       translateEvaluationTexts(payload, targetLocale),
       TRANSLATE_TIMEOUT_MS,
     );
     const localized = mergeTranslatedTexts(evaluations, translatedTexts);
-    await ref.set(
-      {
-        criteriaEvaluationsByLocale: {
-          [sourceLocale]: evaluations,
-          [targetLocale]: localized,
-        },
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
+    const meta = await loadAnalysisMeta(analysisId);
+
+    await persistLocaleOnAnalysis(
+      analysisId,
+      targetLocale,
+      localized,
+      sourceLocale,
+      evaluations,
     );
+
+    if (meta.ownerEmail && meta.imageFingerprint) {
+      await writeFingerprintLocaleCache({
+        ownerEmail: meta.ownerEmail,
+        imageFingerprint: meta.imageFingerprint,
+        targetLocale,
+        evaluations: localized,
+      });
+    }
+
+    if (meta.reusedFromAnalysisId && meta.reusedFromAnalysisId !== analysisId) {
+      await persistLocaleOnAnalysis(
+        meta.reusedFromAnalysisId,
+        targetLocale,
+        localized,
+      );
+    }
+
     return localized;
   } catch (error) {
     console.error(

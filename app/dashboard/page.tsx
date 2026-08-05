@@ -180,7 +180,7 @@ function RecentAnalysisCard({ item }: { item: Analysis }) {
 
       <div className="mt-2.5 flex min-w-0 shrink-0 items-center justify-between gap-2 @[15rem]:mt-3">
         <span className="min-w-0 truncate py-0.5 text-[10px] leading-snug text-brand-dark/40 @[15rem]:text-[11px]">
-          {formatAnalysisDate(item.updatedAtMs || item.createdAtMs, locale)}
+          {formatAnalysisDate(item.createdAtMs || item.updatedAtMs, locale)}
         </span>
         <Link
           href={`/dashboard/analizler/${item.slug}`}

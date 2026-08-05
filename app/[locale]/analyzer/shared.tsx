@@ -16,6 +16,7 @@ import {
   localizeSuggestionText,
 } from "@/lib/analysis/locale-labels";
 import { LocaleToggle } from "@/components/i18n/LocaleToggle";
+import { Logo } from "@/components/Logo";
 
 export {
   localizeCategoryLabel,
@@ -85,8 +86,8 @@ export function ContentAnalyzerLogo({
 export const GRADER_SHELL_PAD =
   "mx-auto w-full max-w-[1680px] px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12";
 
-/** Guest/grader fast path target (Haiku + compact prompts). */
-const EXPECTED_ANALYSIS_MS = 28_000;
+/** Guest/grader uses Sonnet (same as dashboard) — progress bar pacing. */
+const EXPECTED_ANALYSIS_MS = 48_000;
 const WAIT_STORAGE_PREFIX = "scoreai_grader_wait:";
 const WAIT_PENDING_KEY = `${WAIT_STORAGE_PREFIX}pending`;
 const WAIT_PREVIEW_PREFIX = "scoreai_grader_wait_preview:";
@@ -331,6 +332,7 @@ export function AnalysisWaitingScreen({
   waitKey,
   complete = false,
   onCompleteVisualDone,
+  brand = "analyzer",
 }: {
   tipIndex: number;
   previewUrl?: string | null;
@@ -339,6 +341,8 @@ export function AnalysisWaitingScreen({
   /** When true, bar eases to 100% then calls onCompleteVisualDone */
   complete?: boolean;
   onCompleteVisualDone?: () => void;
+  /** Dashboard wait UI uses Score AI mark; guest analyzer keeps Content Analyzer. */
+  brand?: "analyzer" | "dashboard";
 }) {
   const t = useTranslations("analyzer");
   const loadingSteps = t.raw("loadingSteps") as string[];
@@ -403,7 +407,11 @@ export function AnalysisWaitingScreen({
 
       <div className="relative z-10 mx-auto w-[min(520px,90vw)] px-4 text-center text-white">
         <div className="flex justify-center">
-          <ContentAnalyzerLogo variant="dark" />
+          {brand === "dashboard" ? (
+            <Logo className="h-8 w-auto text-white sm:h-9" />
+          ) : (
+            <ContentAnalyzerLogo variant="dark" />
+          )}
         </div>
         {previewUrl ? (
           <div className="mx-auto mt-6 inline-flex overflow-hidden rounded-xl">

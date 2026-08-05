@@ -8,8 +8,6 @@ import {
   ArrowUpRight,
   BadgeCheck,
   Bot,
-  Briefcase,
-  Camera,
   Check,
   ChevronDown,
   ChevronUp,
@@ -22,6 +20,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { FaInstagram, FaLinkedinIn } from "react-icons/fa6";
 import { type Analysis } from "../data";
 import { ScoreRing } from "../ScoreRing";
 import { SocialShareMenu } from "@/components/dashboard/SocialShareMenu";
@@ -130,6 +129,27 @@ function formatGain(value: number): string {
   return normalized.toFixed(2).replace(/\.?0+$/, "");
 }
 
+function SuggestionLabelText({
+  text,
+  className = "",
+}: {
+  text: string;
+  className?: string;
+}) {
+  const match = text.match(/^([^:：]+)([:：]\s*)([\s\S]*)$/);
+  if (!match) {
+    return <span className={className}>{text}</span>;
+  }
+  const [, title, separator, body] = match;
+  return (
+    <span className={className}>
+      <span className="font-semibold text-brand-dark">{title}</span>
+      <span className="font-semibold text-brand-dark">{separator}</span>
+      {body}
+    </span>
+  );
+}
+
 function ExpandableSuggestionsList({
   suggestions,
   variant,
@@ -172,9 +192,10 @@ function ExpandableSuggestionsList({
               key={`${s.id ?? s.text}-${index}`}
               className="flex items-center gap-2.5 rounded-xl bg-bg-offwhite px-3 py-2"
             >
-              <span className="min-w-0 flex-1 text-[11px] leading-snug text-brand-dark/75">
-                {localizeSuggestionText(s.text, locale, s.criterionId)}
-              </span>
+              <SuggestionLabelText
+                className="min-w-0 flex-1 text-[11px] leading-snug text-brand-dark/75"
+                text={localizeSuggestionText(s.text, locale, s.criterionId)}
+              />
               <span className="shrink-0 rounded-full bg-brand-neon/40 px-2 py-0.5 text-[10px] font-semibold text-brand-dark">
                 {t("gainPotential", { gain: formatGain(s.gain) })}
               </span>
@@ -184,9 +205,10 @@ function ExpandableSuggestionsList({
               key={`${s.id ?? s.text}-${index}`}
               className="flex flex-wrap items-center gap-3.5 rounded-xl border border-brand-dark/8 px-3.5 py-3"
             >
-              <span className="min-w-0 flex-1 text-xs leading-snug text-brand-dark/80">
-                {localizeSuggestionText(s.text, locale, s.criterionId)}
-              </span>
+              <SuggestionLabelText
+                className="min-w-0 flex-1 text-xs leading-snug text-brand-dark/80"
+                text={localizeSuggestionText(s.text, locale, s.criterionId)}
+              />
               <span className="rounded-full bg-brand-neon/40 px-2 py-0.5 text-[11px] font-semibold text-brand-dark">
                 {t("gainPotential", { gain: formatGain(s.gain) })}
               </span>
@@ -394,8 +416,7 @@ export default function AnalizDetayPage() {
     );
   }
 
-  const PlatformIcon =
-    analysis.platformType === "instagram" ? Camera : Briefcase;
+  const isInstagram = analysis.platformType === "instagram";
   const openSuggestionsTab = () => {
     setExpandSuggestionsTab(true);
     setTab("suggestions");
@@ -494,7 +515,11 @@ export default function AnalizDetayPage() {
             </div>
           )}
           <p className="mt-1 flex items-center gap-1.5 text-sm text-brand-dark/45">
-            <PlatformIcon className="size-4" strokeWidth={1.75} />
+            {isInstagram ? (
+              <FaInstagram className="size-4 shrink-0 text-[#E4405F]" aria-hidden />
+            ) : (
+              <FaLinkedinIn className="size-4 shrink-0 text-[#0A66C2]" aria-hidden />
+            )}
             {platformTypeLabel(analysis.platformType, locale)}
           </p>
         </div>
@@ -703,10 +728,10 @@ function OverviewTab({
           <p className="text-xs font-medium text-brand-dark/50">
             {t("overview.overallScore")}
           </p>
-          <div className="mt-3">
-            <ScoreRing score={analysis.score} size={110} stroke={7} />
+          <div className="mt-2">
+            <ScoreRing score={analysis.score} size={148} stroke={8} />
           </div>
-          <span className="mt-3 inline-flex items-center gap-0.5 text-sm font-semibold text-brand-dark">
+          <span className="mt-2 inline-flex items-center gap-0.5 text-sm font-semibold text-brand-dark">
             <ArrowUpRight className="size-4" strokeWidth={2.25} />
             {t("overview.pointsChange", { change: analysis.change })}
           </span>
@@ -801,7 +826,7 @@ function OverviewTab({
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className="flex flex-col">
           <h2 className="text-base font-semibold text-brand-dark">
             {t("overview.scoreDistribution")}
           </h2>
@@ -868,8 +893,8 @@ function OverviewTab({
 function ScoreDistribution({ score }: { score: number }) {
   const t = useTranslations("dashboard.analysisDetail.overview");
   return (
-    <div className="mt-6">
-      <div className="relative mb-6">
+    <div className="mt-auto flex flex-1 flex-col justify-end pt-10 pb-10">
+      <div className="relative mb-4">
         <div
           className="absolute -top-6 flex -translate-x-1/2 flex-col items-center"
           style={{ left: `${score}%` }}
@@ -1084,13 +1109,13 @@ function InsightsTab({ analysis }: { analysis: Analysis }) {
                   className="mt-0.5 size-3.5 shrink-0 text-brand-dark/40"
                   strokeWidth={2}
                 />
-                <span>
-                  {localizeSuggestionText(
+                <SuggestionLabelText
+                  text={localizeSuggestionText(
                     suggestion.text,
                     locale,
                     suggestion.criterionId,
                   )}
-                </span>
+                />
               </li>
             ))}
           </ul>

@@ -78,8 +78,8 @@ export async function GET(request: Request) {
     mode: "list",
   });
   const filtered = allAnalyses.filter((analysis) => {
-    const updatedAtMs = analysis.updatedAtMs || analysis.createdAtMs;
-    if (dateThreshold && updatedAtMs < dateThreshold) return false;
+    const createdAtMs = analysis.createdAtMs || analysis.updatedAtMs;
+    if (dateThreshold && createdAtMs < dateThreshold) return false;
     return isScoreInRange(analysis.score, scoreRange);
   });
 

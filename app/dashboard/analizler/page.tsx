@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
 import {
   formatAnalysisDate,
   jobStatusLabel,
@@ -10,8 +11,6 @@ import {
   toAnalysisUiLocale,
 } from "@/lib/analysis/display-copy";
 import {
-  Briefcase,
-  Camera,
   Check,
   CheckCircle2,
   CheckSquare,
@@ -23,6 +22,7 @@ import {
   Square,
   Trash2,
 } from "lucide-react";
+import { FaInstagram, FaLinkedinIn } from "react-icons/fa6";
 import {
   fetchDashboardCached,
   getDashboardCache,
@@ -181,6 +181,7 @@ function buildPaginationItems(currentPage: number, totalPages: number): Paginati
 
 export default function AnalizlerPage() {
   const locale = toAnalysisUiLocale(useLocale());
+  const pathname = usePathname();
   const t = useTranslations("dashboard.analyses");
   const [query, setQuery] = useState("");
   const [dateRange, setDateRange] = useState<DateRangeValue>("30d");
@@ -198,6 +199,12 @@ export default function AnalizlerPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const forceRefreshRef = useRef(false);
+
+  // Soft-nav back to this page must not paint a stale 5‑minute list cache.
+  useEffect(() => {
+    forceRefreshRef.current = true;
+    setRefreshTick((tick) => tick + 1);
+  }, [pathname]);
 
   const dateRangeOptions = DATE_RANGE_VALUES.map((value) => ({
     value,
@@ -464,8 +471,7 @@ export default function AnalizlerPage() {
 
         <div className="divide-y divide-brand-dark/5">
           {analyses.map((a: DashboardAnalysis) => {
-            const PlatformIcon =
-              a.platformType === "instagram" ? Camera : Briefcase;
+            const isInstagram = a.platformType === "instagram";
             return (
               <div
                 key={a.id}
@@ -522,7 +528,17 @@ export default function AnalizlerPage() {
                           {a.title}
                         </p>
                         <p className="mt-1 flex items-center gap-1.5 text-xs text-brand-dark/45">
-                          <PlatformIcon className="size-3.5" strokeWidth={1.75} />
+                          {isInstagram ? (
+                            <FaInstagram
+                              className="size-3.5 shrink-0 text-[#E4405F]"
+                              aria-hidden
+                            />
+                          ) : (
+                            <FaLinkedinIn
+                              className="size-3.5 shrink-0 text-[#0A66C2]"
+                              aria-hidden
+                            />
+                          )}
                           {platformTypeLabel(a.platformType, locale)}
                         </p>
                       </div>
@@ -530,7 +546,7 @@ export default function AnalizlerPage() {
 
                     <div className="text-sm text-brand-dark/60 md:block">
                       <span className="text-brand-dark/40 md:hidden">{t("dateLabel")} </span>
-                      {formatAnalysisDate(a.updatedAtMs || a.createdAtMs, locale)}
+                      {formatAnalysisDate(a.createdAtMs || a.updatedAtMs, locale)}
                     </div>
 
                     <div className="flex items-center gap-3 md:gap-2">

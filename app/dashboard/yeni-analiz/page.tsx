@@ -18,10 +18,12 @@ import {
 import {
   AnalysisWaitingScreen,
   bindGraderWaitToSlug,
+  clearGraderWait,
   markGraderWaitPending,
   markGraderWaitPreview,
 } from "@/app/[locale]/analyzer/shared";
 import "@/app/[locale]/analyzer/grader.css";
+import { invalidateDashboardCache } from "@/lib/dashboard/client-cache";
 import {
   markAnalysisWatchActive,
   requestNotificationsRefresh,
@@ -117,6 +119,7 @@ export default function YeniAnalizPage() {
         slug?: string;
         analysisId?: string;
         jobStatus?: string;
+        reused?: boolean;
         message?: string;
       };
       if (!response.ok) {
@@ -127,12 +130,28 @@ export default function YeniAnalizPage() {
         throw new Error(t("errorNoRedirect"));
       }
 
+      const bindKey = data.slug || data.analysisId!;
+      const target = data.analysisId
+        ? `/dashboard/analiz-sonucu?id=${encodeURIComponent(data.analysisId)}`
+        : `/dashboard/analiz-sonucu?slug=${encodeURIComponent(data.slug!)}`;
+
+      // Identical image + unchanged brand context — prior result, skip wait/LLM.
+      if (data.reused || data.jobStatus === "completed") {
+        clearGraderWait(bindKey);
+        if (data.analysisId) clearGraderWait(data.analysisId);
+        setSubmitting(false);
+        invalidateDashboardCache("dashboard:");
+        requestNotificationsRefresh();
+        router.replace(target);
+        return;
+      }
+
       markAnalysisWatchActive();
+      invalidateDashboardCache("dashboard:");
       requestNotificationsRefresh();
 
       // Keep the same wait clock + local preview across soft navigation.
       await previewReady;
-      const bindKey = data.slug || data.analysisId!;
       bindGraderWaitToSlug(bindKey, {
         analysisId: data.analysisId,
         mediaPath: data.analysisId
@@ -140,9 +159,6 @@ export default function YeniAnalizPage() {
           : null,
       });
 
-      const target = data.analysisId
-        ? `/dashboard/analiz-sonucu?id=${encodeURIComponent(data.analysisId)}`
-        : `/dashboard/analiz-sonucu?slug=${encodeURIComponent(data.slug!)}`;
       router.replace(target);
       return;
     } catch (submitError) {
@@ -307,6 +323,7 @@ export default function YeniAnalizPage() {
           <AnalysisWaitingScreen
             tipIndex={tipIndex}
             previewUrl={selectedFilePreviewUrl}
+            brand="dashboard"
           />
         </div>
       ) : null}

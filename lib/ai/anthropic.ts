@@ -5,7 +5,7 @@ import type { NcqsCategoryId } from "@/lib/analysis/prompts";
 import { normalizeCriterionLevel } from "@/lib/analysis/rubric";
 
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5";
-/** Guest/grader image-only path — prioritize latency over prose depth. */
+/** Optional fast model (translations / non-scoring helpers). Scoring uses Sonnet. */
 const DEFAULT_FAST_ANTHROPIC_MODEL = "claude-haiku-4-5";
 const DEFAULT_TIMEOUT_MS = 90_000;
 const MAX_CATEGORY_RETRIES = 2;

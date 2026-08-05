@@ -243,7 +243,7 @@ function PostInsightCard({ analysis }: { analysis: Analysis }) {
             </p>
             <p className="mt-0.5 text-xs text-brand-dark/50">
               {formatAnalysisDate(
-                analysis.updatedAtMs || analysis.createdAtMs,
+                analysis.createdAtMs || analysis.updatedAtMs,
                 locale,
               )}
             </p>

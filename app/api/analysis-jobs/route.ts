@@ -86,8 +86,10 @@ export async function POST(request: Request) {
     );
   }
 
-  scheduleAnalysisProcessing();
-
+  // Cache hit still creates a new analysis row and burns a credit; only LLM is skipped.
+  if (!result.reused) {
+    scheduleAnalysisProcessing();
+  }
   if (!isAdmin) {
     await consumeFreeAnalysis(ownerEmail);
   }
@@ -99,6 +101,7 @@ export async function POST(request: Request) {
       analysisId: result.analysisId,
       slug: result.slug,
       jobStatus: result.jobStatus,
+      reused: Boolean(result.reused),
     },
     { status: result.status },
   );

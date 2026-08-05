@@ -120,7 +120,9 @@ export async function POST(request: Request) {
       );
     }
 
-    scheduleAnalysisProcessing();
+    if (!result.reused) {
+      scheduleAnalysisProcessing();
+    }
     if (!isAdmin) {
       await consumeFreeAnalysis(loggedInEmail);
     }
@@ -133,6 +135,7 @@ export async function POST(request: Request) {
         analysisId: result.analysisId,
         slug: result.slug,
         jobStatus: result.jobStatus,
+        reused: Boolean(result.reused),
       },
       { status: result.status },
     );
@@ -262,7 +265,9 @@ export async function POST(request: Request) {
     );
   }
 
-  scheduleAnalysisProcessing();
+  if (!result.reused) {
+    scheduleAnalysisProcessing();
+  }
 
   const response = NextResponse.json(
     {
@@ -272,6 +277,7 @@ export async function POST(request: Request) {
       analysisId: result.analysisId,
       slug: result.slug,
       jobStatus: result.jobStatus,
+      reused: Boolean(result.reused),
     },
     { status: result.status },
   );
