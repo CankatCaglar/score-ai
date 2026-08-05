@@ -156,46 +156,40 @@ export function proxy(request: NextRequest) {
   }
 
   if (isDashboardRoute) {
-    // Prefer a real Firebase user session over a leftover admin cookie.
-    // Admin-only access belongs on /admin-dashboard (rewritten below).
-    if (userSession) {
-      if (!userSession.emailVerified) {
-        const url = request.nextUrl.clone();
-        url.pathname = "/email-dogrula";
-        url.search = "";
-        return NextResponse.redirect(url);
-      }
-
-      if (APP_MODE === "waitlist") {
-        return redirectToLocaleHome(request, locale, "waitlist");
-      }
-
-      if (APP_MODE === "early_access") {
-        const currentAccessCookie = request.cookies.get(
-          EARLY_ACCESS_COOKIE_NAME,
-        )?.value;
-        const hasValidInvite = Boolean(
-          verifyEarlyAccessToken(currentAccessCookie),
-        );
-
-        if (!hasValidInvite) {
-          return redirectToLocaleHome(request, locale, "invite_required");
-        }
-      }
-
+    // Admin panel session always unlocks the product dashboard (waitlist bypass).
+    if (adminSession) {
       return NextResponse.next();
     }
 
-    if (adminSession) {
+    if (!userSession) {
+      return redirectToLogin(request);
+    }
+
+    if (!userSession.emailVerified) {
       const url = request.nextUrl.clone();
-      url.pathname = pathWithoutLocale.replace(
-        /^\/dashboard/,
-        "/admin-dashboard",
-      );
+      url.pathname = "/email-dogrula";
+      url.search = "";
       return NextResponse.redirect(url);
     }
 
-    return redirectToLogin(request);
+    if (APP_MODE === "waitlist") {
+      return redirectToLocaleHome(request, locale, "waitlist");
+    }
+
+    if (APP_MODE === "early_access") {
+      const currentAccessCookie = request.cookies.get(
+        EARLY_ACCESS_COOKIE_NAME,
+      )?.value;
+      const hasValidInvite = Boolean(
+        verifyEarlyAccessToken(currentAccessCookie),
+      );
+
+      if (!hasValidInvite) {
+        return redirectToLocaleHome(request, locale, "invite_required");
+      }
+    }
+
+    return NextResponse.next();
   }
 
   if (isAuthRoute) {

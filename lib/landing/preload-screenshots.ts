@@ -17,14 +17,14 @@ function warmUrl(url: string): Promise<void> {
       return;
     }
 
-    // Decode into browser image cache (same URL Next Image uses with unoptimized).
+    // Best-effort warm of the static asset URL. Next Image may still fetch an
+    // optimizer variant (/_next/image?...) on first paint — nice-to-have only.
     const img = new window.Image();
     img.decoding = "async";
     img.onload = () => resolve();
     img.onerror = () => resolve();
     img.src = url;
 
-    // Also hint the preload scanner for the critical path.
     if (!document.head.querySelector(`link[data-landing-preload="${url}"]`)) {
       const link = document.createElement("link");
       link.rel = "preload";
@@ -39,7 +39,7 @@ function warmUrl(url: string): Promise<void> {
   return promise;
 }
 
-/** Warm screenshot cache for a locale so EN↔TR switches feel instant on toggle. */
+/** Warm static screenshot URLs on locale toggle (hover/click). */
 export function preloadLandingScreenshots(locale: LandingLocale): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (preloadedLocales.has(locale)) return Promise.resolve();

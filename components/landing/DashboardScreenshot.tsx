@@ -26,12 +26,6 @@ type DashboardScreenshotProps = {
   priority?: boolean;
 };
 
-/**
- * Already-compressed webps: serve directly so locale preloads hit the same URL
- * (avoids Next Image optimizer cold-start on EN↔TR switches).
- */
-const IMAGE_UNOPTIMIZED = true;
-
 export function DashboardScreenshot({
   src,
   alt = "Score AI Dashboard",
@@ -56,7 +50,6 @@ export function DashboardScreenshot({
           quality={75}
           priority={priority}
           loading={priority ? undefined : "lazy"}
-          unoptimized={IMAGE_UNOPTIMIZED}
           onError={() => setFailedSrc(src)}
         />
       );
@@ -95,7 +88,6 @@ export function DashboardScreenshot({
           quality={75}
           priority={priority}
           loading={priority ? undefined : "lazy"}
-          unoptimized={IMAGE_UNOPTIMIZED}
           onError={() => setFailedSrc(src)}
         />
       ) : (

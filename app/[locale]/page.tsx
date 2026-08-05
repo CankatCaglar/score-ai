@@ -515,7 +515,6 @@ export default function LandingPage() {
                     sizes="(max-width: 1024px) 100vw, 280px"
                     quality={75}
                     loading="lazy"
-                    unoptimized
                   />
                 </div>
               </div>
@@ -547,7 +546,6 @@ export default function LandingPage() {
                     sizes="(max-width: 1024px) 100vw, 280px"
                     quality={75}
                     loading="lazy"
-                    unoptimized
                   />
                 </div>
               </div>
@@ -1005,7 +1003,6 @@ export default function LandingPage() {
                           sizes="(max-width: 1024px) 100vw, 220px"
                           quality={75}
                           loading="lazy"
-                          unoptimized
                         />
                       </div>
                       <button
@@ -1062,7 +1059,6 @@ export default function LandingPage() {
                         sizes="128px"
                         quality={75}
                         loading="lazy"
-                        unoptimized
                       />
                     </div>
                   </div>
@@ -1202,7 +1198,6 @@ export default function LandingPage() {
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 quality={75}
                 loading="lazy"
-                unoptimized
               />
             </div>
           </FadeIn>
