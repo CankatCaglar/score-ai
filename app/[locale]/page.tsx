@@ -33,7 +33,15 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { type IconType } from "react-icons";
 import { FaFacebookF, FaInstagram, FaLinkedinIn } from "react-icons/fa6";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
@@ -43,20 +51,14 @@ import {
 import { LiveSupportWidget } from "@/components/landing/LiveSupportWidget";
 import { LocaleToggle } from "@/components/i18n/LocaleToggle";
 import { joinWaitlist } from "@/actions/waitlist";
+import {
+  ANALYSIS_PREVIEW_IMAGES,
+  LANDING_SCREENSHOTS,
+} from "@/lib/landing/screenshots";
+import { scheduleOppositeLocaleScreenshotPreload } from "@/lib/landing/preload-screenshots";
 
 const PAGE_CONTAINER =
   "mx-auto w-full max-w-[1880px] px-4 sm:px-6 lg:px-8 xl:px-10  2xl:px-12";
-
-const ANALYSIS_PREVIEW_IMAGES = {
-  tr: {
-    current: "/screenshots/analysis-current.webp",
-    suggested: "/screenshots/analysis-suggested.webp",
-  },
-  en: {
-    current: "/screenshots/analysis-current.webp",
-    suggested: "/screenshots/analysis-suggested-en.webp",
-  },
-} as const;
 
 const AUDIENCE_CARD_IMAGES = [
   "/screenshots/audience-card-1.webp",
@@ -78,26 +80,12 @@ const UPLOAD_SOURCE_ICONS: {
   { label: "Link", icon: Link2, className: "text-brand-dark/70" },
 ];
 
-const LANDING_SCREENSHOTS = {
-  tr: {
-    hero: "/screenshots/dashboard-hero.webp",
-    brandDna: "/screenshots/dashboard-brand-brain.webp",
-    benchmark: "/screenshots/dashboard-benchmark.webp",
-    creativeMemory: "/screenshots/dashboard-creative-memory.webp",
-    video: "/screenshots/dashboard-video.webp",
-    footerQuote: "/screenshots/footer-quote-image.webp",
-  },
-  en: {
-    // Distinct filenames (not *-en overwrite) so browser/Next Image caches refresh.
-    hero: "/screenshots/dashboard-overview-en.webp",
-    brandDna: "/screenshots/dashboard-brand-dna-en.webp",
-    benchmark: "/screenshots/dashboard-benchmark-en.webp",
-    creativeMemory: "/screenshots/dashboard-memory-detail-en.webp",
-    video: "/screenshots/dashboard-overview-video-en.webp",
-    footerQuote: "/screenshots/footer-quote-image-en.webp",
-  },
-} as const;
 const PRODUCT_VIDEO_EMBED_URL = "https://www.youtube.com/embed/ALk-ws_XffI?autoplay=1&rel=0";
+
+/** Survives client-side locale remounts without hydration mismatch. */
+let hasPlayedLandingEntranceMotion = false;
+
+const SkipEntranceMotionContext = createContext(false);
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -108,6 +96,16 @@ const FINAL_STATS_ICONS = [Users, TrendingUp, Target, Clock] as const;
 const STEP_ICONS = [CloudUpload, Search, Target, Sparkles, Zap] as const;
 const VIDEO_HIGHLIGHT_ICONS = [BarChart3, TrendingUp, Sparkles] as const;
 
+function useSkipLandingEntranceMotion() {
+  const [skip] = useState(() => hasPlayedLandingEntranceMotion);
+
+  useEffect(() => {
+    hasPlayedLandingEntranceMotion = true;
+  }, []);
+
+  return skip;
+}
+
 function FadeIn({
   children,
   delay = 0,
@@ -117,6 +115,12 @@ function FadeIn({
   delay?: number;
   className?: string;
 }) {
+  const instant = useContext(SkipEntranceMotionContext);
+
+  if (instant) {
+    return <div className={className}>{children}</div>;
+  }
+
   return (
     <motion.div
       className={className}
@@ -193,6 +197,7 @@ function WaitlistForm({
 export default function LandingPage() {
   const locale = useLocale() as "tr" | "en";
   const t = useTranslations("landing");
+  const skipEntranceMotion = useSkipLandingEntranceMotion();
   const [heroEmail, setHeroEmail] = useState("");
   const [footerEmail, setFooterEmail] = useState("");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -203,6 +208,10 @@ export default function LandingPage() {
   const accessToastShownRef = useRef(false);
   const landingScreens = LANDING_SCREENSHOTS[locale];
   const analysisPreviewImages = ANALYSIS_PREVIEW_IMAGES[locale];
+
+  useEffect(() => {
+    return scheduleOppositeLocaleScreenshotPreload(locale);
+  }, [locale]);
 
   const menuLabels = t.raw("nav.menuItems") as string[];
   const menuItems = useMemo(
@@ -331,6 +340,7 @@ export default function LandingPage() {
   };
 
   return (
+    <SkipEntranceMotionContext.Provider value={skipEntranceMotion}>
     <div className="overflow-x-clip bg-bg-offwhite text-brand-dark [&_a]:cursor-pointer [&_button:not(:disabled)]:cursor-pointer">
       {/* HEADER */}
       <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-brand-dark/95 backdrop-blur-md">
@@ -365,7 +375,7 @@ export default function LandingPage() {
           </nav>
 
           <div className="flex items-center justify-end gap-2">
-            <LocaleToggle variant="dark" />
+            <LocaleToggle variant="dark" prefetchLandingScreenshots />
             <button
               type="button"
               onClick={() => scrollTo("son-adim")}
@@ -511,6 +521,7 @@ export default function LandingPage() {
                     sizes="(max-width: 1024px) 100vw, 280px"
                     quality={75}
                     loading="lazy"
+                    unoptimized
                   />
                 </div>
               </div>
@@ -542,6 +553,7 @@ export default function LandingPage() {
                     sizes="(max-width: 1024px) 100vw, 280px"
                     quality={75}
                     loading="lazy"
+                    unoptimized
                   />
                 </div>
               </div>
@@ -999,6 +1011,7 @@ export default function LandingPage() {
                           sizes="(max-width: 1024px) 100vw, 220px"
                           quality={75}
                           loading="lazy"
+                          unoptimized
                         />
                       </div>
                       <button
@@ -1055,6 +1068,7 @@ export default function LandingPage() {
                         sizes="128px"
                         quality={75}
                         loading="lazy"
+                        unoptimized
                       />
                     </div>
                   </div>
@@ -1194,6 +1208,7 @@ export default function LandingPage() {
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 quality={75}
                 loading="lazy"
+                unoptimized
               />
             </div>
           </FadeIn>
@@ -1292,5 +1307,6 @@ export default function LandingPage() {
 
       <LiveSupportWidget />
     </div>
+    </SkipEntranceMotionContext.Provider>
   );
 }

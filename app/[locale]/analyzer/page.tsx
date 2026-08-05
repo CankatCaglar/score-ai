@@ -3,12 +3,9 @@ import { cookies } from "next/headers";
 import { setRequestLocale } from "next-intl/server";
 import { getCurrentUserSession } from "@/actions/auth";
 import { ADMIN_COOKIE_NAME, verifySessionToken } from "@/lib/admin-auth";
-import { listAnalysesByGuestId } from "@/lib/analysis/repository";
 import { GraderClient } from "./GraderClient";
 import {
-  GRADER_GUEST_COOKIE_NAME,
   GRADER_LOCK_COOKIE_NAME,
-  verifyGraderGuestToken,
   verifyGraderLockToken,
 } from "@/lib/grader-auth";
 
@@ -31,25 +28,16 @@ export default async function GraderPage({
     verifySessionToken(cookieStore.get(ADMIN_COOKIE_NAME)?.value),
   );
   const graderLockToken = cookieStore.get(GRADER_LOCK_COOKIE_NAME)?.value;
-  const guestToken = cookieStore.get(GRADER_GUEST_COOKIE_NAME)?.value;
-  const guestId = verifyGraderGuestToken(guestToken)?.guestId;
   const lockedByCookie = Boolean(verifyGraderLockToken(graderLockToken));
 
-  let existingSlug: string | null = null;
-  if (!isAdmin && guestId) {
-    const existing = await listAnalysesByGuestId(guestId);
-    const primary =
-      existing.find((item) => item.jobStatus === "completed") ?? existing[0];
-    existingSlug = primary?.slug ?? null;
-  }
-
-  // Admin waitlist test: kilidi UI'da gösterme.
-  const isFreeUsed = !isAdmin && (lockedByCookie || Boolean(existingSlug));
+  // Cookie-only on the server so EN↔TR switches stay fast (no Firestore round-trip).
+  // Slug + edge cases are filled by GraderClient via /api/grader/status.
+  const isFreeUsed = !isAdmin && lockedByCookie;
 
   return (
     <GraderClient
       initialFreeUsed={isFreeUsed}
-      initialExistingSlug={existingSlug}
+      initialExistingSlug={null}
     />
   );
 }

@@ -56,6 +56,7 @@ import {
   toastAnalysisCompletedIfAllowed,
 } from "@/lib/notifications/toast-analysis";
 import { clientAllowsInstantNotify } from "@/lib/notifications/client-preferences";
+import { triggerDownload } from "@/lib/dashboard/trigger-download";
 
 const graderSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -63,24 +64,6 @@ const graderSans = Plus_Jakarta_Sans({
 });
 
 const CANVA_MAGIC_LAYERS_URL = "https://www.canva.com/?highlight=magicLayers";
-
-async function triggerDownload(url: string, fileName: string) {
-  try {
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) throw new Error("download-failed");
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = objectUrl;
-    anchor.download = fileName;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(objectUrl);
-  } catch {
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
-}
 
 function titleToFileSlug(title: string): string {
   const map: Record<string, string> = {

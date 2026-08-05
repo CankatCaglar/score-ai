@@ -1,6 +1,9 @@
 "use client";
 
 import { toast } from "sonner";
+import type { AppLocale } from "@/i18n/routing";
+import enMessages from "@/messages/en.json";
+import trMessages from "@/messages/tr.json";
 
 const TIP_DURATION_MS = 4500;
 const TIP_GAP_MS = 700;
@@ -14,12 +17,50 @@ export type ProductTipId =
   | "first_analysis_banner";
 
 type QueuedTip = {
-  id: string;
-  message: string;
-  description?: string;
+  id: ProductTipId | string;
   href?: string;
+  /** Legacy fields — ignored when a localized tip id is recognized. */
+  message?: string;
+  description?: string;
   actionLabel?: string;
 };
+
+type TipCopy = {
+  message: string;
+  actionLabel: string;
+};
+
+function clientLocale(): AppLocale {
+  if (typeof document === "undefined") return "tr";
+  const fromCookie = document.cookie.match(
+    /(?:^|;\s*)NEXT_LOCALE=(tr|en)(?:;|$)/,
+  )?.[1];
+  if (fromCookie === "tr" || fromCookie === "en") return fromCookie;
+  return document.documentElement.lang?.toLowerCase().startsWith("en")
+    ? "en"
+    : "tr";
+}
+
+function resolveTipCopy(id: string, locale: AppLocale): TipCopy | null {
+  const tips =
+    locale === "en"
+      ? enMessages.dashboard.productTips
+      : trMessages.dashboard.productTips;
+
+  if (id === "brand_dna_incomplete_on_analyze") {
+    return {
+      message: tips.brandDnaIncomplete.message,
+      actionLabel: tips.brandDnaIncomplete.action,
+    };
+  }
+  if (id === "no_competitors_on_analyze") {
+    return {
+      message: tips.noCompetitors.message,
+      actionLabel: tips.noCompetitors.action,
+    };
+  }
+  return null;
+}
 
 function readShownTips(): Set<string> {
   if (typeof window === "undefined") return new Set();
@@ -73,8 +114,7 @@ function readQueue(): QueuedTip[] {
       (item): item is QueuedTip =>
         Boolean(item) &&
         typeof item === "object" &&
-        typeof (item as QueuedTip).id === "string" &&
-        typeof (item as QueuedTip).message === "string",
+        typeof (item as QueuedTip).id === "string",
     );
   } catch {
     return [];
@@ -105,13 +145,25 @@ function enqueueTip(tip: QueuedTip) {
 function showTip(tip: QueuedTip) {
   if (hasShownProductTip(tip.id)) return false;
   markProductTipShown(tip.id);
-  toast(tip.message, {
+
+  const locale = clientLocale();
+  const localized = resolveTipCopy(tip.id, locale);
+  const tips =
+    locale === "en"
+      ? enMessages.dashboard.productTips
+      : trMessages.dashboard.productTips;
+  const message = localized?.message ?? tip.message;
+  if (!message) return false;
+  const actionLabel =
+    localized?.actionLabel ?? tip.actionLabel ?? tips.go;
+
+  toast(message, {
     description: tip.description,
     duration: TIP_DURATION_MS,
     ...(tip.href
       ? {
           action: {
-            label: tip.actionLabel ?? "Git",
+            label: actionLabel,
             onClick: () => {
               if (typeof window !== "undefined") {
                 window.location.assign(tip.href!);
@@ -168,9 +220,7 @@ async function runTipQueue() {
 export function queueBrandDnaIncompleteTip() {
   enqueueTip({
     id: "brand_dna_incomplete_on_analyze",
-    message: "Brand DNA’yı doldurursan skor daha isabetli olur",
     href: "/dashboard/brand-brain",
-    actionLabel: "Brand DNA’ya git",
   });
 }
 
@@ -178,13 +228,10 @@ export function queueBrandDnaIncompleteTip() {
 export function queueNoCompetitorsTip() {
   enqueueTip({
     id: "no_competitors_on_analyze",
-    message: "Rakip ekleyerek karşılaştırmayı güçlendirebilirsin",
     href: "/dashboard/benchmark",
-    actionLabel: "Benchmark’a git",
   });
 }
 
-/** Inspect DNA + competitors and queue post-result tips (one-time each). */
 /** After analysis completes: queue one-time DNA / Benchmark reminders if incomplete. */
 export async function queuePostAnalysisProductTips(_input: {
   analysisId: string;

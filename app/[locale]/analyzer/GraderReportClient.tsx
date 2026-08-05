@@ -481,7 +481,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
             >
               <ContentAnalyzerLogo variant="dark" size="sm" />
             </Link>
-            <LocaleToggle variant="dark" />
+            <LocaleToggle variant="dark" prefetchAnalyzerAssets />
           </div>
         </header>
       </div>
@@ -502,7 +502,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
             >
               <ContentAnalyzerLogo variant="dark" size="sm" />
             </Link>
-            <LocaleToggle variant="dark" />
+            <LocaleToggle variant="dark" prefetchAnalyzerAssets />
           </div>
         </header>
         <main className={`${GRADER_SHELL_PAD} py-16 text-center`}>
@@ -534,7 +534,7 @@ export function GraderReportClient({ slug }: { slug: string }) {
           >
             <ContentAnalyzerLogo variant="dark" size="sm" />
           </Link>
-          <LocaleToggle variant="dark" />
+          <LocaleToggle variant="dark" prefetchAnalyzerAssets />
         </div>
       </header>
 

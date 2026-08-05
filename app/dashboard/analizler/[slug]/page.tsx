@@ -54,6 +54,7 @@ import {
   RUBRIC_VERSION_BASE,
 } from "@/lib/analysis/rubric";
 import { scoreColor } from "@/lib/analysis/ui";
+import { triggerDownload } from "@/lib/dashboard/trigger-download";
 
 const TAB_IDS = [
   "overview",
@@ -81,24 +82,6 @@ const TAB_SUGGESTIONS_PREVIEW_COUNT = 6;
 
 function toUiLocale(locale: string): AnalysisUiLocale {
   return locale === "en" ? "en" : "tr";
-}
-
-async function triggerDownload(url: string, fileName: string) {
-  try {
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) throw new Error("download-failed");
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = objectUrl;
-    anchor.download = fileName;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(objectUrl);
-  } catch {
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
 }
 
 function titleToFileSlug(title: string): string {

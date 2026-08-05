@@ -1707,6 +1707,17 @@
       "relativeHours": "{count} sa",
       "relativeDays": "{count} g"
     },
+    "productTips": {
+      "go": "Git",
+      "brandDnaIncomplete": {
+        "message": "Brand DNA’yı doldurursan skor daha isabetli olur",
+        "action": "Brand DNA’ya git"
+      },
+      "noCompetitors": {
+        "message": "Rakip ekleyerek karşılaştırmayı güçlendirebilirsin",
+        "action": "Benchmark’a git"
+      }
+    },
     "share": {
       "button": "Paylaş",
       "copyLink": "Bağlantıyı kopyala",

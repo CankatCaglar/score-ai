@@ -1706,6 +1706,17 @@
       "relativeHours": "{count}h",
       "relativeDays": "{count}d"
     },
+    "productTips": {
+      "go": "Go",
+      "brandDnaIncomplete": {
+        "message": "Fill in Brand DNA for more accurate scores",
+        "action": "Go to Brand DNA"
+      },
+      "noCompetitors": {
+        "message": "Add competitors to strengthen your comparisons",
+        "action": "Go to Benchmark"
+      }
+    },
     "share": {
       "button": "Share",
       "copyLink": "Copy link",

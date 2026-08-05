@@ -69,6 +69,16 @@
   animation-delay: 0.24s;
 }
 
+/* After the first paint in a session (e.g. EN↔TR), skip entrance fades. */
+.grader-page.grader-skip-entrance .grader-fade-up,
+.grader-page.grader-skip-entrance .grader-fade-up-delay-1,
+.grader-page.grader-skip-entrance .grader-fade-up-delay-2,
+.grader-page.grader-skip-entrance .grader-fade-up-delay-3 {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
 .grader-pulse-soft {
   animation: grader-pulse-soft 2.2s ease-in-out infinite;
 }

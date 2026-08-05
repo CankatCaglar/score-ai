@@ -29,10 +29,41 @@ import {
 import "./grader.css";
 
 import { isValidGraderContactEmail } from "@/lib/grader/email";
+import {
+  ANALYZER_HERO_VISUALS,
+  scheduleOppositeAnalyzerAssetPreload,
+} from "@/lib/analyzer/preload-assets";
+
+const EMAIL_DRAFT_KEY = "score-analyzer-email-draft";
+
+/** Survives client-side locale remounts without hydration mismatch. */
+let hasPlayedGraderEntranceMotion = false;
 
 function isValidEmail(value: string): boolean {
   // `.co` kabul edilmez; `.com` / `.com.tr` vb. tamamlanınca açılır.
   return isValidGraderContactEmail(value);
+}
+
+function readEmailDraft(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return sessionStorage.getItem(EMAIL_DRAFT_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function writeEmailDraft(value: string) {
+  if (typeof window === "undefined") return;
+  try {
+    if (!value) {
+      sessionStorage.removeItem(EMAIL_DRAFT_KEY);
+      return;
+    }
+    sessionStorage.setItem(EMAIL_DRAFT_KEY, value);
+  } catch {
+    // ignore
+  }
 }
 
 function renderMoreInfoText(text: string, bold?: string[]) {
@@ -64,9 +95,10 @@ export function GraderClient({
   initialExistingSlug?: string | null;
 }) {
   const router = useRouter();
-  const locale = useLocale();
+  const locale = useLocale() as "tr" | "en";
   const t = useTranslations("analyzer");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [skipEntranceMotion] = useState(() => hasPlayedGraderEntranceMotion);
   const [email, setEmail] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -89,10 +121,20 @@ export function GraderClient({
   const loadingTips = t.raw("loadingTips") as string[];
   const emailReady = isValidEmail(email);
   const uploadUnlocked = emailReady && !freeUsedLocked;
-  const heroVisualSrc =
-    locale === "en"
-      ? "/analyzer/hero-visual-en.png"
-      : "/analyzer/hero-visual-tr.png";
+  const heroVisualSrc = ANALYZER_HERO_VISUALS[locale];
+
+  useEffect(() => {
+    hasPlayedGraderEntranceMotion = true;
+  }, []);
+
+  useEffect(() => {
+    return scheduleOppositeAnalyzerAssetPreload(locale);
+  }, [locale]);
+
+  useLayoutEffect(() => {
+    const draft = readEmailDraft();
+    if (draft) setEmail((prev) => prev || draft);
+  }, []);
 
   useLayoutEffect(() => {
     // Cached images often fire onLoad before React attaches the handler, then a
@@ -102,8 +144,12 @@ export function GraderClient({
       setHeroVisualReady(true);
       return;
     }
-    setHeroVisualReady(false);
-  }, [heroVisualSrc]);
+    // Keep prior frame visible during locale switch when possible — only blank
+    // on the very first visit while the asset is still decoding.
+    if (!skipEntranceMotion) {
+      setHeroVisualReady(false);
+    }
+  }, [heroVisualSrc, skipEntranceMotion]);
 
   const selectedFilePreviewUrl = useMemo(
     () => (selectedFile ? URL.createObjectURL(selectedFile) : null),
@@ -328,7 +374,11 @@ export function GraderClient({
   ];
 
   return (
-    <div className="grader-page min-h-screen bg-bg-offwhite text-brand-dark">
+    <div
+      className={`grader-page min-h-screen bg-bg-offwhite text-brand-dark${
+        skipEntranceMotion ? " grader-skip-entrance" : ""
+      }`}
+    >
       <main>
         <header className="sticky top-0 z-40 border-b border-white/10 bg-brand-dark/95 backdrop-blur-md">
           <div
@@ -344,7 +394,7 @@ export function GraderClient({
             >
               <ContentAnalyzerLogo variant="dark" size="sm" />
             </button>
-            <LocaleToggle variant="dark" />
+            <LocaleToggle variant="dark" prefetchAnalyzerAssets />
           </div>
         </header>
 
@@ -467,6 +517,7 @@ export function GraderClient({
                         onChange={(e) => {
                           const next = e.target.value;
                           setEmail(next);
+                          writeEmailDraft(next);
                           setError(null);
                           if (!isValidEmail(next) && selectedFile) {
                             setSelectedFile(null);
@@ -696,17 +747,19 @@ export function GraderClient({
             <div className="relative w-full">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                key={heroVisualSrc}
                 ref={heroImgRef}
                 src={heroVisualSrc}
                 alt=""
-                className={`block h-auto w-full object-contain transition-opacity ${
-                  heroVisualReady ? "opacity-100" : "absolute opacity-0"
+                decoding="async"
+                className={`block h-auto w-full object-contain transition-opacity duration-200 ${
+                  heroVisualReady || skipEntranceMotion
+                    ? "opacity-100"
+                    : "absolute opacity-0"
                 }`}
                 onLoad={() => setHeroVisualReady(true)}
                 onError={() => setHeroVisualReady(false)}
               />
-              {!heroVisualReady ? (
+              {!heroVisualReady && !skipEntranceMotion ? (
                 <div
                   className="flex aspect-4/3 animate-pulse items-center justify-center rounded-2xl bg-brand-dark/5"
                   aria-hidden

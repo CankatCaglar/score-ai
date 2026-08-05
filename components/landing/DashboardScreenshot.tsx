@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 /** Screenshot dosyalarını public/screenshots/ altında */
 export const DASHBOARD_SCREENSHOTS = {
@@ -26,6 +26,12 @@ type DashboardScreenshotProps = {
   priority?: boolean;
 };
 
+/**
+ * Already-compressed webps: serve directly so locale preloads hit the same URL
+ * (avoids Next Image optimizer cold-start on EN↔TR switches).
+ */
+const IMAGE_UNOPTIMIZED = true;
+
 export function DashboardScreenshot({
   src,
   alt = "Score AI Dashboard",
@@ -33,18 +39,14 @@ export function DashboardScreenshot({
   className = "",
   priority = false,
 }: DashboardScreenshotProps) {
-  const [showPlaceholder, setShowPlaceholder] = useState(!src);
-
-  useEffect(() => {
-    setShowPlaceholder(!src);
-  }, [src]);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const showPlaceholder = !src || failedSrc === src;
 
   // Section görselleri arka plan/letterbox olmadan, kendi doğal oranında gösterilir
   if (variant === "section") {
     if (src && !showPlaceholder) {
       return (
         <Image
-          key={src}
           src={src}
           alt={alt}
           width={1400}
@@ -54,7 +56,8 @@ export function DashboardScreenshot({
           quality={75}
           priority={priority}
           loading={priority ? undefined : "lazy"}
-          onError={() => setShowPlaceholder(true)}
+          unoptimized={IMAGE_UNOPTIMIZED}
+          onError={() => setFailedSrc(src)}
         />
       );
     }
@@ -80,7 +83,6 @@ export function DashboardScreenshot({
     <div className={`relative w-full overflow-hidden ${variantStyles[variant]} ${className}`}>
       {src && !showPlaceholder ? (
         <Image
-          key={src}
           src={src}
           alt={alt}
           fill
@@ -93,7 +95,8 @@ export function DashboardScreenshot({
           quality={75}
           priority={priority}
           loading={priority ? undefined : "lazy"}
-          onError={() => setShowPlaceholder(true)}
+          unoptimized={IMAGE_UNOPTIMIZED}
+          onError={() => setFailedSrc(src)}
         />
       ) : (
         <div className={`absolute inset-0 flex items-center justify-center p-6 text-center ${placeholderStyle}`}>
