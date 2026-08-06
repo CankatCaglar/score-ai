@@ -90,6 +90,23 @@ export function hasAdminSessionFromCookieHeader(
   return Boolean(verifySessionToken(token));
 }
 
+/**
+ * Ücretsiz analiz hakkı kilidini atla:
+ * - lokal `next dev` (NODE_ENV=development),
+ * - `/admin/login` cookie'si,
+ * - veya giriş e-postası `ADMIN_EMAIL` ile aynıysa
+ */
+export function shouldBypassAnalysisCredits(
+  cookieHeader: string | null,
+  ownerEmail?: string | null,
+): boolean {
+  if (process.env.NODE_ENV === "development") return true;
+  if (hasAdminSessionFromCookieHeader(cookieHeader)) return true;
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  if (!adminEmail || !ownerEmail) return false;
+  return ownerEmail.trim().toLowerCase() === adminEmail;
+}
+
 /** .env.local'daki ADMIN_EMAIL + ADMIN_PASSWORD ile karşılaştırır (timing-safe). */
 export function verifyCredentials(email: string, password: string): boolean {
   const adminEmail = process.env.ADMIN_EMAIL;

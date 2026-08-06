@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -257,6 +257,7 @@ type DetailPayload = {
 export default function AnalizDetayPage() {
   const t = useTranslations("dashboard.analysisDetail");
   const locale = toUiLocale(useLocale());
+  const router = useRouter();
   const params = useParams<{ slug: string }>();
   const slug = typeof params.slug === "string" ? params.slug : "";
   const cacheKey = slug ? analysisDetailCacheKey(slug, locale) : "";
@@ -276,6 +277,22 @@ export default function AnalizDetayPage() {
   const [downloading, setDownloading] = useState(false);
   const [expandSuggestionsTab, setExpandSuggestionsTab] = useState(false);
   const suggestionsSectionRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!analysis?.id) return;
+    const blocked =
+      analysis.jobStatus === "edge_case" ||
+      analysis.scoringBlocked === true ||
+      analysis.potentialImageEligibility?.eligible === false;
+    if (!blocked) return;
+    router.replace("/dashboard/yeni-analiz");
+  }, [
+    analysis?.id,
+    analysis?.jobStatus,
+    analysis?.scoringBlocked,
+    analysis?.potentialImageEligibility?.eligible,
+    router,
+  ]);
 
   useEffect(() => {
     if (!slug) return;

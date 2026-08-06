@@ -1,5 +1,8 @@
 import { after, NextResponse } from "next/server";
-import { hasAdminSessionFromCookieHeader } from "@/lib/admin-auth";
+import {
+  hasAdminSessionFromCookieHeader,
+  shouldBypassAnalysisCredits,
+} from "@/lib/admin-auth";
 import { getVerifiedUserEmailFromCookieHeader } from "@/lib/analysis/auth";
 import {
   assertCanCreateAnalysis,
@@ -85,11 +88,12 @@ export async function POST(request: Request) {
   // Admin cookie erişim kapısıdır; Grader'da "giriş yapmış kullanıcı" sayılmaz.
   // Böylece waitlist'te admin gerçek guest akışını tekrar tekrar test edebilir.
   const loggedInEmail = getVerifiedUserEmailFromCookieHeader(cookieHeader);
+  const bypassCredits = shouldBypassAnalysisCredits(cookieHeader, loggedInEmail);
   const graderLockSubject = getGraderLockSubjectFromCookieHeader(cookieHeader);
   const formData = await request.formData();
 
   if (loggedInEmail) {
-    if (!isAdmin) {
+    if (!bypassCredits) {
       try {
         await assertCanCreateAnalysis(loggedInEmail);
       } catch (error) {
@@ -115,7 +119,11 @@ export async function POST(request: Request) {
 
     if (!result.ok) {
       return NextResponse.json(
-        { error: result.error, message: result.message },
+        {
+          error: result.error,
+          message: result.message,
+          eligibility: result.eligibility,
+        },
         { status: result.status },
       );
     }
@@ -123,7 +131,7 @@ export async function POST(request: Request) {
     if (!result.reused) {
       scheduleAnalysisProcessing();
     }
-    if (!isAdmin) {
+    if (!bypassCredits) {
       await consumeFreeAnalysis(loggedInEmail);
     }
 
@@ -140,7 +148,7 @@ export async function POST(request: Request) {
       { status: result.status },
     );
 
-    if (!isAdmin) {
+    if (!bypassCredits) {
       response.cookies.set(
         GRADER_LOCK_COOKIE_NAME,
         createGraderLockToken(loggedInEmail),
@@ -245,7 +253,11 @@ export async function POST(request: Request) {
 
   if (!result.ok) {
     return NextResponse.json(
-      { error: result.error, message: result.message },
+      {
+        error: result.error,
+        message: result.message,
+        eligibility: result.eligibility,
+      },
       { status: result.status },
     );
   }

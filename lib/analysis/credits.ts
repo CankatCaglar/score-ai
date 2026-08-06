@@ -97,6 +97,34 @@ export async function consumeFreeAnalysis(ownerEmail: string): Promise<AnalysisC
   };
 }
 
+/** Uç nokta / skorlanamayan görsel — harcanan ücretsiz hakkı iade et. */
+export async function refundFreeAnalysis(ownerEmail: string): Promise<AnalysisCredits> {
+  const email = normalizeEmail(ownerEmail);
+  if (isGuestOwnerEmail(email)) {
+    return { freeAnalysesRemaining: 0, analysesUsed: 0 };
+  }
+
+  const current = await getAnalysisCredits(email);
+  const nextRemaining = current.freeAnalysesRemaining + 1;
+  const nextUsed = Math.max(0, current.analysesUsed - 1);
+
+  const db = getAdminDb();
+  const ref = db.collection("users").doc(userDocIdFromEmail(email));
+  await ref.set(
+    {
+      freeAnalysesRemaining: nextRemaining,
+      analysesUsed: nextUsed,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  return {
+    freeAnalysesRemaining: nextRemaining,
+    analysesUsed: nextUsed,
+  };
+}
+
 export async function ensureUserCreditsDefaults(ownerEmail: string): Promise<void> {
   const email = normalizeEmail(ownerEmail);
   if (isGuestOwnerEmail(email)) return;

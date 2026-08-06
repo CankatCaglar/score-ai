@@ -33,7 +33,13 @@ export type AnalysisStatus =
   | "İnceleniyor"
   | "Improved"
   | "In review";
-export type JobStatus = "pending" | "processing" | "completed" | "failed";
+export type JobStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  /** Uç nokta — skorlanmadı; listelerde görünmez, client siler. */
+  | "edge_case";
 
 export type Analysis = {
   id: string;
@@ -90,6 +96,16 @@ export type Analysis = {
     stage3ModelUsed?: string;
   };
   canvaEditUrl?: string;
+  /**
+   * True when critical rubric criteria hit uç nokta (seviye 0).
+   * Report UI is suppressed; user sees the edge-case modal instead.
+   */
+  scoringBlocked?: boolean;
+  /**
+   * Hidden from Analizler / overview until a successful scored completion.
+   * Pending checks and edge-case rejects stay ephemeral and are purged.
+   */
+  ephemeral?: boolean;
   potentialImageEligibility?: {
     eligible: boolean;
     headline: string;

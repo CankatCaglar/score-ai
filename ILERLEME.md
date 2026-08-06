@@ -3,8 +3,8 @@
 > Bu dosya, projenin **operasyonel durumunu** kısa ve net takip etmek için tutulur.  
 > Ürün vizyonu için: [README.md](./README.md)
 
-**Son güncelleme:** 30 Temmuz 2026  
-**Mevcut faz:** Faz 2.2 — Brand Intelligence / Benchmark + Instagram Login (Meta Live & App Review)
+**Son güncelleme:** 6 Ağustos 2026  
+**Mevcut faz:** Faz 2.3 — Public Grader + Brand DNA + Ürün Operasyonu
 
 ---
 
@@ -12,27 +12,34 @@
 
 | Alan | Durum | Not |
 | --- | --- | --- |
-| Landing (public) | ✅ Canlı | TR/EN dil seçimi, responsive, waitlist formları |
+| Landing (public) | ✅ Canlı | TR/EN, responsive, waitlist, live support, cookie consent |
 | Waitlist backend | ✅ Canlı | Firestore + deterministic ID + opsiyonel SMTP |
 | Admin panel (`/admin`) | ✅ Canlı | Waitlist operasyonları + blog yönetimi |
 | Blog (`/blog`) | ✅ Canlı | Public blog liste/detay + admin editoryal akış |
 | Erken erişim davet akışı | ✅ Canlı | Token tabanlı invite link, tek kullanımlık doğrulama |
+| End-user auth | ✅ Canlı | `/giris`, şifre sıfırlama, e-posta doğrulama, Google |
 | Dashboard erişim kontrolü | ✅ Canlı | `APP_ACCESS_MODE` (`waitlist` / `early_access` / `public`) |
 | Dashboard veri katmanı | ✅ Canlı | Liste, detay, overview ve sonuç ekranları Firestore + API |
 | AI analiz motoru (prod) | ✅ Canlı | Anthropic kategori analizi + rubric skor |
-| Brand Intelligence / Benchmark | ✅ Kod + UI | Marka vaadi, rakipler, güven kanıtları, geçmiş içerik |
+| Public Grader / Analyzer | ✅ Canlı | Misafir upload + e-posta capture + public rapor; claim → hesap |
+| Brand DNA (`/dashboard/brand-brain`) | ✅ Canlı | Profil editörü + logo; analiz prompt context’e entegre |
+| Brand Intelligence / Benchmark | ✅ Canlı (UI+API) | Marka vaadi, rakipler, güven kanıtları, geçmiş içerik |
 | Instagram marka hesabı bağlama | 🟡 Kısmi canlı | Instagram Login OAuth hazır; Meta Advanced Access onay bekliyor |
-| Privacy / legal sayfaları | ✅ Canlı (deploy ile) | `/privacy`, `/gizlilik-politikasi` |
+| Bildirimler | ✅ Canlı | Dashboard bell + tercihler + analiz toast / product tips |
+| Cookie consent + analytics | ✅ Canlı | Consent-gated Vercel Analytics, Yandex Metrica, Meta Pixel |
+| Privacy / legal sayfaları | ✅ Canlı | `/privacy`, `/gizlilik-politikasi` |
 
 ---
 
 ## 2) Canlı Kapsam (Şu an çalışanlar)
 
 ### 2.1 Public taraf
-- Landing page (TR/EN) + pazarlama blokları + video modal
+- Landing page (TR/EN) + pazarlama blokları + video modal + dashboard screenshot’lar
 - Hero ve footer waitlist formları
 - `access` query paramına göre kullanıcıya erişim durumu toast mesajları
 - Footer aksiyonları (`mailto`, Google Maps) + blog linkleri
+- WhatsApp live support widget (`LiveSupportWidget`)
+- Cookie consent banner + consent-gated analytics/marketing script’leri
 - Meta domain doğrulama meta tag (`facebook-domain-verification` → `app/layout.tsx`)
 
 ### 2.2 Waitlist backend
@@ -54,19 +61,44 @@
 - `scripts/generate-early-access-links.mjs` ile davet link üretimi
 - `/invite/[token]` doğrulama + tek kullanım + süre kontrolü
 
-### 2.6 Dashboard modları
+### 2.6 End-user auth
+- `/giris` — e-posta/şifre + Google
+- `/sifremi-unuttum`, `/email-dogrula`, `/auth/action`
+- İmzalı user session cookie (`USER_SESSION_SECRET`)
+- Grader misafir analizlerini hesaba claim etme (`lib/grader/claim.ts`)
+
+### 2.7 Dashboard modları
 - `proxy.ts` ile mode bazlı koruma:
   - `waitlist` / `early_access` / `public`
 - Admin oturumu dashboard’a bypass eder
+- Varsayılan (unset): `waitlist`
 
-### 2.7 Dashboard veri ve analiz katmanı
-- API: overview, analyses (+ filtre/paginasyon/silme), result, media
+### 2.8 Dashboard veri ve analiz katmanı
+- API: overview, analyses (+ filtre/paginasyon/silme), result, media, potential-image
 - `Yeni Analiz` → `/api/analysis-jobs` + worker kuyruğu
 - Anthropic 5 kategori + rubric deterministic skor
 - Cache (fingerprint + model + rubric/prompt version + brand context)
 - `jobStatus` UI/API; başarısız analizde yanlış 0 skor engeli
+- Sonuç ekranı (`/dashboard/analiz-sonucu`): skor kırılımı, potential, AI yorum, sosyal paylaşım
+- Creative Memory: geçmiş analizler + detay (`/dashboard/creative-memory`)
 
-### 2.8 Brand Intelligence / Benchmark (yeni)
+### 2.9 Public Grader / Analyzer (yeni)
+- Sayfalar: `/[locale]/analyzer`, `/[locale]/analyzer/[slug]`
+- API: `/api/grader/jobs`, `/status`, `/result`, `/media/[analysisId]`
+- Misafir upload → e-posta capture → analiz job → public rapor
+- Guest cookie + lock cookie; giriş sonrası analizleri hesaba taşıma
+- Guest/grader akışı Brand DNA / Benchmark context’ini bilinçli olarak atlar (image-only yüzey)
+- Lead kaydı (`lib/grader/leads.ts`) + grader e-posta şablonları
+
+### 2.10 Brand DNA (yeni)
+- Sayfa: `/dashboard/brand-brain`
+- API: `/api/dashboard/brand-dna`, `/api/dashboard/brand-dna/logo`
+- Alanlar: vaat, renkler, tipografi, kişilik, ton, kitle, sektör, keywords, logo
+- Completion/progress hesabı; auto-save
+- Analiz prompt’una `serializeBrandDnaContext` ile enjekte edilir
+- Benchmark stratejik context ile `mergeBrandContexts` üzerinden birleşir
+
+### 2.11 Brand Intelligence / Benchmark
 - Sayfa: `/dashboard/benchmark` (`BenchmarkPageClient`)
 - Bölümler:
   - Marka vaadi
@@ -82,7 +114,18 @@
 - Akış: **Instagram Hesabını Bağla** → Instagram Login → token + son 6–12 post
 - &lt;6 post → kullanıcıya uyarı toast’ı
 
-### 2.9 Instagram Login / Meta durum (operasyon)
+### 2.12 Bildirimler & engagement
+- Dashboard notification bell + unread / mark-read / delete
+- Tercihler: app + e-posta (`/api/dashboard/notifications/preferences`, Ayarlar)
+- Analiz tamamlanma toast’ları + product tips kuyruğu
+- Internal engagement mailer: inaktivite / yarım kalan analiz hatırlatmaları  
+  (`/api/internal/engagement-mailer`, cron + SMTP)
+
+### 2.13 Cookie consent & ölçümleme
+- `CookieConsentBanner` + `ConsentAnalytics`
+- Consent sonrası: Vercel Analytics, Yandex Metrica, Meta Pixel (`META_PIXEL_ID`)
+
+### 2.14 Instagram Login / Meta durum (operasyon)
 | Adım | Durum |
 | --- | --- |
 | Kod: Instagram Login (Facebook Page yok) | ✅ |
@@ -90,10 +133,10 @@
 | Redirect URI | `https://usescore.net/api/auth/meta/callback` |
 | Meta App | ✅ Published |
 | Privacy URL | `https://usescore.net/privacy` |
-| Domain verification meta tag | ✅ kodda; deploy sonrası Meta’da Verify |
+| Domain verification meta tag | ✅ kodda; Meta’da Verify |
 | Business portfolio | 🟡 In review |
 | App Review `instagram_business_basic` Advanced Access | 🟡 Beklemede / Verification’a bağlı |
-| Tester ile OAuth | ✅ Mümkün (`Instagram Testers`, örn. `bat_32123`) |
+| Tester ile OAuth | ✅ Mümkün (`Instagram Testers`) |
 | Rastgele kullanıcı IG bağlama | ❌ Advanced Access onayına kadar |
 
 **Not:** Vercel deploy ≠ Meta Advanced Access. Site public olsa bile Meta Unpublished/Standard Access iken yalnız rol/tester hesapları OAuth tamamlar.
@@ -107,20 +150,27 @@
 - React 19 + TypeScript
 - Tailwind CSS v4
 - Framer Motion, Lucide, Sonner, Recharts
-- Vercel Analytics + Yandex Metrica
+- next-intl (TR/EN)
+- Vercel Analytics + Yandex Metrica + Meta Pixel (consent-gated)
 
 ### Data & Backend
-- Firestore: waitlist, blog, invites, analyses/jobs, `brand_intelligence`, `integrations`
-- Firebase Admin + Storage (benchmark medya / trust proofs)
+- Firestore: waitlist, blog, invites, analyses/jobs, `brand_intelligence`, `brand_dna`, `integrations`, notifications
+- Firebase Admin + Storage (benchmark medya / trust proofs / Brand DNA logo / analiz medya)
+- Firebase Auth (end-user) + imzalı session cookie’ler
 - Anthropic analiz + rubric skor
 - Brand intelligence: `lib/brand-intelligence/*`
+- Brand DNA: `lib/brand-dna/*`
+- Grader: `lib/grader/*`, `lib/grader-auth.ts`
 - Instagram Login OAuth: `lib/brand-intelligence/meta-oauth.ts`  
   (`instagram.com/oauth/authorize`, `graph.instagram.com`, scope: `instagram_business_basic`)
 - Competitor/profile scrape yardımcıları: `lib/instagram/*` (rakip ve website tarama; marka hesabı OAuth ile)
+- Notifications: `lib/notifications/*`
+- Mail: waitlist + grader + engagement (`lib/mail/*`)
 
 ### Güvenlik
-- Admin / early access / user session imzalı cookie’ler
+- Admin / early access / user / grader session imzalı cookie’ler
 - Route koruması: `proxy.ts`
+- Grader API: `assertGraderApiAccess` (public mode veya admin)
 - Marka IG: yalnızca OAuth ile bağlanır (manuel handle claim yok)
 - Secrets commit edilmez
 
@@ -135,11 +185,15 @@ npm run dev
 
 **Lokal URL’ler**
 - `http://localhost:3000` → Landing
+- `http://localhost:3000/tr/analyzer` → Public Grader
 - `http://localhost:3000/blog` → Blog
 - `http://localhost:3000/dashboard` → Dashboard
+- `http://localhost:3000/dashboard/brand-brain` → Brand DNA
 - `http://localhost:3000/dashboard/benchmark` → Brand Intelligence
+- `http://localhost:3000/dashboard/creative-memory` → Creative Memory
 - `http://localhost:3000/privacy` → Privacy (EN)
 - `http://localhost:3000/gizlilik-politikasi` → Gizlilik (TR)
+- `http://localhost:3000/giris` → Kullanıcı girişi
 - `http://localhost:3000/admin/login` → Admin
 
 ```bash
@@ -163,12 +217,17 @@ npm run build
 ### 5.3 Erişim / davet
 - `APP_ACCESS_MODE` (`waitlist` | `early_access` | `public`)
 - `EARLY_ACCESS_SESSION_SECRET`, `APP_BASE_URL`, `USER_SESSION_SECRET`
+- `NEXT_PUBLIC_APP_URL`
 
 ### 5.4 AI / worker
 - `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_TIMEOUT_MS`
 - `ANALYSIS_WORKER_SECRET`, `CRON_SECRET`
 
-### 5.5 Instagram Login (zorunlu — marka hesabı OAuth)
+### 5.5 Grader
+- `GRADER_SESSION_SECRET` (yoksa `USER_SESSION_SECRET` fallback)
+- Grader erişimi `APP_ACCESS_MODE=public` veya admin cookie ile açık
+
+### 5.6 Instagram Login (zorunlu — marka hesabı OAuth)
 - `INSTAGRAM_APP_ID` — Meta App → Instagram → API setup with Instagram login
 - `INSTAGRAM_APP_SECRET`
 - `INSTAGRAM_REDIRECT_URI` — Meta’daki OAuth redirect ile **birebir aynı**  
@@ -176,8 +235,14 @@ npm run build
 - Opsiyonel: `INSTAGRAM_OEMBED_ACCESS_TOKEN` (tek post görsel çözümleme; OAuth için gerekmez)
 - Geriye dönük: `META_APP_ID` / `META_APP_SECRET` / `META_REDIRECT_URI` hâlâ okunur (fallback)
 
-### 5.6 Opsiyonel
-- SMTP, Google Translate, Potential pipeline (Recraft / Bria / Fal)
+### 5.7 Analytics / marketing
+- `META_PIXEL_ID`
+- `YANDEX_METRIKA_ID` (veya mevcut public env eşdeğeri)
+
+### 5.8 Opsiyonel
+- SMTP (waitlist, grader, engagement mailer)
+- Google Translate
+- Potential pipeline (Recraft / Bria / Fal)
 
 > `.env.local` ve service account JSON commit edilmez.
 
@@ -188,22 +253,24 @@ npm run build
 ### P0 — Instagram Live (bloklayıcı)
 - [ ] Meta Business Verification onayını bekle / tamamla
 - [ ] `instagram_business_basic` Advanced Access App Review onayını al
-- [ ] Domain Verify’nin Meta’da yeşil olduğunu doğrula (deploy sonrası)
+- [ ] Domain Verify’nin Meta’da yeşil olduğunu doğrula
 - [ ] Prod’da tester dışı gerçek kullanıcı ile OAuth smoke test
 
 ### P1 — Brand Intelligence ürünleşme
-- [ ] Benchmark verisinin analiz prompt/context’e daha derin entegrasyonu
+- [ ] Benchmark + Brand DNA sinyallerinin analiz çıktısında daha görünür birleşimi
 - [ ] Rakip fetch güvenilirliği (Instagram public scrape kırılganlığı)
 - [ ] Historical media &lt;6 uyarısının UI’da kalıcı banner’ı
-- [ ] Creative Memory / Brand DNA ile benchmark sinyallerinin birleşimi
+- [ ] Creative Memory ile benchmark / DNA sinyallerinin birleşik görünümü
 
 ### P1 — Operasyon / güvenlik
 - [ ] Admin rate limit / audit log
 - [ ] Token refresh (`graph.instagram.com/refresh_access_token`) job’u
+- [ ] Engagement mailer prod cron doğrulama + SMTP izleme
 
-### P2 — AI
+### P2 — AI & Grader
 - [ ] Rubric/prompt yönetim görünürlüğü
 - [ ] Internal eval + job metrikleri
+- [ ] Grader → paid / dashboard conversion funnel ölçümü
 
 ---
 
@@ -219,7 +286,13 @@ npm run build
 | 30 Tem 2026 | Instagram Login OAuth (Facebook Page’siz); `graph.instagram.com` medya sync |
 | 30 Tem 2026 | Manuel `@username` marka bağlama kaldırıldı; yalnız OAuth |
 | 30 Tem 2026 | Privacy sayfaları; Meta domain verification meta tag |
-| 30 Tem 2026 | Meta App Published; Business Verification + App Review süreci başlatıldı (In review) |
+| 30 Tem 2026 | Meta App Published; Business Verification + App Review süreci başlatıldı |
+| ~31 Tem–1 Ağu 2026 | Brand DNA sayfası + API; analiz prompt context entegrasyonu |
+| ~1–3 Ağu 2026 | Dashboard bildirimleri, tercihler, product tips, analiz toast’ları |
+| ~3 Ağu 2026 | Cookie consent + Meta Pixel (consent-gated); LP live support |
+| ~3–5 Ağu 2026 | Public Grader/Analyzer: misafir akış, e-posta, lead, claim, rapor UI |
+| ~4–6 Ağu 2026 | Auth cookie sertleştirme; dashboard/LP/report UI olgunlaştırma |
+| 6 Ağu 2026 | ILERLEME Faz 2.3’e çekildi (Grader + Brand DNA + ürün ops) |
 
 ---
 

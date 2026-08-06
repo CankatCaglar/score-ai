@@ -9,6 +9,8 @@ import {
   PartyPopper,
 } from "lucide-react";
 import { ScoreRing } from "@/app/dashboard/analizler/ScoreRing";
+import { EdgeCaseBlockedModal } from "@/components/analysis/EdgeCaseBlockedModal";
+import { assessPotentialImageEligibility } from "@/lib/analysis/edge-cases";
 import {
   getCriterionIds,
   getMainCategoryDefinitions,
@@ -368,7 +370,8 @@ export function GraderReportClient({ slug }: { slug: string }) {
 
           if (
             data.analysis.jobStatus === "completed" ||
-            data.analysis.jobStatus === "failed"
+            data.analysis.jobStatus === "failed" ||
+            data.analysis.jobStatus === "edge_case"
           ) {
             if (data.analysis.jobStatus === "failed") {
               clearGraderWait(slug);
@@ -433,6 +436,20 @@ export function GraderReportClient({ slug }: { slug: string }) {
       : "/dashboard";
   const kayitHref = `/kayit?next=${encodeURIComponent(authNext)}`;
   const girisHref = `/giris?next=${encodeURIComponent(authNext)}`;
+  const edgeEligibility = useMemo(() => {
+    if (!result) {
+      return assessPotentialImageEligibility(null);
+    }
+    if (result.potentialImageEligibility) {
+      return result.potentialImageEligibility;
+    }
+    return assessPotentialImageEligibility(result.criteriaEvaluations);
+  }, [result]);
+  // Report reject only for explicit edge rows — seviye 0 is a normal low score.
+  const scoringBlocked = Boolean(
+    result &&
+      (result.jobStatus === "edge_case" || result.scoringBlocked === true),
+  );
   const netGain = result
     ? Math.max(0, result.potentialScore - result.score)
     : 0;
@@ -517,6 +534,37 @@ export function GraderReportClient({ slug }: { slug: string }) {
             <ArrowRight className="size-4" strokeWidth={2} />
           </Link>
         </main>
+      </div>
+    );
+  }
+
+  if (scoringBlocked) {
+    const analyzerHref = locale === "en" ? "/en/analyzer" : "/analyzer";
+    return (
+      <div className="grader-page relative min-h-screen bg-bg-offwhite text-brand-dark">
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-brand-dark/95 backdrop-blur-md">
+          <div
+            className={`${GRADER_SHELL_PAD} flex items-center justify-between py-3.5 sm:py-4`}
+          >
+            <Link
+              href="/analyzer"
+              className="transition-opacity hover:opacity-85"
+              aria-label="Content Analyzer by Score AI"
+            >
+              <ContentAnalyzerLogo variant="dark" size="sm" />
+            </Link>
+            <LocaleToggle variant="dark" prefetchAnalyzerAssets />
+          </div>
+        </header>
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgba(225,255,81,0.08),transparent_55%)]"
+          aria-hidden
+        />
+        <EdgeCaseBlockedModal
+          open
+          eligibility={edgeEligibility}
+          newAnalysisHref={analyzerHref}
+        />
       </div>
     );
   }

@@ -8,6 +8,8 @@ import {
   getBrandContextForAnalysisOwner,
   processPendingAnalysisJobs,
 } from "@/lib/analysis/repository";
+import type { PotentialImageEligibility } from "@/lib/analysis/edge-cases";
+import { assessInstantEdgeCaseFromImage } from "@/lib/analysis/instant-edge-check";
 import { toAnalysisUiLocale } from "@/lib/analysis/display-copy";
 import { isGuestOwnerEmail } from "@/lib/grader-auth";
 import {
@@ -16,6 +18,7 @@ import {
   getAdminStorageBucketName,
 } from "@/lib/firebase-admin";
 import type { Platform } from "@/lib/analysis/types";
+import sharp from "sharp";
 
 export type AnalysisJobSubmissionResult =
   | {
@@ -33,6 +36,7 @@ export type AnalysisJobSubmissionResult =
       status: number;
       error: string;
       message?: string;
+      eligibility?: PotentialImageEligibility;
     };
 
 const SOURCE_FETCH_HEADERS = {
@@ -104,28 +108,6 @@ function isTechnicalFileTitle(title: string): boolean {
     return true;
   }
   return false;
-}
-
-async function uploadInputFile(ownerEmail: string, file: File) {
-  const storage = getAdminStorage();
-  const bucket = storage.bucket(getAdminStorageBucketName());
-  const extension = path.extname(file.name) || ".bin";
-  const objectPath = `analysis-inputs/${Buffer.from(ownerEmail).toString("base64url")}/${Date.now()}-${randomUUID()}${extension}`;
-  const object = bucket.file(objectPath);
-  const buffer = Buffer.from(await file.arrayBuffer());
-
-  await object.save(buffer, {
-    metadata: {
-      contentType: file.type || "application/octet-stream",
-    },
-    resumable: false,
-  });
-
-  const mediaUrl = `https://storage.googleapis.com/${bucket.name}/${objectPath}`;
-  return {
-    mediaUrl,
-    storagePath: objectPath,
-  };
 }
 
 async function uploadInputBytes(
@@ -628,6 +610,23 @@ export async function runAnalysisJobSubmission(input: {
     ? fingerprintImageBytes(imageBytes)
     : null;
 
+  // Hard pre-check: block obvious edge creatives BEFORE analysis job/model call.
+  if (imageBytes) {
+    const instantEligibility = await assessInstantEdgeCaseFromImage({
+      bytes: imageBytes,
+      locale: analysisLocale,
+    });
+    if (!instantEligibility.eligible) {
+      return {
+        ok: false,
+        status: 422,
+        error: "EDGE_CASE_BLOCKED",
+        message: instantEligibility.summary,
+        eligibility: instantEligibility,
+      };
+    }
+  }
+
   if (hasFile && file instanceof File && imageBytes) {
     const uploaded = await uploadInputBytes(
       ownerEmail,
@@ -693,7 +692,6 @@ export async function runAnalysisJobSubmission(input: {
           ok: true,
           status: 200,
           ...cloned,
-          jobStatus: "completed",
           reused: true,
         };
       } catch (error) {

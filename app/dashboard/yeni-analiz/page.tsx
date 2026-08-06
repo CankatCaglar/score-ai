@@ -17,15 +17,22 @@ import {
 } from "lucide-react";
 import {
   AnalysisWaitingScreen,
-  bindGraderWaitToSlug,
   clearGraderWait,
   markGraderWaitPending,
   markGraderWaitPreview,
 } from "@/app/[locale]/analyzer/shared";
 import "@/app/[locale]/analyzer/grader.css";
+import { EdgeCaseBlockedModal } from "@/components/analysis/EdgeCaseBlockedModal";
+import {
+  assessPotentialImageEligibility,
+  type PotentialImageEligibility,
+} from "@/lib/analysis/edge-cases";
+import type { Analysis } from "@/lib/analysis/types";
 import { invalidateDashboardCache } from "@/lib/dashboard/client-cache";
+import { withReturnTo } from "@/lib/dashboard/return-navigation";
 import {
   markAnalysisWatchActive,
+  markAnalysisWatchIdle,
   requestNotificationsRefresh,
 } from "@/lib/notifications/toast-analysis";
 
@@ -48,6 +55,72 @@ function normalizeSourceUrl(value: string) {
   return trimmed;
 }
 
+function isEdgeBlocked(analysis: Analysis): boolean {
+  // Only explicit pre-Claude rejects. Seviye 0 after scoring is a normal low score.
+  return (
+    analysis.jobStatus === "edge_case" || analysis.scoringBlocked === true
+  );
+}
+
+function edgeEligibilityOf(analysis: Analysis): PotentialImageEligibility {
+  if (analysis.potentialImageEligibility) {
+    return analysis.potentialImageEligibility;
+  }
+  return assessPotentialImageEligibility(analysis.criteriaEvaluations);
+}
+
+async function discardEphemeralAnalysis(analysisId: string) {
+  try {
+    await fetch("/api/dashboard/analyses", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [analysisId] }),
+    });
+  } catch {
+    // best-effort — list already hides edge_case rows
+  }
+}
+
+async function pollAnalysisResult(
+  analysisId: string,
+  locale: string,
+): Promise<Analysis> {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const qs = new URLSearchParams({
+      id: analysisId,
+      locale,
+    });
+    const response = await fetch(`/api/dashboard/result?${qs}`, {
+      cache: "no-store",
+    });
+    const data = (await response.json().catch(() => ({}))) as {
+      analysis?: Analysis;
+      message?: string;
+    };
+    if (!response.ok || !data.analysis) {
+      if (attempt < 4 && (response.status === 401 || response.status === 404)) {
+        await new Promise((resolve) =>
+          window.setTimeout(resolve, 400 * (attempt + 1)),
+        );
+        continue;
+      }
+      throw new Error(data.message || "RESULT_FAILED");
+    }
+
+    const status = data.analysis.jobStatus;
+    if (
+      status === "completed" ||
+      status === "failed" ||
+      status === "edge_case"
+    ) {
+      return data.analysis;
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 1500));
+  }
+  throw new Error("TIMEOUT");
+}
+
 export default function YeniAnalizPage() {
   const t = useTranslations("dashboard.newAnalysis");
   const tAnalyzer = useTranslations("analyzer");
@@ -59,8 +132,11 @@ export default function YeniAnalizPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [platformType] = useState<"instagram">("instagram");
   const [submitting, setSubmitting] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tipIndex, setTipIndex] = useState(0);
+  const [edgeEligibility, setEdgeEligibility] =
+    useState<PotentialImageEligibility | null>(null);
   const loadingTips = tAnalyzer.raw("loadingTips") as string[];
   const selectedFilePreviewUrl = useMemo(
     () => (selectedFile ? URL.createObjectURL(selectedFile) : null),
@@ -89,20 +165,24 @@ export default function YeniAnalizPage() {
     return () => window.clearInterval(tipTimer);
   }, [submitting, loadingTips.length]);
 
+  const resetAfterEdgeCase = () => {
+    setEdgeEligibility(null);
+    setSelectedFile(null);
+    setUrl("");
+    setError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const submitJob = async () => {
     setError(null);
+    setEdgeEligibility(null);
     const normalizedUrl = normalizeSourceUrl(url);
     if (!selectedFile && !normalizedUrl) {
       setError(t("validationEmpty"));
       return;
     }
 
-    setSubmitting(true);
-    setTipIndex(0);
-    markGraderWaitPending();
-    const previewReady = selectedFile
-      ? markGraderWaitPreview(selectedFile)
-      : Promise.resolve();
+    setChecking(true);
 
     try {
       const formData = new FormData();
@@ -120,9 +200,16 @@ export default function YeniAnalizPage() {
         analysisId?: string;
         jobStatus?: string;
         reused?: boolean;
+        error?: string;
         message?: string;
+        eligibility?: PotentialImageEligibility;
       };
       if (!response.ok) {
+        if (data.error === "EDGE_CASE_BLOCKED" && data.eligibility) {
+          setEdgeEligibility(data.eligibility);
+          setChecking(false);
+          return;
+        }
         throw new Error(data.message || t("errorProcessing"));
       }
 
@@ -130,43 +217,91 @@ export default function YeniAnalizPage() {
         throw new Error(t("errorNoRedirect"));
       }
 
-      const bindKey = data.slug || data.analysisId!;
-      const target = data.analysisId
-        ? `/dashboard/analiz-sonucu?id=${encodeURIComponent(data.analysisId)}`
-        : `/dashboard/analiz-sonucu?slug=${encodeURIComponent(data.slug!)}`;
+      setSubmitting(true);
+      setTipIndex(0);
+      markGraderWaitPending();
+      const previewReady = selectedFile
+        ? markGraderWaitPreview(selectedFile)
+        : Promise.resolve();
 
-      // Identical image + unchanged brand context — prior result, skip wait/LLM.
-      if (data.reused || data.jobStatus === "completed") {
+      const analysisId = data.analysisId!;
+      const bindKey = data.slug || analysisId;
+      await previewReady;
+
+      // Instant reuse — may already be an edge-case reject.
+      if (
+        data.reused ||
+        data.jobStatus === "completed" ||
+        data.jobStatus === "edge_case"
+      ) {
+        const analysis = await pollAnalysisResult(
+          analysisId,
+          locale === "en" ? "en" : "tr",
+        );
         clearGraderWait(bindKey);
-        if (data.analysisId) clearGraderWait(data.analysisId);
-        setSubmitting(false);
+        clearGraderWait(analysisId);
+        markAnalysisWatchIdle();
+
+        if (isEdgeBlocked(analysis) || data.jobStatus === "edge_case") {
+          setEdgeEligibility(edgeEligibilityOf(analysis));
+          await discardEphemeralAnalysis(analysisId);
+          invalidateDashboardCache("dashboard:");
+          setSubmitting(false);
+          return;
+        }
+
+        if (analysis.jobStatus === "failed") {
+          throw new Error(analysis.insight || t("errorProcessing"));
+        }
+
         invalidateDashboardCache("dashboard:");
         requestNotificationsRefresh();
-        router.replace(target);
+        setChecking(false);
+        setSubmitting(false);
+        router.replace(
+          `/dashboard/analiz-sonucu?id=${encodeURIComponent(analysisId)}`,
+        );
         return;
       }
 
       markAnalysisWatchActive();
+      const analysis = await pollAnalysisResult(
+        analysisId,
+        locale === "en" ? "en" : "tr",
+      );
+      clearGraderWait(bindKey);
+      clearGraderWait(analysisId);
+      markAnalysisWatchIdle();
+
+      if (analysis.jobStatus === "failed") {
+        await discardEphemeralAnalysis(analysisId);
+        throw new Error(analysis.insight || t("errorProcessing"));
+      }
+
+      if (isEdgeBlocked(analysis)) {
+        setEdgeEligibility(edgeEligibilityOf(analysis));
+        await discardEphemeralAnalysis(analysisId);
+        invalidateDashboardCache("dashboard:");
+        setChecking(false);
+        setSubmitting(false);
+        return;
+      }
+
       invalidateDashboardCache("dashboard:");
       requestNotificationsRefresh();
-
-      // Keep the same wait clock + local preview across soft navigation.
-      await previewReady;
-      bindGraderWaitToSlug(bindKey, {
-        analysisId: data.analysisId,
-        mediaPath: data.analysisId
-          ? `/api/dashboard/media/${data.analysisId}?size=thumb`
-          : null,
-      });
-
-      router.replace(target);
-      return;
+      setChecking(false);
+      setSubmitting(false);
+      router.replace(
+        `/dashboard/analiz-sonucu?id=${encodeURIComponent(analysisId)}`,
+      );
     } catch (submitError) {
+      markAnalysisWatchIdle();
       setError(
         submitError instanceof Error
           ? submitError.message
           : t("errorGeneric"),
       );
+      setChecking(false);
       setSubmitting(false);
     }
   };
@@ -288,10 +423,10 @@ export default function YeniAnalizPage() {
           <button
             type="button"
             onClick={() => void submitJob()}
-            disabled={submitting}
+            disabled={submitting || checking}
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-dark px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? (
+            {submitting || checking ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
                 {t("processing")}
@@ -324,8 +459,22 @@ export default function YeniAnalizPage() {
             tipIndex={tipIndex}
             previewUrl={selectedFilePreviewUrl}
             brand="dashboard"
+            title={t("checkingTitle")}
           />
         </div>
+      ) : null}
+
+      {edgeEligibility && !edgeEligibility.eligible ? (
+        <EdgeCaseBlockedModal
+          open
+          eligibility={edgeEligibility}
+          newAnalysisHref={withReturnTo(
+            "/dashboard/yeni-analiz",
+            "/dashboard/yeni-analiz",
+          )}
+          onClose={resetAfterEdgeCase}
+          onRetry={resetAfterEdgeCase}
+        />
       ) : null}
     </div>
   );

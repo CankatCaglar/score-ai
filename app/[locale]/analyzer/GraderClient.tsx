@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
+import { EdgeCaseBlockedModal } from "@/components/analysis/EdgeCaseBlockedModal";
+import type { PotentialImageEligibility } from "@/lib/analysis/edge-cases";
 import {
   AnalysisWaitingScreen,
   ContentAnalyzerLogo,
@@ -100,8 +102,11 @@ export function GraderClient({
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tipIndex, setTipIndex] = useState(0);
+  const [edgeEligibility, setEdgeEligibility] =
+    useState<PotentialImageEligibility | null>(null);
   const [freeUsedLocked, setFreeUsedLocked] = useState(initialFreeUsed);
   const [existingSlug, setExistingSlug] = useState<string | null>(
     initialExistingSlug,
@@ -218,6 +223,7 @@ export function GraderClient({
 
   const submitJob = async () => {
     setError(null);
+    setEdgeEligibility(null);
     if (freeUsedLocked) {
       setError(t("freeUsedError"));
       return;
@@ -231,10 +237,7 @@ export function GraderClient({
       return;
     }
 
-    setSubmitting(true);
-    setTipIndex(0);
-    markGraderWaitPending();
-    const previewReady = markGraderWaitPreview(selectedFile);
+    setChecking(true);
 
     try {
       const formData = new FormData();
@@ -255,11 +258,17 @@ export function GraderClient({
         mode?: "guest" | "authenticated";
         message?: string;
         error?: string;
+        eligibility?: PotentialImageEligibility;
       };
 
       if (!response.ok) {
+        if (data.error === "EDGE_CASE_BLOCKED" && data.eligibility) {
+          setEdgeEligibility(data.eligibility);
+          setChecking(false);
+          return;
+        }
         if (data.error === "EMAIL_REQUIRED") {
-          setSubmitting(false);
+          setChecking(false);
           setError(t("emailError"));
           return;
         }
@@ -270,7 +279,7 @@ export function GraderClient({
           data.error === "NO_FREE_ANALYSES"
         ) {
           setFreeUsedLocked(true);
-          setSubmitting(false);
+          setChecking(false);
           if (data.slug) {
             setExistingSlug(data.slug);
             router.replace({
@@ -289,8 +298,14 @@ export function GraderClient({
         throw new Error(t("genericSubmitError"));
       }
 
+      setSubmitting(true);
+      setTipIndex(0);
+      markGraderWaitPending();
+      const previewReady = markGraderWaitPreview(selectedFile);
+
       if (data.mode === "authenticated") {
         // Job runs in the background; analiz-sonucu polls until complete.
+        setChecking(false);
         window.location.href = `/dashboard/analiz-sonucu?id=${data.analysisId}`;
         return;
       }
@@ -299,6 +314,7 @@ export function GraderClient({
       // Reused/completed jobs resolve instantly on the report poll.
       await previewReady;
       bindGraderWaitToSlug(data.slug, { analysisId: data.analysisId });
+      setChecking(false);
       router.replace({
         pathname: "/analyzer/[slug]",
         params: { slug: data.slug },
@@ -309,8 +325,16 @@ export function GraderClient({
           ? submitError.message
           : t("genericSubmitError"),
       );
+      setChecking(false);
       setSubmitting(false);
     }
+  };
+
+  const resetAfterEdgeCase = () => {
+    setEdgeEligibility(null);
+    setSelectedFile(null);
+    setError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const scrollToUpload = () => {
@@ -656,10 +680,10 @@ export function GraderClient({
                       }
                       void submitJob();
                     }}
-                    disabled={submitting || !emailReady}
+                    disabled={submitting || checking || !emailReady}
                     className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-brand-neon px-6 py-3.5 text-sm font-semibold text-brand-dark transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    {t("analyzeCta")}
+                    {checking ? t("processing") : t("analyzeCta")}
                     <ArrowRight className="size-4" strokeWidth={2} />
                   </button>
                 )}
@@ -927,6 +951,15 @@ export function GraderClient({
           waitKey="pending"
         />
       )}
+      {edgeEligibility && !edgeEligibility.eligible ? (
+        <EdgeCaseBlockedModal
+          open
+          eligibility={edgeEligibility}
+          newAnalysisHref={locale === "en" ? "/en/analyzer" : "/analyzer"}
+          onClose={resetAfterEdgeCase}
+          onRetry={resetAfterEdgeCase}
+        />
+      ) : null}
     </div>
   );
 }

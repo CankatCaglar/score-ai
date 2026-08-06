@@ -1,10 +1,11 @@
 import { after, NextResponse } from "next/server";
-import { hasAdminSessionFromCookieHeader } from "@/lib/admin-auth";
+import { shouldBypassAnalysisCredits } from "@/lib/admin-auth";
 import { getDashboardUserEmailFromCookieHeader } from "@/lib/analysis/auth";
 import {
   assertCanCreateAnalysis,
   consumeFreeAnalysis,
 } from "@/lib/analysis/credits";
+import { deleteAnalysesByIds } from "@/lib/analysis/repository";
 import { toAnalysisUiLocale } from "@/lib/analysis/display-copy";
 import { processPendingAnalysisJobs } from "@/lib/analysis/repository";
 import { runAnalysisJobSubmission } from "@/lib/analysis/submit-job";
@@ -45,8 +46,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  // Waitlist döneminde admin testlerini 1 ücretsiz hak kilidine takma.
-  const isAdmin = hasAdminSessionFromCookieHeader(cookieHeader);
+  // Admin cookie VEYA ADMIN_EMAIL ile giriş: 1 ücretsiz hak kilidine takma.
+  const isAdmin = shouldBypassAnalysisCredits(cookieHeader, ownerEmail);
 
   if (!isAdmin) {
     try {
@@ -81,16 +82,23 @@ export async function POST(request: Request) {
 
   if (!result.ok) {
     return NextResponse.json(
-      { error: result.error, message: result.message },
+      {
+        error: result.error,
+        message: result.message,
+        eligibility: result.eligibility,
+      },
       { status: result.status },
     );
   }
 
+  const isEdgeCase = result.jobStatus === "edge_case";
+
   // Cache hit still creates a new analysis row and burns a credit; only LLM is skipped.
-  if (!result.reused) {
+  // Edge-case rejects are not real analyses — no credit burn, no lock.
+  if (!result.reused && !isEdgeCase) {
     scheduleAnalysisProcessing();
   }
-  if (!isAdmin) {
+  if (!isAdmin && !isEdgeCase) {
     await consumeFreeAnalysis(ownerEmail);
   }
 
@@ -105,16 +113,26 @@ export async function POST(request: Request) {
     },
     { status: result.status },
   );
-  response.cookies.set(
-    GRADER_LOCK_COOKIE_NAME,
-    createGraderLockToken(ownerEmail),
-    {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: GRADER_LOCK_TTL_SECONDS,
-    },
-  );
+  if (!isEdgeCase) {
+    response.cookies.set(
+      GRADER_LOCK_COOKIE_NAME,
+      createGraderLockToken(ownerEmail),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: GRADER_LOCK_TTL_SECONDS,
+      },
+    );
+  }
+  // Reused edge-case clone: client will show modal; purge so it never lands in history.
+  if (isEdgeCase && result.reused) {
+    // Keep the row long enough for the client poll, then delete.
+    after(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 15_000));
+      void deleteAnalysesByIds(ownerEmail, [result.analysisId]);
+    });
+  }
   return response;
 }

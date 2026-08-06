@@ -379,7 +379,12 @@ export async function cloneCompletedAnalysisFromSource(input: {
   originalFileName?: string;
   sizeBytes?: number;
   imageFingerprint: string;
-}): Promise<{ jobId: string; analysisId: string; slug: string }> {
+}): Promise<{
+  jobId: string;
+  analysisId: string;
+  slug: string;
+  jobStatus: "completed" | "edge_case";
+}> {
   const db = getAdminDb();
   const ownerEmail = input.ownerEmail.trim().toLowerCase();
   const sourceSnap = await db
@@ -439,6 +444,14 @@ export async function cloneCompletedAnalysisFromSource(input: {
   const hasBrandDna = source.hasBrandDna === true;
   const brandContext =
     typeof source.brandContext === "string" ? source.brandContext : null;
+  const reusedEvaluations =
+    source.criteriaEvaluations &&
+    typeof source.criteriaEvaluations === "object" &&
+    !Array.isArray(source.criteriaEvaluations)
+      ? (source.criteriaEvaluations as Record<string, CriterionEvaluation>)
+      : null;
+  // Edge reject is pre-Claude only. A completed source with scores always clones
+  // as a normal completed analysis — seviye 0 on a criterion is just a low score.
   const score =
     typeof source.score === "number" ? Math.round(source.score) : 0;
   const potentialScore =
@@ -506,6 +519,7 @@ export async function cloneCompletedAnalysisFromSource(input: {
     brandContextHash: brandContextHashOf(brandContext),
     imageFingerprint: input.imageFingerprint,
     reusedFromAnalysisId: input.sourceAnalysisId,
+    scoringBlocked: false,
     potentialImageStatus: "idle",
     potentialImageUrl: null,
     potentialImageMimeType: null,
@@ -514,6 +528,7 @@ export async function cloneCompletedAnalysisFromSource(input: {
     potentialImageModel: null,
     potentialImageError: null,
     jobStatus: "completed",
+    ephemeral: false,
     jobId: jobRef.id,
     createdAt: now,
     updatedAt: now,
@@ -568,6 +583,7 @@ export async function cloneCompletedAnalysisFromSource(input: {
     jobId: jobRef.id,
     analysisId: analysisRef.id,
     slug,
+    jobStatus: "completed",
   };
 }
 
@@ -847,7 +863,12 @@ function mapAnalysisDoc(id: string, data: AnalysisDoc): Analysis {
         : undefined,
     canvaEditUrl:
       typeof data.canvaEditUrl === "string" ? String(data.canvaEditUrl) : undefined,
-    potentialImageEligibility: assessPotentialImageEligibility(criteriaEvaluations),
+    // scoringBlocked is only set by the pre-Claude algorithmic gate (legacy rows).
+    // Seviye 0 after Claude must never flip a completed report into a reject.
+    scoringBlocked: data.scoringBlocked === true,
+    potentialImageEligibility:
+      assessPotentialImageEligibility(criteriaEvaluations),
+    ephemeral: data.ephemeral === true,
     jobId: typeof data.jobId === "string" ? String(data.jobId) : undefined,
     revisionId:
       typeof data.revisionId === "string" ? String(data.revisionId) : undefined,
@@ -901,6 +922,8 @@ function mapAnalysisListDoc(id: string, data: AnalysisDoc): Analysis {
       typeof data.storagePath === "string" ? String(data.storagePath) : undefined,
     mimeType:
       typeof data.mimeType === "string" ? String(data.mimeType) : undefined,
+    scoringBlocked: data.scoringBlocked === true,
+    ephemeral: data.ephemeral === true,
     createdAtMs,
     updatedAtMs,
     microCriteria: [],
@@ -1041,6 +1064,8 @@ export async function createAnalysisJob(
     potentialImageModel: null,
     potentialImageError: null,
     jobStatus: "pending",
+    // Not listable until a real scored completion — prevents "İnceleniyor" ghosts.
+    ephemeral: true,
     createdAt: now,
     updatedAt: now,
   });
@@ -1388,11 +1413,25 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
         nextTitle = generatedTitle.title.trim();
       }
 
+      // Post-Claude: always a normal completed report. Edge rejects happen only
+      // in submit-job via assessInstantEdgeCaseFromImage (no model call).
       const currentScore = calculateCurrentScore(criteriaEvaluations, rubricMode);
-      const potentialScore = calculatePotentialScore(criteriaEvaluations, rubricMode);
-      const categories = buildCategoryScoresFromEvaluations(criteriaEvaluations, rubricMode);
-      const microCriteria = buildMicroScoresFromEvaluations(criteriaEvaluations, rubricMode);
-      const suggestions = buildSuggestionsFromEvaluations(criteriaEvaluations, rubricMode);
+      const potentialScore = calculatePotentialScore(
+        criteriaEvaluations,
+        rubricMode,
+      );
+      const categories = buildCategoryScoresFromEvaluations(
+        criteriaEvaluations,
+        rubricMode,
+      );
+      const microCriteria = buildMicroScoresFromEvaluations(
+        criteriaEvaluations,
+        rubricMode,
+      );
+      const suggestions = buildSuggestionsFromEvaluations(
+        criteriaEvaluations,
+        rubricMode,
+      );
       const summaries = buildSummaryTexts(
         categories,
         criteriaEvaluations,
@@ -1436,7 +1475,9 @@ export async function processPendingAnalysisJobs(limit = 3): Promise<{
           evaluation: summaries.evaluation,
           strength: summaries.strength,
           insight: summaries.insight,
+          scoringBlocked: false,
           jobStatus: "completed",
+          ephemeral: false,
           revisionId: revisionRef.id,
           imageFingerprint: imageFingerprint ?? null,
           brandContextHash: brandContextHashOf(brandContext),
@@ -1712,9 +1753,21 @@ const ANALYSIS_LIST_SELECT_FIELDS = [
   "mediaUrl",
   "storagePath",
   "mimeType",
+  "scoringBlocked",
+  "ephemeral",
   "createdAt",
   "updatedAt",
 ] as const;
+
+function isListableAnalysis(analysis: Analysis): boolean {
+  if (analysis.ephemeral) return false;
+  if (analysis.jobStatus === "edge_case") return false;
+  if (analysis.jobStatus === "pending" || analysis.jobStatus === "processing") {
+    return false;
+  }
+  if (analysis.scoringBlocked) return false;
+  return analysis.jobStatus === "completed";
+}
 
 export async function listAnalysesByUser(
   ownerEmail: string,
@@ -1735,9 +1788,9 @@ export async function listAnalysesByUser(
   const snapshot = await queryRef.get();
 
   const mapDoc = mode === "full" ? mapAnalysisDoc : mapAnalysisListDoc;
-  const all = snapshot.docs.map((doc) =>
-    mapDoc(doc.id, doc.data() as AnalysisDoc),
-  );
+  const all = snapshot.docs
+    .map((doc) => mapDoc(doc.id, doc.data() as AnalysisDoc))
+    .filter(isListableAnalysis);
   // Stable "newest first" by creation time — title edits / locale cache writes
   // must not reshuffle the list (those only bump updatedAt).
   all.sort((a, b) => {
@@ -1839,9 +1892,9 @@ export async function listAnalysesByGuestId(guestId: string): Promise<Analysis[]
     .where("guestId", "==", guestId.trim())
     .limit(20)
     .get();
-  return snapshot.docs.map((doc) =>
-    mapAnalysisDoc(doc.id, doc.data() as AnalysisDoc),
-  );
+  return snapshot.docs
+    .map((doc) => mapAnalysisDoc(doc.id, doc.data() as AnalysisDoc))
+    .filter(isListableAnalysis);
 }
 
 export async function transferGuestAnalysesToUser(input: {
@@ -2123,8 +2176,10 @@ export async function getDashboardOverview(
     db.collection(COLLECTIONS.users).doc(userDocIdFromEmail(ownerEmail)).get(),
   ]);
   // Pending/processing rows are created with score 0 — keep them out of overview cards/stats.
+  // Edge-case (uç nokta) rows are not scored — exclude from averages/cards.
   const analyses = allAnalyses.filter(
-    (analysis) => analysis.jobStatus === "completed",
+    (analysis) =>
+      analysis.jobStatus === "completed" && !analysis.scoringBlocked,
   );
   const recentAnalyses = analyses.slice(0, 4);
   const avgScoreChange = average(analyses.map((analysis) => analysis.change));

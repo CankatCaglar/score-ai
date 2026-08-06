@@ -258,6 +258,9 @@ export type GraderResult = Pick<
   | "contentType"
   | "microCriteria"
   | "rubricVersion"
+  | "scoringBlocked"
+  | "potentialImageEligibility"
+  | "criteriaEvaluations"
 >;
 
 export function formatGain(value: number): string {
@@ -333,6 +336,7 @@ export function AnalysisWaitingScreen({
   complete = false,
   onCompleteVisualDone,
   brand = "analyzer",
+  title,
 }: {
   tipIndex: number;
   previewUrl?: string | null;
@@ -343,6 +347,8 @@ export function AnalysisWaitingScreen({
   onCompleteVisualDone?: () => void;
   /** Dashboard wait UI uses Score AI mark; guest analyzer keeps Content Analyzer. */
   brand?: "analyzer" | "dashboard";
+  /** Override default "analiz ediliyor" title (e.g. suitability check). */
+  title?: string;
 }) {
   const t = useTranslations("analyzer");
   const loadingSteps = t.raw("loadingSteps") as string[];
@@ -426,7 +432,7 @@ export function AnalysisWaitingScreen({
           </div>
         ) : null}
         <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">
-          {t("waitingTitle")}
+          {title || t("waitingTitle")}
         </h2>
         <p className="grader-pulse-soft mt-4 text-base leading-relaxed text-white/80 sm:text-lg">
           {loadingTips[tipIndex]}

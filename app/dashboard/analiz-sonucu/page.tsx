@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -54,6 +54,7 @@ import {
   resolveWaitPreviewUrl,
 } from "@/app/[locale]/analyzer/shared";
 import "@/app/[locale]/analyzer/grader.css";
+import { EdgeCaseBlockedModal } from "@/components/analysis/EdgeCaseBlockedModal";
 import { PotentialResultModal } from "@/components/analysis/PotentialResultModal";
 import { SocialShareMenu } from "@/components/dashboard/SocialShareMenu";
 import { assessPotentialImageEligibility } from "@/lib/analysis/edge-cases";
@@ -343,6 +344,7 @@ function AnalizSonucuPageContent() {
   const t = useTranslations("dashboard.analysisResult");
   const tNotifications = useTranslations("dashboard.notifications");
   const locale = toAnalysisUiLocale(useLocale());
+  const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const slug = searchParams.get("slug");
@@ -430,7 +432,11 @@ function AnalizSonucuPageContent() {
           pollTimer = setTimeout(() => {
             void load(true);
           }, 2500);
-        } else if (status === "completed" || status === "failed") {
+        } else if (
+          status === "completed" ||
+          status === "failed" ||
+          status === "edge_case"
+        ) {
           const watched = isAnalysisWatchActive();
           markAnalysisWatchIdle();
           const justFinished =
@@ -444,22 +450,28 @@ function AnalizSonucuPageContent() {
           } else {
             invalidateDashboardCache("dashboard:overview");
           }
+          if (status === "edge_case") {
+            // Not a real analysis — no completion toast / history refresh noise.
+            return;
+          }
           if (status === "completed" && justFinished && data.analysis) {
-            const copy = analysisCompletedNotification(
-              data.analysis.title,
-              data.analysis.score,
-              locale,
-            );
-            const resultHref = `/dashboard/analiz-sonucu?id=${encodeURIComponent(data.analysis.id)}`;
-            await toastAnalysisCompletedIfAllowed({
-              id: data.analysis.id,
-              analysisId: data.analysis.id,
-              slug: data.analysis.slug,
-              title: copy.title,
-              body: copy.body,
-              href: resultHref,
-              viewLabel: tNotifications("viewAction"),
-            });
+            if (data.analysis.scoringBlocked !== true) {
+              const copy = analysisCompletedNotification(
+                data.analysis.title,
+                data.analysis.score,
+                locale,
+              );
+              const resultHref = `/dashboard/analiz-sonucu?id=${encodeURIComponent(data.analysis.id)}`;
+              await toastAnalysisCompletedIfAllowed({
+                id: data.analysis.id,
+                analysisId: data.analysis.id,
+                slug: data.analysis.slug,
+                title: copy.title,
+                body: copy.body,
+                href: resultHref,
+                viewLabel: tNotifications("viewAction"),
+              });
+            }
             requestNotificationsRefresh();
           } else if (justFinished) {
             requestNotificationsRefresh();
@@ -504,7 +516,12 @@ function AnalizSonucuPageContent() {
     }
     return assessPotentialImageEligibility(payload?.analysis?.criteriaEvaluations);
   }, [payload?.analysis]);
-  const potentialBlocked = !edgeEligibility.eligible;
+  // Full-report reject only for legacy pre-Claude edge rows — not seviye 0 scores.
+  const scoringBlocked =
+    payload?.analysis?.jobStatus === "edge_case" ||
+    payload?.analysis?.scoringBlocked === true;
+  // Potential-image soft gate can still use criterion extremes.
+  const potentialBlocked = !edgeEligibility.eligible || scoringBlocked;
   const aiSummary = useMemo(
     () => summarizeAiCommentary(payload?.analysis ?? null, locale),
     [payload?.analysis, locale],
@@ -539,6 +556,8 @@ function AnalizSonucuPageContent() {
   }, [payload?.analysis, locale]);
   const jobStatus = payload?.analysis?.jobStatus;
   const isCompleted = jobStatus === "completed";
+  const isEdgeStatus =
+    jobStatus === "edge_case" || (isCompleted && scoringBlocked);
   const detailHref = payload?.analysis?.slug
     ? `/dashboard/analizler/${payload.analysis.slug}`
     : "/dashboard/analizler";
@@ -553,11 +572,24 @@ function AnalizSonucuPageContent() {
   );
 
   useEffect(() => {
+    if (loading || !payload?.analysis?.id || !isEdgeStatus) return;
+    const analysisId = payload.analysis.id;
+    void fetch("/api/dashboard/analyses", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [analysisId] }),
+    }).finally(() => {
+      invalidateDashboardCache("dashboard:");
+    });
+  }, [loading, isEdgeStatus, payload?.analysis?.id]);
+
+  useEffect(() => {
     const waiting =
       loading ||
       (!!payload?.analysis &&
         payload.analysis.jobStatus !== "completed" &&
-        payload.analysis.jobStatus !== "failed");
+        payload.analysis.jobStatus !== "failed" &&
+        payload.analysis.jobStatus !== "edge_case");
     if (!waiting) return;
     const tipTimer = window.setInterval(() => {
       setTipIndex((prev) => (prev + 1) % Math.max(1, loadingTips.length));
@@ -582,7 +614,9 @@ function AnalizSonucuPageContent() {
   // Defer tip network until the report has painted (idle), so brand-dna/benchmark
   // don't compete with the result API / media.
   useEffect(() => {
-    if (loading || !isCompleted || !payload?.analysis?.id) return;
+    if (loading || !isCompleted || !payload?.analysis?.id || scoringBlocked) {
+      return;
+    }
     const analysisId = payload.analysis.id;
     const score = payload.analysis.score;
     let cancelled = false;
@@ -609,7 +643,13 @@ function AnalizSonucuPageContent() {
       }
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [loading, isCompleted, payload?.analysis?.id, payload?.analysis?.score]);
+  }, [
+    loading,
+    isCompleted,
+    scoringBlocked,
+    payload?.analysis?.id,
+    payload?.analysis?.score,
+  ]);
 
   const openInCanva = () => {
     setCanvaError(null);
@@ -703,7 +743,8 @@ function AnalizSonucuPageContent() {
   const isJobInFlight =
     !!payload?.analysis &&
     payload.analysis.jobStatus !== "completed" &&
-    payload.analysis.jobStatus !== "failed";
+    payload.analysis.jobStatus !== "failed" &&
+    payload.analysis.jobStatus !== "edge_case";
   // Bridge the yeni-analiz → analiz-sonucu soft-nav gap: keep the wait UI up
   // until the first result payload arrives (jobStatus alone is null before then).
   const showWaitingScreen =
@@ -711,6 +752,7 @@ function AnalizSonucuPageContent() {
     (waitBridge &&
       jobStatus !== "completed" &&
       jobStatus !== "failed" &&
+      jobStatus !== "edge_case" &&
       (loading || !payload?.analysis));
 
   if (!loading && payload?.analysis && jobStatus === "failed") {
@@ -743,6 +785,27 @@ function AnalizSonucuPageContent() {
             </button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (!loading && payload?.analysis && isEdgeStatus) {
+    const newAnalysisHref = withReturnTo(
+      "/dashboard/yeni-analiz",
+      "/dashboard/yeni-analiz",
+    );
+    return (
+      <div className="relative min-h-[60vh] px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgba(225,255,81,0.08),transparent_55%)]"
+          aria-hidden
+        />
+        <EdgeCaseBlockedModal
+          open
+          eligibility={edgeEligibility}
+          newAnalysisHref={newAnalysisHref}
+          onClose={() => router.replace("/dashboard/yeni-analiz")}
+        />
       </div>
     );
   }
