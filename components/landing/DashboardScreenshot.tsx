@@ -12,16 +12,10 @@ export const DASHBOARD_SCREENSHOTS = {
   video: "/screenshots/dashboard-video.webp",
 } as const;
 
-const variantStyles = {
-  hero: "aspect-[16/9] w-full rounded-2xl border border-white/10 bg-bg-offwhite shadow-2xl",
-  section: "h-full min-h-[480px] rounded-xl border border-white/10 bg-white",
-  video: "aspect-[16/9] w-full border-0 bg-bg-offwhite",
-} as const;
-
 type DashboardScreenshotProps = {
   src?: string;
   alt?: string;
-  variant?: keyof typeof variantStyles;
+  variant?: "hero" | "section" | "video";
   className?: string;
   priority?: boolean;
 };
@@ -36,66 +30,105 @@ export function DashboardScreenshot({
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const showPlaceholder = !src || failedSrc === src;
 
-  // Section görselleri arka plan/letterbox olmadan, kendi doğal oranında gösterilir
+  // Hero: fixed box for TR/EN (no layout shift). Slightly taller than source
+  // (~2.05 → 2/1) so it gains a touch of height without cropping.
+  if (variant === "hero") {
+    return (
+      <div
+        className={`relative aspect-[16/9] w-full overflow-hidden rounded-2xl shadow-[0_24px_64px_-16px_rgba(0,39,44,0.35)] ${className}`}
+      >
+        {src && !showPlaceholder ? (
+          <Image
+            src={src}
+            alt={alt}
+            fill
+            className="object-fill"
+            sizes="(max-width: 1024px) 100vw, 66vw"
+            quality={88}
+            priority={priority}
+            onError={() => setFailedSrc(src)}
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center border border-dashed border-brand-dark/15 bg-brand-dark/5 p-6 text-center">
+            <div>
+              <p className="text-sm font-semibold text-brand-dark/70">
+                Dashboard görseli
+              </p>
+              <p className="mt-1 text-xs text-brand-dark/45">
+                {src
+                  ? "Görsel yüklenemedi — dosyayı kontrol edin"
+                  : "Screenshot buraya eklenecek"}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Section: rounded image only (no white card behind), full width, natural height.
   if (variant === "section") {
     if (src && !showPlaceholder) {
       return (
-        <Image
-          src={src}
-          alt={alt}
-          width={1400}
-          height={900}
-          className={`block h-auto w-full rounded-xl ${className}`}
-          sizes="(max-width: 1024px) 100vw, 55vw"
-          quality={75}
-          priority={priority}
-          loading={priority ? undefined : "lazy"}
-          onError={() => setFailedSrc(src)}
-        />
+        <div className={`relative w-full ${className}`}>
+          <Image
+            src={src}
+            alt={alt}
+            width={1600}
+            height={1000}
+            className="h-auto w-full rounded-2xl shadow-[0_20px_48px_-18px_rgba(0,0,0,0.45)]"
+            sizes="(max-width: 1024px) 100vw, 55vw"
+            quality={80}
+            priority={priority}
+            loading={priority ? undefined : "lazy"}
+            onError={() => setFailedSrc(src)}
+          />
+        </div>
       );
     }
     return (
       <div
-        className={`flex min-h-[240px] items-center justify-center rounded-xl border border-dashed border-white/20 bg-white/5 p-6 text-center ${className}`}
+        className={`flex min-h-[240px] items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/5 p-6 text-center ${className}`}
       >
         <div>
           <p className="text-sm font-semibold text-white/70">Dashboard görseli</p>
           <p className="mt-1 text-xs text-white/45">
-            {src ? "Görsel yüklenemedi — dosyayı kontrol edin" : "Screenshot buraya eklenecek"}
+            {src
+              ? "Görsel yüklenemedi — dosyayı kontrol edin"
+              : "Screenshot buraya eklenecek"}
           </p>
         </div>
       </div>
     );
   }
 
-  const placeholderStyle =
-    "bg-linear-to-br from-brand-dark/10 via-bg-offwhite to-brand-neon/5";
-  const placeholderCardStyle = "border-brand-dark/20 bg-white/60";
-
+  // Video (inside MacbookFrame): fill the bezel, soft contain, no crop of UI chrome.
   return (
-    <div className={`relative w-full overflow-hidden ${variantStyles[variant]} ${className}`}>
+    <div
+      className={`relative aspect-[16/9] w-full overflow-hidden bg-bg-offwhite ${className}`}
+    >
       {src && !showPlaceholder ? (
         <Image
           src={src}
           alt={alt}
           fill
-          className="object-fill"
-          sizes={
-            variant === "hero"
-              ? "(max-width: 1024px) 100vw, 66vw"
-              : "(max-width: 1024px) 100vw, 50vw"
-          }
-          quality={75}
+          className="object-contain object-center"
+          sizes="(max-width: 1024px) 100vw, 50vw"
+          quality={80}
           priority={priority}
           loading={priority ? undefined : "lazy"}
           onError={() => setFailedSrc(src)}
         />
       ) : (
-        <div className={`absolute inset-0 flex items-center justify-center p-6 text-center ${placeholderStyle}`}>
-          <div className={`rounded-lg border border-dashed px-4 py-3 ${placeholderCardStyle}`}>
-            <p className="text-sm font-semibold text-brand-dark/70">Dashboard görseli</p>
+        <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
+          <div className="rounded-lg border border-dashed border-brand-dark/20 bg-white/60 px-4 py-3">
+            <p className="text-sm font-semibold text-brand-dark/70">
+              Dashboard görseli
+            </p>
             <p className="mt-1 text-xs text-brand-dark/45">
-              {src ? "Görsel yüklenemedi — dosyayı kontrol edin" : "Screenshot buraya eklenecek"}
+              {src
+                ? "Görsel yüklenemedi — dosyayı kontrol edin"
+                : "Screenshot buraya eklenecek"}
             </p>
           </div>
         </div>

@@ -18,6 +18,17 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // Legacy default-locale prefixes → unprefixed (`localePrefix: as-needed`).
+      {
+        source: "/tr",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/tr/:path*",
+        destination: "/:path*",
+        permanent: true,
+      },
       {
         source: "/grader",
         destination: "/analyzer",

@@ -7,8 +7,9 @@ function isAppLocale(value: string | undefined | null): value is AppLocale {
 }
 
 export default getRequestConfig(async ({ requestLocale }) => {
-  // Prefer the `[locale]` segment / middleware negotiation. Cookie is only a
-  // fallback for non-prefixed routes (dashboard/auth).
+  // Prefer the `[locale]` segment / middleware negotiation. Cookie is a
+  // fallback for unprefixed marketing routes and non-locale app routes
+  // (dashboard/auth) when `localeDetection` is off.
   const requested = await requestLocale;
   const cookieStore = await cookies();
   const cookieLocale = cookieStore.get("NEXT_LOCALE")?.value;

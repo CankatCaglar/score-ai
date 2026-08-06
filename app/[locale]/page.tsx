@@ -44,6 +44,7 @@ import {
 } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { useRouter } from "@/i18n/navigation";
 import {
   DashboardScreenshot,
   MacbookFrame,
@@ -195,6 +196,7 @@ function WaitlistForm({
 export default function LandingPage() {
   const locale = useLocale() as "tr" | "en";
   const t = useTranslations("landing");
+  const router = useRouter();
   const skipEntranceMotion = useSkipLandingEntranceMotion();
   const [heroEmail, setHeroEmail] = useState("");
   const [footerEmail, setFooterEmail] = useState("");
@@ -1249,6 +1251,11 @@ export default function LandingPage() {
                           if ("href" in link && typeof link.href === "string") {
                             if ("newTab" in link && link.newTab) {
                               window.open(link.href, "_blank", "noopener,noreferrer");
+                              return;
+                            }
+                            if (link.href.startsWith("/")) {
+                              // Footer hrefs are static app paths (e.g. `/blog`).
+                              router.push(link.href as "/blog");
                               return;
                             }
                             window.location.href = link.href;

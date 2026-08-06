@@ -2,10 +2,14 @@
 
 import { useParams } from "next/navigation";
 import { useLocale } from "next-intl";
+import { startTransition, useEffect, useState } from "react";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
 import { preloadAnalyzerAssets } from "@/lib/analyzer/preload-assets";
-import { preloadLandingScreenshots } from "@/lib/landing/preload-screenshots";
+import {
+  preloadLandingHero,
+  preloadLandingScreenshots,
+} from "@/lib/landing/preload-screenshots";
 
 export function LocaleToggle({
   variant = "light",
@@ -23,10 +27,18 @@ export function LocaleToggle({
   const pathname = usePathname();
   const params = useParams();
   const isDark = variant === "dark";
+  const [pendingLocale, setPendingLocale] = useState<AppLocale | null>(null);
+
+  // Clear optimistic state once the real locale catches up.
+  useEffect(() => {
+    setPendingLocale(null);
+  }, [locale]);
+
+  const displayLocale = pendingLocale ?? locale;
 
   const localeHref = () => {
     // App Router `[locale]` must not be passed into next-intl hrefs —
-    // next-intl already prefixes the locale, and including it produces /en/en.
+    // next-intl already prefixes non-default locales (`as-needed`).
     const restParams = Object.fromEntries(
       Object.entries(params).filter(([key]) => key !== "locale"),
     );
@@ -46,7 +58,17 @@ export function LocaleToggle({
     if (next === locale) return;
     router.prefetch(localeHref(), { locale: next });
     if (prefetchLandingScreenshots) {
-      void preloadLandingScreenshots(next);
+      // Hero first for instant paint; rest idle so click bandwidth stays free.
+      void preloadLandingHero(next).then(() => {
+        const run = () => {
+          void preloadLandingScreenshots(next);
+        };
+        if (typeof window.requestIdleCallback === "function") {
+          window.requestIdleCallback(run);
+        } else {
+          setTimeout(run, 400);
+        }
+      });
     }
     if (prefetchAnalyzerAssets) {
       void preloadAnalyzerAssets(next);
@@ -54,29 +76,40 @@ export function LocaleToggle({
   };
 
   const switchLocale = (next: AppLocale) => {
-    if (next === locale) return;
+    if (next === locale || next === pendingLocale) return;
 
-    // Kick off asset warm before navigation (covers tap without hover).
-    warmLocale(next);
-    router.replace(localeHref(), { locale: next, scroll: false });
+    // Instant toggle feedback — don't wait for navigation/RSC/images.
+    setPendingLocale(next);
+    void preloadLandingHero(next);
+
+    startTransition(() => {
+      router.replace(localeHref(), { locale: next, scroll: false });
+    });
   };
 
+  const buttonClass = (active: boolean) =>
+    `rounded-md px-2 py-1 text-xs font-semibold transition ${
+      active
+        ? isDark
+          ? "bg-brand-neon text-brand-dark"
+          : "bg-brand-dark text-white"
+        : isDark
+          ? "text-white/70 hover:text-brand-neon"
+          : "text-brand-dark/55 hover:text-brand-dark"
+    }`;
+
   return (
-    <div className="flex items-center gap-1">
+    <div
+      className="flex items-center gap-1"
+      aria-busy={pendingLocale !== null}
+    >
       <button
         type="button"
         onClick={() => switchLocale("tr")}
         onPointerEnter={() => warmLocale("tr")}
         onFocus={() => warmLocale("tr")}
-        className={`rounded-md px-2 py-1 text-xs font-semibold transition ${
-          locale === "tr"
-            ? isDark
-              ? "bg-brand-neon text-brand-dark"
-              : "bg-brand-dark text-white"
-            : isDark
-              ? "text-white/70 hover:text-brand-neon"
-              : "text-brand-dark/55 hover:text-brand-dark"
-        }`}
+        className={buttonClass(displayLocale === "tr")}
+        aria-pressed={displayLocale === "tr"}
       >
         TR
       </button>
@@ -85,15 +118,8 @@ export function LocaleToggle({
         onClick={() => switchLocale("en")}
         onPointerEnter={() => warmLocale("en")}
         onFocus={() => warmLocale("en")}
-        className={`rounded-md px-2 py-1 text-xs font-semibold transition ${
-          locale === "en"
-            ? isDark
-              ? "bg-brand-neon text-brand-dark"
-              : "bg-brand-dark text-white"
-            : isDark
-              ? "text-white/70 hover:text-brand-neon"
-              : "text-brand-dark/55 hover:text-brand-dark"
-        }`}
+        className={buttonClass(displayLocale === "en")}
+        aria-pressed={displayLocale === "en"}
       >
         EN
       </button>

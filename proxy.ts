@@ -6,7 +6,7 @@ import {
   verifyEarlyAccessToken,
 } from "@/lib/early-access-auth";
 import { USER_COOKIE_NAME, verifyUserSessionToken } from "@/lib/user-auth";
-import { routing, type AppLocale } from "@/i18n/routing";
+import { localeHomePath, routing, type AppLocale } from "@/i18n/routing";
 
 const APP_MODE = (process.env.APP_ACCESS_MODE ?? "waitlist").toLowerCase();
 const handleI18nRouting = createMiddleware(routing);
@@ -62,7 +62,7 @@ function redirectToLocaleHome(
   access: string,
 ) {
   const url = request.nextUrl.clone();
-  url.pathname = `/${locale}`;
+  url.pathname = localeHomePath(locale);
   url.search = "";
   url.searchParams.set("access", access);
   return NextResponse.redirect(url);

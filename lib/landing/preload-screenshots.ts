@@ -39,7 +39,13 @@ function warmUrl(url: string): Promise<void> {
   return promise;
 }
 
-/** Warm static screenshot URLs on locale toggle (hover/click). */
+/** Warm only the hero — enough for a snappy locale switch. */
+export function preloadLandingHero(locale: LandingLocale): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  return warmUrl(LANDING_SCREENSHOTS[locale].hero);
+}
+
+/** Warm all landing screenshots for a locale (idle / after switch). */
 export function preloadLandingScreenshots(locale: LandingLocale): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (preloadedLocales.has(locale)) return Promise.resolve();

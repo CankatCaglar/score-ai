@@ -1,4 +1,6 @@
+import { getPathname } from "@/i18n/navigation";
 import { getAppBaseUrl, wrapEmailHtml } from "@/lib/mail/smtp";
+import type { AppLocale } from "@/i18n/routing";
 
 export function analysisCompletedEmail(input: {
   title: string;
@@ -45,8 +47,16 @@ export function graderAnalysisCompletedEmail(input: {
   locale?: "tr" | "en";
 }) {
   const baseUrl = getAppBaseUrl();
-  const resultUrl = `${baseUrl}/analyzer/${encodeURIComponent(input.slug)}`;
-  const isEn = input.locale === "en";
+  const locale: AppLocale = input.locale === "en" ? "en" : "tr";
+  const resultPath = getPathname({
+    locale,
+    href: {
+      pathname: "/analyzer/[slug]",
+      params: { slug: input.slug },
+    },
+  });
+  const resultUrl = `${baseUrl}${resultPath}`;
+  const isEn = locale === "en";
   const score = Math.round(input.score);
   const subject = isEn
     ? `Your analysis is ready: ${input.title} (${score}/100)`
