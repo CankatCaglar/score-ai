@@ -121,6 +121,41 @@ npm run build
 - SMTP: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
 - Çeviri: `GOOGLE_TRANSLATE_API_KEY`
 
+### Billing / iyzico (Subscription)
+
+Entegrasyon resmi SDK yerine iyzico REST API + `IYZWSv2` imza kullanır (Next.js/Turbopack uyumlu).
+
+Hesap hazır olunca `.env.local` içine ekleyin:
+
+```
+IYZICO_API_KEY=
+IYZICO_SECRET_KEY=
+IYZICO_BASE_URL=https://sandbox-api.iyzipay.com
+IYZICO_MERCHANT_ID=
+IYZICO_PRO_MONTHLY_PLAN_REF=
+IYZICO_PRO_YEARLY_PLAN_REF=
+```
+
+Kurulum adımları:
+
+1. iyzico üye işyeri oluşturun ve **Subscription** add-on’unu aktif edin.
+2. Merchant panelinden product: `Score AI Pro`.
+3. Pricing planlar:
+   - Aylık: `799 TRY`, interval `MONTHLY`
+   - Yıllık: `7670 TRY`, interval `YEARLY` (%20 indirim)
+4. Plan reference code’larını env’e yazın.
+5. Webhook URL: `https://<domain>/api/billing/webhook`  
+   (Merchant Settings → Merchant Subscription Notifications)
+6. Checkout callback: `https://<domain>/api/billing/callback` (API tarafından otomatik gönderilir)
+7. Canlıya alırken `IYZICO_BASE_URL=https://api.iyzipay.com`
+
+Plan modeli (şimdilik):
+
+- **Normal**: 1 analiz hakkı (skor + potansiyel görsel = 1 süreç)
+- **Pro**: 15 analiz / ay, 799 TL / ay (yıllık 7.670 TL)
+
+Key’ler yokken Settings → Fatura sekmesi çalışır; checkout `BILLING_NOT_CONFIGURED` döner.
+
 ## Yardımcı Scriptler
 
 - `npm run invite:generate`  

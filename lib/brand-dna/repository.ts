@@ -91,11 +91,15 @@ function mapProfile(
     logo: mapLogo(data.logo),
     colors,
     headingFont:
-      typeof data.headingFont === "string" && data.headingFont.trim()
+      typeof data.headingFont === "string" &&
+      data.headingFont.trim() &&
+      data.headingFont.trim() !== "-"
         ? data.headingFont.trim()
         : null,
     bodyFont:
-      typeof data.bodyFont === "string" && data.bodyFont.trim()
+      typeof data.bodyFont === "string" &&
+      data.bodyFont.trim() &&
+      data.bodyFont.trim() !== "-"
         ? data.bodyFont.trim()
         : null,
     personality: asStringArray(data.personality, MAX_BRAND_DNA_PERSONALITY),
@@ -193,16 +197,14 @@ export async function updateBrandDnaFields(
     updates.colors = unique;
   }
   if (patch.headingFont !== undefined) {
-    updates.headingFont =
-      typeof patch.headingFont === "string" && patch.headingFont.trim()
-        ? patch.headingFont.trim()
-        : null;
+    const raw =
+      typeof patch.headingFont === "string" ? patch.headingFont.trim() : "";
+    updates.headingFont = raw && raw !== "-" ? raw : null;
   }
   if (patch.bodyFont !== undefined) {
-    updates.bodyFont =
-      typeof patch.bodyFont === "string" && patch.bodyFont.trim()
-        ? patch.bodyFont.trim()
-        : null;
+    const raw =
+      typeof patch.bodyFont === "string" ? patch.bodyFont.trim() : "";
+    updates.bodyFont = raw && raw !== "-" ? raw : null;
   }
   if (patch.personality !== undefined) {
     updates.personality = asStringArray(

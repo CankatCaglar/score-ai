@@ -48,6 +48,7 @@ import {
 } from "@/lib/user-profile";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useRouter } from "next/navigation";
+import { FaturaVePlanTab } from "@/components/dashboard/billing/FaturaVePlanTab";
 
 type SelectOption = string | { value: string; label: string };
 
@@ -1239,66 +1240,6 @@ function EntegrasyonlarTab() {
   );
 }
 
-// ─── Fatura ve Plan Tab ───────────────────────────────────────────────────────
-
-function FaturaVePlanTab() {
-  const t = useTranslations("settings");
-  const plan = ((): "normal" | "pro" => "normal")();
-  const isPro = plan === "pro";
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-brand-dark">{t("billingTitle")}</h2>
-        <p className="mt-0.5 text-sm text-brand-dark/50">
-          {t("billingSubtitle")}
-        </p>
-      </div>
-
-      <div className="rounded-2xl border border-brand-dark/8 bg-white p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-brand-dark/45">
-              {t("currentPlan")}
-            </p>
-            <p className="mt-1 text-xl font-semibold text-brand-dark">
-              {isPro ? t("planPro") : t("planNormal")}
-            </p>
-            <p className="mt-1 text-sm text-brand-dark/50">
-              {isPro ? t("planProDesc") : t("planNormalDesc")}
-            </p>
-          </div>
-          {!isPro && (
-            <button
-              type="button"
-              className="cursor-pointer rounded-xl bg-brand-neon px-4 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
-            >
-              {t("upgradePro")}
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-brand-dark/8 bg-white p-5">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-dark/8">
-            <CreditCard className="size-4 text-brand-dark/60" strokeWidth={1.75} />
-          </div>
-          <div>
-            <h3 className="font-semibold text-brand-dark">{t("paymentInfo")}</h3>
-            <p className="mt-0.5 text-xs text-brand-dark/50">
-              {t("paymentInfoDesc")}
-            </p>
-          </div>
-        </div>
-        <p className="rounded-xl bg-brand-dark/3 px-3.5 py-3 text-sm text-brand-dark/55">
-          {t("noPaymentMethod")}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AyarlarPage() {
@@ -1382,7 +1323,7 @@ export default function AyarlarPage() {
               onClick={() => setActiveTab(id)}
               className={`flex shrink-0 cursor-pointer items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors lg:w-full ${
                 activeTab === id
-                  ? "bg-brand-dark/8 text-brand-dark"
+                  ? "bg-brand-neon text-brand-dark"
                   : "text-brand-dark/55 hover:bg-brand-dark/5 hover:text-brand-dark"
               }`}
             >

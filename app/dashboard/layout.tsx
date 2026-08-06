@@ -1,6 +1,7 @@
 import { getCurrentUserSession } from "@/actions/auth";
 import { getCurrentUserProfile } from "@/actions/profile";
 import { getCurrentDashboardUserEmail } from "@/lib/analysis/auth";
+import { getBillingSummary } from "@/lib/billing/subscription";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { touchUserActivity } from "@/lib/mail/engagement";
 import {
@@ -33,10 +34,17 @@ export default async function DashboardLayout({
     ? initialsFromProfile(profile)
     : (name.slice(0, 2) || "SC").toUpperCase();
 
+  let plan: "normal" | "pro" = "normal";
   if (email && !email.endsWith("@score.local")) {
     void touchUserActivity(email).catch(() => {
       // activity touch must not block dashboard render
     });
+    try {
+      const billing = await getBillingSummary(email);
+      plan = billing.plan;
+    } catch {
+      plan = "normal";
+    }
   }
 
   return (
@@ -46,6 +54,7 @@ export default async function DashboardLayout({
         name,
         initials,
         picture: profile?.photoURL ?? session?.picture,
+        plan,
       }}
     >
       {children}

@@ -402,6 +402,8 @@ export default function BrandBrainPage() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextSave = useRef(true);
   const hydrated = useRef(false);
+  const pendingSaveRef = useRef(false);
+  const savePayloadRef = useRef<Record<string, unknown> | null>(null);
 
   const isOtherSector = sectorMain === OTHER_SECTOR_VALUE;
   const personalityLabels = t.raw("options.personality") as string[];
@@ -506,12 +508,18 @@ export default function BrandBrainPage() {
     }
   };
 
+  const normalizeFontValue = (value: string | null | undefined) => {
+    const trimmed = (value ?? "").trim();
+    if (!trimmed || trimmed === CLEAR_OPTION) return null;
+    return trimmed;
+  };
+
   const applyProfile = (next: BrandDnaPublicProfile) => {
     skipNextSave.current = true;
     setProfile(next);
     setColors(next.colors);
-    setHeadingFont(next.headingFont ?? "");
-    setBodyFont(next.bodyFont ?? "");
+    setHeadingFont(normalizeFontValue(next.headingFont) ?? "");
+    setBodyFont(normalizeFontValue(next.bodyFont) ?? "");
     setSelectedPersonality(next.personality);
     setSelectedTone(next.toneOfVoice);
     setSelectedAudience(next.audiences);
@@ -543,6 +551,8 @@ export default function BrandBrainPage() {
         }>({
           key: "dashboard:brand-dna",
           url: "/api/dashboard/brand-dna",
+          // Always revalidate — font clear must not stick to a stale Montserrat cache.
+          force: true,
           onCache: (cached) => {
             if (cancelled || !cached.profile) return;
             applyProfile(cached.profile);
@@ -566,6 +576,43 @@ export default function BrandBrainPage() {
     };
   }, [t]);
 
+  const buildSavePayload = () => ({
+    colors,
+    headingFont: normalizeFontValue(headingFont),
+    bodyFont: normalizeFontValue(bodyFont),
+    personality: selectedPersonality,
+    toneOfVoice: selectedTone,
+    audiences: selectedAudience,
+    audienceNote: "",
+    sectorMain: sectorMain || null,
+    sectorSub: isOtherSector ? sectorSub || null : null,
+    keywords,
+  });
+
+  const persistBrandDna = async (
+    payload: Record<string, unknown>,
+    options?: { keepalive?: boolean; silent?: boolean },
+  ) => {
+    const res = await fetch("/api/dashboard/brand-dna", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: options?.keepalive,
+    });
+    if (!res.ok) throw new Error("save failed");
+    const data = (await res.json()) as { profile: BrandDnaPublicProfile };
+    setDashboardCache("dashboard:brand-dna", data);
+    if (!options?.silent) {
+      skipNextSave.current = true;
+      setProfile(data.profile);
+    }
+    return data;
+  };
+
+  useEffect(() => {
+    savePayloadRef.current = buildSavePayload();
+  });
+
   useEffect(() => {
     if (!hydrated.current) return;
     if (skipNextSave.current) {
@@ -573,31 +620,30 @@ export default function BrandBrainPage() {
       return;
     }
     if (saveTimer.current) clearTimeout(saveTimer.current);
+
+    const payload = buildSavePayload();
+    savePayloadRef.current = payload;
+    pendingSaveRef.current = true;
+
+    const optimisticProfile: BrandDnaPublicProfile = {
+      ...draftProfile,
+      headingFont: payload.headingFont as string | null,
+      bodyFont: payload.bodyFont as string | null,
+      completion: computeBrandDnaCompletion({
+        ...draftProfile,
+        headingFont: payload.headingFont as string | null,
+        bodyFont: payload.bodyFont as string | null,
+      }),
+    };
+    // Optimistic cache so leaving before debounce finishes keeps the clear.
+    setDashboardCache("dashboard:brand-dna", { profile: optimisticProfile });
+
     saveTimer.current = setTimeout(() => {
       void (async () => {
         setSaving(true);
         try {
-          const res = await fetch("/api/dashboard/brand-dna", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              colors,
-              headingFont: headingFont || null,
-              bodyFont: bodyFont || null,
-              personality: selectedPersonality,
-              toneOfVoice: selectedTone,
-              audiences: selectedAudience,
-              audienceNote: "",
-              sectorMain: sectorMain || null,
-              sectorSub: isOtherSector ? sectorSub || null : null,
-              keywords,
-            }),
-          });
-          if (!res.ok) throw new Error("save failed");
-          const data = (await res.json()) as { profile: BrandDnaPublicProfile };
-          skipNextSave.current = true;
-          setProfile(data.profile);
-          setDashboardCache("dashboard:brand-dna", data);
+          await persistBrandDna(payload);
+          pendingSaveRef.current = false;
         } catch {
           toast.error(t("toasts.saveError"));
         } finally {
@@ -605,9 +651,12 @@ export default function BrandBrainPage() {
         }
       })();
     }, 600);
+
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
+    // draftProfile intentionally omitted — rebuilt from field deps below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- autosave field deps only
   }, [
     colors,
     headingFont,
@@ -621,6 +670,25 @@ export default function BrandBrainPage() {
     keywords,
     t,
   ]);
+
+  // Flush debounced save when leaving Brand DNA — otherwise "-" clear is lost.
+  useEffect(() => {
+    const flush = () => {
+      if (!pendingSaveRef.current || !savePayloadRef.current) return;
+      const payload = savePayloadRef.current;
+      pendingSaveRef.current = false;
+      void persistBrandDna(payload, { keepalive: true, silent: true }).catch(
+        () => undefined,
+      );
+    };
+    const onPageHide = () => flush();
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      window.removeEventListener("pagehide", onPageHide);
+      flush();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount flush only
+  }, []);
 
   const toggleMulti = (
     value: string,
