@@ -26,14 +26,27 @@ import {
   ArrowRight,
   ArrowUpRight,
   Bot,
+  Check,
   Download,
   Eye,
   Heart,
+  ImageIcon,
   Info,
+  Layers,
+  LayoutGrid,
   Loader2,
+  MapPin,
+  MessageCircle,
+  MousePointerClick,
+  Palette,
+  Share2,
+  Shield,
+  Smartphone,
   Sparkles,
+  Star,
   Target,
   Type,
+  type LucideIcon,
 } from "lucide-react";
 import {
   AnalysisWaitingScreen,
@@ -45,7 +58,8 @@ import { PotentialResultModal } from "@/components/analysis/PotentialResultModal
 import { SocialShareMenu } from "@/components/dashboard/SocialShareMenu";
 import { assessPotentialImageEligibility } from "@/lib/analysis/edge-cases";
 import { summarizeAiCommentary } from "@/lib/analysis/insight-summary";
-import type { Analysis } from "@/lib/analysis/types";
+import { localizeCriterionLabel } from "@/lib/analysis/locale-labels";
+import type { Analysis, CriterionEvaluation } from "@/lib/analysis/types";
 import { useRegisterDashboardBack } from "@/components/dashboard/DashboardBackContext";
 import { withReturnTo } from "@/lib/dashboard/return-navigation";
 import { queuePostAnalysisProductTips } from "@/lib/notifications/product-tips";
@@ -138,6 +152,101 @@ type ResultPayload = {
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
+}
+
+type PublishDecisionTone = "positive" | "revision" | "negative";
+
+function publishDecisionFromScore(score: number): PublishDecisionTone {
+  if (score >= 90) return "positive";
+  if (score >= 65) return "revision";
+  return "negative";
+}
+
+function tipIconForCriterion(id: string): LucideIcon {
+  switch (id) {
+    case "call_to_action":
+    case "decision_readiness":
+    case "conversion_potential":
+      return MousePointerClick;
+    case "message_clarity":
+    case "headline_strength":
+    case "value_proposition":
+    case "value_offer_clarity":
+    case "storytelling":
+    case "curiosity":
+      return MessageCircle;
+    case "mobile_experience":
+    case "platform_fit":
+    case "readability":
+      return Smartphone;
+    case "visual_hierarchy":
+    case "composition_balance":
+    case "white_space_usage":
+      return Layers;
+    case "typography":
+      return Type;
+    case "color_harmony":
+    case "visual_identity":
+    case "visual_consistency":
+      return Palette;
+    case "image_quality":
+    case "scroll_stopper":
+      return ImageIcon;
+    case "emotional_impact":
+    case "memorability":
+      return Heart;
+    case "shareability":
+      return Share2;
+    case "trust_building":
+    case "brand_tone":
+    case "brand_consistency":
+    case "brand_memory_match":
+      return Shield;
+    case "differentiation":
+    case "competitive_positioning":
+    case "business_objective_clarity":
+    case "historical_performance_match":
+      return Target;
+    case "originality":
+      return Sparkles;
+    default:
+      return LayoutGrid;
+  }
+}
+
+function stripCriterionPrefix(text: string): string {
+  const index = text.indexOf(":");
+  if (index === -1) return text.trim();
+  return text.slice(index + 1).trim() || text.trim();
+}
+
+function joinRecommendationLabels(
+  items: string[],
+  locale: "tr" | "en",
+): string {
+  if (items.length === 0) return "";
+  if (items.length === 1) return items[0]!;
+  if (items.length === 2) {
+    return locale === "en"
+      ? `${items[0]} and ${items[1]}`
+      : `${items[0]} ve ${items[1]}`;
+  }
+  const head = items.slice(0, -1).join(", ");
+  const last = items[items.length - 1];
+  return locale === "en" ? `${head}, and ${last}` : `${head} ve ${last}`;
+}
+
+function highlightBrandMetrics(text: string) {
+  const parts = text.split(/(\d+\+?(?:\/100)?|%\d+)/g);
+  return parts.map((part, index) =>
+    /^\d/.test(part) ? (
+      <span key={`${part}-${index}`} className="font-semibold text-brand-neon">
+        {part}
+      </span>
+    ) : (
+      <span key={`${part}-${index}`}>{part}</span>
+    ),
+  );
 }
 
 function buildMetricsFromAnalysis(
@@ -381,6 +490,7 @@ function AnalizSonucuPageContent() {
   const oldScore = payload?.analysis.score ?? revision?.oldScore ?? 0;
   const newScore = payload?.analysis.potentialScore ?? revision?.newScore ?? oldScore;
   const scoreDiff = newScore - oldScore;
+  const decisionTone = publishDecisionFromScore(oldScore);
   const previewUrl = buildPreviewUrl(payload?.analysis);
   const potentialPreviewUrl = payload?.analysis?.potentialImageUrl
     ? `/api/dashboard/potential-media/${payload.analysis.id}`
@@ -399,6 +509,27 @@ function AnalizSonucuPageContent() {
     () => summarizeAiCommentary(payload?.analysis ?? null, locale),
     [payload?.analysis, locale],
   );
+  const fixTips = useMemo(() => {
+    const evaluations = payload?.analysis?.criteriaEvaluations;
+    if (!evaluations) return [];
+    return Object.entries(evaluations)
+      .map(([id, value]) => ({
+        id,
+        evaluation: value as CriterionEvaluation,
+      }))
+      .filter(
+        (entry) =>
+          entry.evaluation.seviye <= 1 &&
+          Boolean(entry.evaluation.aksiyon_onerisi?.trim()),
+      )
+      .sort((a, b) => a.evaluation.seviye - b.evaluation.seviye)
+      .slice(0, 3)
+      .map((entry) => ({
+        id: entry.id,
+        title: localizeCriterionLabel(entry.id, locale),
+        description: entry.evaluation.aksiyon_onerisi.trim(),
+      }));
+  }, [payload?.analysis?.criteriaEvaluations, locale]);
   const displaySummary = useMemo(() => {
     if (!payload?.analysis) return null;
     const mode = rubricModeFromVersion(
@@ -655,6 +786,84 @@ function AnalizSonucuPageContent() {
   }
 
   const contentTitle = payload?.analysis?.title ?? t("contentAlt");
+  const creativeMemoryHref = payload?.analysis?.slug
+    ? `/dashboard/creative-memory/${encodeURIComponent(payload.analysis.slug)}`
+    : "/dashboard/creative-memory";
+  const decisionCopy = {
+    positive: {
+      badge: t("publishDecision.positive.badge"),
+      headline: t("publishDecision.positive.headline"),
+      body: t("publishDecision.positive.body"),
+      Icon: Check,
+      shell: "border-brand-neon/50 bg-bg-light",
+      iconTone: "text-brand-dark",
+      badgeShell: "bg-brand-neon/70 text-brand-dark",
+      scoreShell: "text-brand-dark",
+      scoreMuted: "text-brand-dark/30",
+      divider: "border-brand-dark/10",
+    },
+    revision: {
+      badge: t("publishDecision.revision.badge"),
+      headline: t("publishDecision.revision.headline"),
+      body: t("publishDecision.revision.body"),
+      Icon: Star,
+      shell: "border-brand-dark/8 bg-bg-light",
+      iconTone: "text-brand-dark",
+      badgeShell: "bg-brand-neon/70 text-brand-dark",
+      scoreShell: "text-brand-dark",
+      scoreMuted: "text-brand-dark/30",
+      divider: "border-brand-dark/10",
+    },
+    negative: {
+      badge: t("publishDecision.negative.badge"),
+      headline: t("publishDecision.negative.headline"),
+      body: t("publishDecision.negative.body"),
+      Icon: AlertTriangle,
+      shell: "border-red-200 bg-bg-light",
+      iconTone: "text-red-500",
+      badgeShell: "bg-red-50 text-red-600",
+      scoreShell: "text-red-500",
+      scoreMuted: "text-red-500/35",
+      divider: "border-red-100",
+    },
+  }[decisionTone];
+  const DecisionIcon = decisionCopy.Icon;
+  const clipSentence = (value: string, max = 140) => {
+    const cleaned = value.replace(/\s+/g, " ").trim();
+    if (cleaned.length <= max) return cleaned;
+    return `${cleaned.slice(0, max - 1).trimEnd()}…`;
+  };
+  const topStrength = aiSummary.strengths[0]
+    ? clipSentence(stripCriterionPrefix(aiSummary.strengths[0]))
+    : "";
+  const recommendationItems = (
+    fixTips.length > 0
+      ? fixTips.map((tip) => tip.title)
+      : aiSummary.actions
+          .map((action, index) => {
+            const labeled = action.includes(":")
+              ? action.slice(0, action.indexOf(":")).trim()
+              : "";
+            return labeled || t("howToFix.fallbackTitle", { index: index + 1 });
+          })
+  ).slice(0, 3);
+  const recommendationsText =
+    recommendationItems.length > 0
+      ? t("aiCommentBody.recommendations", {
+          items: joinRecommendationLabels(recommendationItems, locale),
+        })
+      : null;
+  const aiCommentText = [
+    t(`aiCommentBody.${decisionTone}Lead`, { score: oldScore }),
+    decisionTone === "positive" && topStrength
+      ? t("aiCommentBody.strength", { text: topStrength })
+      : null,
+    recommendationsText,
+    t("aiCommentBody.potentialLift", { potential: newScore }),
+    t("aiCommentBody.closing"),
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className="px-4 pb-8 pt-2 sm:px-6 lg:px-8 lg:pt-4">
@@ -667,30 +876,31 @@ function AnalizSonucuPageContent() {
             {t("subtitle", { count: payload?.analysis.criteriaCount ?? 31 })}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:w-auto sm:gap-2">
           <button
             type="button"
             disabled={(!potentialPreviewUrl && !previewUrl) || downloading}
             onClick={() => {
               void handleDownloadImage();
             }}
-            className="flex items-center gap-1.5 rounded-lg border border-brand-dark/10 px-3 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3.5"
+            className="inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-brand-dark/10 px-2 py-2 text-xs font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50 sm:gap-1.5 sm:px-3.5 sm:text-sm"
           >
             {downloading ? (
-              <Loader2 className="size-4 animate-spin" strokeWidth={2} />
+              <Loader2 className="size-3.5 shrink-0 animate-spin sm:size-4" strokeWidth={2} />
             ) : (
-              <Download className="size-4" strokeWidth={2} />
+              <Download className="size-3.5 shrink-0 sm:size-4" strokeWidth={2} />
             )}
             {t("download")}
           </button>
           <SocialShareMenu
             title={payload?.analysis?.title ?? t("shareTitleFallback")}
-            buttonClassName="flex items-center gap-1.5 rounded-lg border border-brand-dark/10 px-3 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 sm:px-3.5"
+            className="shrink-0"
+            buttonClassName="inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-brand-dark/10 px-2 py-2 text-xs font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 sm:gap-1.5 sm:px-3.5 sm:text-sm"
           />
           <button
             type="button"
             disabled={!alreadyGenerated || openingCanva}
-            className="flex items-center gap-1.5 rounded-lg bg-brand-dark px-3 py-2 text-sm font-semibold text-brand-neon transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3.5"
+            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-brand-dark px-2 py-2 text-xs font-semibold text-brand-neon transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:gap-1.5 sm:px-3.5 sm:text-sm"
             onClick={openInCanva}
             title={
               alreadyGenerated
@@ -699,22 +909,63 @@ function AnalizSonucuPageContent() {
             }
           >
             {openingCanva ? (
-              <Loader2 className="size-4 animate-spin" strokeWidth={2} />
+              <Loader2 className="size-3.5 shrink-0 animate-spin sm:size-4" strokeWidth={2} />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src="/brands/canva/canva-icon-logo.svg"
                 alt=""
-                className="size-4 shrink-0"
+                className="size-3.5 shrink-0 sm:size-4"
                 decoding="async"
               />
             )}
-            {t("openInCanva")}
+            <span className="truncate">{t("openInCanva")}</span>
           </button>
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+      <div
+        className={`mt-8 flex flex-col gap-4 rounded-3xl border p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5 ${decisionCopy.shell}`}
+      >
+        <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+          <DecisionIcon
+            className={`mt-0.5 size-8 shrink-0 sm:mt-0 sm:size-9 ${decisionCopy.iconTone}`}
+            strokeWidth={2}
+          />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-brand-dark">
+                {t("publishDecision.label")}
+              </p>
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${decisionCopy.badgeShell}`}
+              >
+                {decisionCopy.badge}
+              </span>
+            </div>
+            <p className="mt-1 text-base font-semibold tracking-tight text-brand-dark sm:text-lg">
+              {decisionCopy.headline}
+            </p>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-brand-dark/60">
+              {decisionCopy.body}
+            </p>
+          </div>
+        </div>
+        <div
+          className={`flex shrink-0 items-baseline self-end sm:self-center sm:border-l sm:pl-6 ${decisionCopy.divider}`}
+        >
+          <span
+            className={`text-4xl font-bold tabular-nums sm:text-5xl ${decisionCopy.scoreShell}`}
+          >
+            {oldScore}
+          </span>
+          <span className={`text-lg font-medium sm:text-xl ${decisionCopy.scoreMuted}`}>
+            /100
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
         <div className="@container min-w-0 rounded-3xl border-2 border-red-100 bg-bg-light p-4 shadow-sm sm:p-6">
           <div className="flex items-start justify-between gap-2 sm:gap-3">
             <span className="inline-block max-w-[65%] text-[10px] font-bold uppercase tracking-wide text-red-500 sm:text-xs">
@@ -744,23 +995,30 @@ function AnalizSonucuPageContent() {
               ))}
             </div>
           </div>
-          <p className="mt-4 text-xs leading-snug text-red-600">
-            {aiSummary.weaknesses[0] ?? t("weaknessFallback")}
-          </p>
+          <div className="mt-4 flex items-start gap-2 rounded-xl bg-red-50 px-3 py-2.5">
+            <MapPin className="mt-0.5 size-3.5 shrink-0 text-red-500" strokeWidth={2} />
+            <p className="text-xs leading-snug text-red-600">
+              {aiSummary.weaknesses[0] ?? t("weaknessFallback")}
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-col items-center gap-3 self-center py-4 xl:sticky xl:top-8 xl:gap-3.5 xl:px-1">
-          <div className="flex size-10 items-center justify-center rounded-full bg-brand-neon shadow-sm sm:size-11">
+        <div className="flex flex-col items-center justify-center gap-2.5 self-center py-2 text-center xl:min-w-[7.5rem] xl:px-2">
+          <div className="flex size-11 items-center justify-center rounded-full bg-brand-neon shadow-[0_6px_16px_rgba(225,255,81,0.45)] sm:size-12">
             <ArrowRight
-              className="size-4 rotate-90 text-brand-dark sm:size-5 xl:rotate-0"
+              className="size-5 rotate-90 text-brand-dark xl:rotate-0"
               strokeWidth={2.25}
             />
           </div>
-          <span className="text-2xl font-bold leading-none tracking-tight text-brand-dark sm:text-3xl">
+          <span className="text-3xl font-bold leading-none tracking-tight text-brand-dark sm:text-4xl">
             {scoreDiff >= 0 ? "+" : ""}
             {scoreDiff}
           </span>
-          <span className="text-sm font-semibold text-brand-dark">{t("potential")}</span>
+          <span className="max-w-[7rem] text-sm font-medium leading-snug text-brand-dark">
+            {t("potentialGainLine1")}
+            <br />
+            {t("potentialGainLine2")}
+          </span>
         </div>
 
         <div
@@ -773,8 +1031,12 @@ function AnalizSonucuPageContent() {
               <span className="truncate">{t("potentialTarget")}</span>
             </span>
             <div className="flex shrink-0 items-baseline">
-              <span className="text-3xl font-bold text-brand-dark sm:text-4xl">{newScore}</span>
-              <span className="text-base font-medium text-brand-dark/30 sm:text-lg">/100</span>
+              <span className="text-3xl font-bold text-brand-dark sm:text-4xl">
+                {newScore}
+              </span>
+              <span className="text-base font-medium text-brand-dark/30 sm:text-lg">
+                /100
+              </span>
             </div>
           </div>
           <div className="mt-4 flex flex-col items-center gap-4 @[26rem]:flex-row @[26rem]:items-start">
@@ -808,12 +1070,18 @@ function AnalizSonucuPageContent() {
               ))}
             </div>
           </div>
-          <p className="mt-4 text-xs leading-snug text-brand-dark">
-            {aiSummary.actions[0] ??
-              revision?.summary ??
-              t("actionFallback")}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-4 flex items-start gap-2 rounded-xl bg-brand-neon/15 px-3 py-2.5">
+            <MapPin
+              className="mt-0.5 size-3.5 shrink-0 text-brand-dark"
+              strokeWidth={2}
+            />
+            <p className="text-xs leading-snug text-brand-dark">
+              {aiSummary.actions[0] ??
+                revision?.summary ??
+                t("actionFallback")}
+            </p>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
             {potentialBlocked && !alreadyGenerated ? (
               <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
                 <Info className="size-3.5 shrink-0" strokeWidth={2} />
@@ -910,49 +1178,66 @@ function AnalizSonucuPageContent() {
         </div>
       </div>
 
-      <div className="mt-6 flex items-start gap-4 rounded-3xl bg-brand-dark p-6 text-white">
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-neon/20">
-          <Bot className="size-5 text-brand-neon" strokeWidth={1.75} />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-brand-neon">{t("aiComment")}</p>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/80">
-            {displaySummary?.insight ??
-              payload?.analysis.insight ??
-              revision?.summary ??
-              t("aiCommentFallback")}
+      <div className="mt-6">
+        <h2 className="text-lg font-semibold text-brand-dark sm:text-xl">
+          {t("howToFix.title")}
+        </h2>
+        {fixTips.length > 0 ? (
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+            {fixTips.map((tip, index) => {
+              const TipIcon = tipIconForCriterion(tip.id);
+              return (
+                <div
+                  key={tip.id}
+                  className="flex items-start gap-3.5 rounded-2xl border border-brand-dark/8 bg-bg-light px-4 py-4 shadow-sm sm:px-5"
+                >
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-neon text-brand-dark shadow-[0_6px_16px_rgba(225,255,81,0.45)]">
+                    <TipIcon className="size-5" strokeWidth={2} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-base font-semibold text-brand-dark">
+                      {tip.title || t("howToFix.fallbackTitle", { index: index + 1 })}
+                    </p>
+                    <p className="mt-1 text-sm leading-relaxed text-brand-dark/60">
+                      {tip.description}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="mt-3 rounded-2xl border border-brand-dark/8 bg-bg-light px-4 py-3 text-sm text-brand-dark/55">
+            {t("howToFix.empty")}
           </p>
-          <div className="mt-3 space-y-3 text-xs text-white/75">
-            {aiSummary.strengths.length > 0 && (
-              <div>
-                <p className="font-semibold text-brand-neon">{t("strengths")}</p>
-                <ul className="mt-1 list-disc space-y-1 pl-5">
-                  {aiSummary.strengths.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
+        )}
+      </div>
+
+      <div className="mt-6 flex items-start gap-3.5 rounded-3xl bg-brand-dark p-5 text-white sm:gap-4 sm:p-6">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-neon text-brand-dark shadow-[0_3px_10px_rgba(225,255,81,0.28)]">
+          <Bot className="size-5" strokeWidth={1.75} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-base font-semibold text-brand-neon sm:text-lg">
+            {t("aiComment")}
+          </p>
+          <p className="mt-2 max-w-4xl text-sm leading-relaxed text-white/85 sm:text-[0.95rem]">
+            {highlightBrandMetrics(
+              aiCommentText ||
+                displaySummary?.insight ||
+                payload?.analysis.insight ||
+                revision?.summary ||
+                t("aiCommentFallback"),
             )}
-            {aiSummary.weaknesses.length > 0 && (
-              <div>
-                <p className="font-semibold text-brand-neon">{t("weaknesses")}</p>
-                <ul className="mt-1 list-disc space-y-1 pl-5">
-                  {aiSummary.weaknesses.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {aiSummary.actions.length > 0 && (
-              <div>
-                <p className="font-semibold text-brand-neon">{t("actions")}</p>
-                <ul className="mt-1 list-disc space-y-1 pl-5">
-                  {aiSummary.actions.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+          </p>
+          <div className="mt-3.5 flex justify-end">
+            <Link
+              href={creativeMemoryHref}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-neon transition-opacity hover:opacity-85"
+            >
+              {t("viewInCreativeMemory")}
+              <ArrowRight className="size-3.5" strokeWidth={2} />
+            </Link>
           </div>
         </div>
       </div>

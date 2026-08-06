@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/dashboard/potential-image": ["./assets/fonts/**/*"],
   },
+  // Allow landing screenshot quality props used by `next/image`.
+  images: {
+    qualities: [75, 80, 88],
+  },
   // Profile photo uploads allow up to 5 MB; leave headroom for multipart framing.
   experimental: {
     serverActions: {

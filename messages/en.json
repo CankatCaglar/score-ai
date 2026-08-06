@@ -1480,17 +1480,45 @@
       "subtitle": "Your content was analyzed against {count} micro criteria.",
       "download": "Download",
       "shareTitleFallback": "Score AI Analysis",
-      "openInCanva": "Open in Canva",
+      "openInCanva": "Revise In Canva",
       "canvaTitleReady": "Open Canva Magic Layers page",
       "canvaTitleNeedImage": "Generate the potential image first",
-      "currentContent": "Your Current Content",
+      "currentContent": "Your Previous Content",
       "previewAlt": "Content preview",
       "contentAlt": "Content",
       "potentialAlt": "{title} potential",
       "weaknessFallback": "Areas to improve are listed in the criteria analysis.",
       "potential": "Potential",
-      "potentialTarget": "Potential Target (Score AI)",
+      "potentialGainLine1": "Potential Score",
+      "potentialGainLine2": "Improvement",
+      "potentialTarget": "New Suggestion (Score AI)",
       "actionFallback": "This score represents the potential level reachable by optimizing current gaps.",
+      "publishDecision": {
+        "label": "Publish Decision",
+        "positive": {
+          "badge": "Ready To Publish",
+          "title": "Positive",
+          "headline": "Ready to publish",
+          "body": "Your content is strong enough to publish. Small tweaks can push the score even higher."
+        },
+        "revision": {
+          "badge": "Revision Suggested",
+          "title": "Revision Needed",
+          "headline": "Ready to publish with a small revision",
+          "body": "Applying the suggested edits can push the score toward 90+."
+        },
+        "negative": {
+          "badge": "Revision Required",
+          "title": "Negative",
+          "headline": "Not ready to publish",
+          "body": "Message clarity, CTA, and visual hierarchy should be strengthened before publishing."
+        }
+      },
+      "howToFix": {
+        "title": "How do I fix it?",
+        "fallbackTitle": "Tip {index}",
+        "empty": "No priority fix suggestions were found for this analysis."
+      },
       "potentialNotEligible": "Potential generation not eligible",
       "potentialGeneratedOnce": "Potential image already generated once",
       "potentialGenerating": "Generating potential image...",
@@ -1504,6 +1532,16 @@
       "analysisDataMissing": "Could not retrieve updated analysis data.",
       "aiComment": "Score AI Commentary",
       "aiCommentFallback": "Detailed AI commentary is being generated.",
+      "viewInCreativeMemory": "View the full analysis in Creative Memory",
+      "aiCommentBody": {
+        "positiveLead": "Your content scores {score}/100 and is ready to publish.",
+        "revisionLead": "Your content is at {score}/100 and can be publish-ready with a small revision.",
+        "negativeLead": "Your content is at {score}/100 and is not ready to publish yet.",
+        "strength": "Strongest signal: {text}",
+        "recommendations": "Priority recommendations: {items}.",
+        "potentialLift": "Strengthening these areas can lift the potential score to {potential}/100.",
+        "closing": "Review the detailed analysis in Creative Memory."
+      },
       "strengths": "Strengths",
       "weaknesses": "Gaps",
       "actions": "Priority actions",

@@ -523,31 +523,36 @@ export default function AnalizDetayPage() {
             {platformTypeLabel(analysis.platformType, locale)}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end">
+        <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:w-auto sm:gap-2 lg:shrink-0 lg:justify-end">
           <button
             type="button"
             onClick={() => void handleDownload()}
             disabled={downloading || (!analysis.mediaUrl && !analysis.sourceUrl)}
-            className="flex items-center gap-1.5 rounded-lg border border-brand-dark/10 px-3.5 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-brand-dark/10 px-2 py-2 text-xs font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 disabled:cursor-not-allowed disabled:opacity-50 sm:gap-1.5 sm:px-3.5 sm:text-sm"
           >
             {downloading ? (
-              <Loader2 className="size-4 animate-spin" strokeWidth={2} />
+              <Loader2 className="size-3.5 shrink-0 animate-spin sm:size-4" strokeWidth={2} />
             ) : (
-              <Download className="size-4" strokeWidth={2} />
+              <Download className="size-3.5 shrink-0 sm:size-4" strokeWidth={2} />
             )}
             {t("download")}
           </button>
-          <SocialShareMenu title={analysis.title} url={`/dashboard/analiz-sonucu?id=${analysis.id}`} />
+          <SocialShareMenu
+            title={analysis.title}
+            url={`/dashboard/analiz-sonucu?id=${analysis.id}`}
+            className="shrink-0"
+            buttonClassName="inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-brand-dark/10 px-2 py-2 text-xs font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5 sm:gap-1.5 sm:px-3.5 sm:text-sm"
+          />
           <Link
             href={withReturnTo(
               `/dashboard/analiz-sonucu?id=${analysis.id}`,
               `/dashboard/analizler/${analysis.slug}`,
             )}
             onMouseEnter={() => prefetchAnalysisResult(analysis.id, locale)}
-            className="flex items-center gap-1.5 rounded-lg bg-brand-neon px-3.5 py-2 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
+            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-brand-neon px-2 py-2 text-xs font-semibold text-brand-dark transition-opacity hover:opacity-90 sm:flex-none sm:gap-1.5 sm:px-3.5 sm:text-sm"
           >
-            <ExternalLink className="size-4" strokeWidth={2} />
-            {t("openReport")}
+            <ExternalLink className="size-3.5 shrink-0 sm:size-4" strokeWidth={2} />
+            <span className="truncate">{t("openReport")}</span>
           </Link>
         </div>
       </div>

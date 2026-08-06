@@ -8,6 +8,9 @@ type SocialShareMenuProps = {
   title: string;
   url?: string;
   buttonClassName?: string;
+  className?: string;
+  /** Optional class for the visible label (e.g. hide text on mobile). */
+  labelClassName?: string;
 };
 
 type ShareTarget = "instagram" | "whatsapp" | "twitter" | "linkedin";
@@ -61,7 +64,13 @@ function LinkedInIcon() {
   );
 }
 
-export function SocialShareMenu({ title, url, buttonClassName }: SocialShareMenuProps) {
+export function SocialShareMenu({
+  title,
+  url,
+  buttonClassName,
+  className,
+  labelClassName,
+}: SocialShareMenuProps) {
   const t = useTranslations("dashboard.share");
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -126,7 +135,10 @@ export function SocialShareMenu({ title, url, buttonClassName }: SocialShareMenu
   };
 
   return (
-    <div ref={rootRef} className="relative">
+    <div
+      ref={rootRef}
+      className={["relative min-w-0", className].filter(Boolean).join(" ")}
+    >
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
@@ -137,8 +149,8 @@ export function SocialShareMenu({ title, url, buttonClassName }: SocialShareMenu
           "flex items-center gap-1.5 rounded-lg border border-brand-dark/10 px-3.5 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:bg-brand-dark/5"
         }
       >
-        <Share2 className="size-4" strokeWidth={2} />
-        {t("button")}
+        <Share2 className="size-3.5 shrink-0 sm:size-4" strokeWidth={2} />
+        <span className={labelClassName}>{t("button")}</span>
       </button>
 
       {open ? (

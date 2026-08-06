@@ -1481,17 +1481,45 @@
       "subtitle": "İçeriğiniz {count} mikro kritere göre analiz edildi.",
       "download": "İndir",
       "shareTitleFallback": "Score AI Analizi",
-      "openInCanva": "Canva'da Aç",
+      "openInCanva": "Canva'da Revize Et",
       "canvaTitleReady": "Canva Sihirli Katmanlar sayfasını aç",
       "canvaTitleNeedImage": "Önce potansiyel görseli üretin",
-      "currentContent": "Mevcut İçeriğiniz",
+      "currentContent": "Eski İçeriğiniz",
       "previewAlt": "İçerik önizleme",
       "contentAlt": "İçerik",
       "potentialAlt": "{title} potansiyel",
       "weaknessFallback": "Geliştirilebilecek alanlar kriter analizinde listelendi.",
       "potential": "Potansiyel",
-      "potentialTarget": "Potansiyel Hedef (Score AI)",
+      "potentialGainLine1": "Puan Potansiyel",
+      "potentialGainLine2": "Geliştirme",
+      "potentialTarget": "Yeni Öneri (Score AI)",
       "actionFallback": "Bu skor, mevcut eksiklerin optimize edilmesiyle ulaşılabilecek potansiyel seviyeyi temsil eder.",
+      "publishDecision": {
+        "label": "Yayın Kararı",
+        "positive": {
+          "badge": "Yayına Hazır",
+          "title": "Olumlu",
+          "headline": "Yayına hazır",
+          "body": "İçeriğiniz yayın için yeterli seviyede. Küçük dokunuşlarla skor daha da yükseltilebilir."
+        },
+        "revision": {
+          "badge": "Revizyon Önerilir",
+          "title": "Revize Gerekli",
+          "headline": "Küçük revizyonla yayına hazır",
+          "body": "Önerilen düzenlemeler uygulandığında skor 90+ seviyesine çıkabilir."
+        },
+        "negative": {
+          "badge": "Revizyon Gerekli",
+          "title": "Olumsuz",
+          "headline": "Yayına hazır değil",
+          "body": "İçerik yayına alınmadan önce mesaj netliği, CTA ve görsel hiyerarşi güçlendirilmelidir."
+        }
+      },
+      "howToFix": {
+        "title": "Nasıl düzeltirim?",
+        "fallbackTitle": "Öneri {index}",
+        "empty": "Bu analiz için öncelikli düzeltme önerisi bulunamadı."
+      },
       "potentialNotEligible": "Potansiyel üretim uygun değil",
       "potentialGeneratedOnce": "Potansiyel gorsel bir kez uretildi",
       "potentialGenerating": "Potansiyel gorsel uretiliyor...",
@@ -1505,6 +1533,16 @@
       "analysisDataMissing": "Guncel analiz verisi alinamadi.",
       "aiComment": "Score AI Yorumu",
       "aiCommentFallback": "Detaylı AI yorumu oluşturuluyor.",
+      "viewInCreativeMemory": "Detaylı analizi Creative Memory'de gör",
+      "aiCommentBody": {
+        "positiveLead": "İçeriğiniz {score}/100 ile yayına hazır seviyede.",
+        "revisionLead": "İçerik {score}/100 seviyesinde; küçük bir revizyonla yayına hazır hale gelebilir.",
+        "negativeLead": "İçerik şu an {score}/100 ile yayına hazır değil.",
+        "strength": "En güçlü sinyal: {text}",
+        "recommendations": "Öncelikli öneriler: {items}.",
+        "potentialLift": "Bu alanlar güçlendirilirse potansiyel skor {potential}/100 seviyesine çıkabilir.",
+        "closing": "Detaylı analizi Creative Memory'de inceleyin."
+      },
       "strengths": "Güçlü yönler",
       "weaknesses": "Eksikler",
       "actions": "Öncelikli aksiyonlar",

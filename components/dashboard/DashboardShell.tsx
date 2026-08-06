@@ -356,6 +356,14 @@ export function DashboardShell({
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const wasOnResultRef = useRef(false);
+  const mainScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Dashboard scrolls inside this pane (not window) — reset on route change.
+    const pane = mainScrollRef.current;
+    if (pane) pane.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
   useEffect(() => {
     const onResult = pathname.startsWith("/dashboard/analiz-sonucu");
@@ -447,7 +455,10 @@ export function DashboardShell({
           </div>
         )}
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-y-contain bg-bg-offwhite">
+        <div
+          ref={mainScrollRef}
+          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-y-contain bg-bg-offwhite"
+        >
           <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 bg-bg-offwhite px-4 sm:px-6 lg:h-16 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <button
