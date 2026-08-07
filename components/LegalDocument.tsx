@@ -1,5 +1,5 @@
 import { ScrollToTopOnMount } from "@/components/ScrollToTopOnMount";
-import { legalPageHref } from "@/lib/legal/paths";
+import { legalPageHref, type LegalPageId } from "@/lib/legal/paths";
 import type { AppLocale } from "@/i18n/routing";
 import type { LegalSection } from "@/lib/legal/types";
 
@@ -10,9 +10,17 @@ type LegalDocumentProps = {
   switchLanguageLabel: string;
   locale: AppLocale;
   otherLocale: AppLocale;
-  pathname: "/privacy" | "/terms";
+  pathname: "/privacy" | "/terms" | "/shipping";
   sections: LegalSection[];
 };
+
+function pageIdFromPathname(
+  pathname: LegalDocumentProps["pathname"],
+): LegalPageId {
+  if (pathname === "/privacy") return "privacy";
+  if (pathname === "/shipping") return "shipping";
+  return "terms";
+}
 
 export function LegalDocument({
   homeLabel,
@@ -25,10 +33,7 @@ export function LegalDocument({
   sections,
 }: LegalDocumentProps) {
   const homeHref = locale === "en" ? "/en" : "/";
-  const switchHref = legalPageHref(
-    pathname === "/privacy" ? "privacy" : "terms",
-    otherLocale,
-  );
+  const switchHref = legalPageHref(pageIdFromPathname(pathname), otherLocale);
 
   return (
     <main className="min-h-full bg-bg-light px-4 pt-12 pb-16 sm:px-6 lg:px-8">
@@ -46,10 +51,7 @@ export function LegalDocument({
         </h1>
         <p className="mt-2 text-sm text-brand-dark/50">
           {lastUpdated} ·{" "}
-          <a
-            href={switchHref}
-            className="underline hover:text-brand-dark"
-          >
+          <a href={switchHref} className="underline hover:text-brand-dark">
             {switchLanguageLabel}
           </a>
         </p>

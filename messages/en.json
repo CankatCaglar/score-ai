@@ -364,6 +364,8 @@
       "mapsAria": "Open Tallinn, Estonia in Google Maps",
       "mailAria": "Send email to Score AI team",
       "location": "Tallinn, Estonia",
+      "shipping": "Delivery & Returns",
+      "paymentsAria": "Payment methods: Pay with iyzico, Visa, Mastercard, American Express, Troy",
       "columns": [
         {
           "title": "PRODUCT",
@@ -411,6 +413,10 @@
             {
               "label": "Terms",
               "href": "/terms"
+            },
+            {
+              "label": "Delivery & Returns",
+              "href": "/shipping"
             }
           ]
         }
@@ -637,6 +643,14 @@
     "metaDescription": "Terms of use and service conditions for Nera Social / Score AI.",
     "home": "← Score AI",
     "title": "Terms of Use",
+    "lastUpdated": "Last updated: August 7, 2026",
+    "switchLanguage": "Türkçe"
+  },
+  "shipping": {
+    "metaTitle": "Delivery & Returns | Score AI",
+    "metaDescription": "Score AI digital service delivery, payment, and returns policy.",
+    "home": "← Score AI",
+    "title": "Delivery & Returns",
     "lastUpdated": "Last updated: August 7, 2026",
     "switchLanguage": "Türkçe"
   },

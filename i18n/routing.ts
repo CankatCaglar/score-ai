@@ -22,6 +22,10 @@ export const routing = defineRouting({
       tr: "/kullanim-kosullari",
       en: "/terms",
     },
+    "/shipping": {
+      tr: "/teslimat-ve-iade",
+      en: "/shipping",
+    },
   },
 });
 

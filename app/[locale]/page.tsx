@@ -1258,21 +1258,30 @@ export default function LandingPage() {
                               // (SPA nav keeps the landing footer scroll position).
                               if (
                                 link.href === "/privacy" ||
-                                link.href === "/terms"
+                                link.href === "/terms" ||
+                                link.href === "/shipping"
                               ) {
                                 const path =
                                   link.href === "/privacy"
                                     ? locale === "en"
                                       ? "/en/privacy"
                                       : "/gizlilik-politikasi"
-                                    : locale === "en"
-                                      ? "/en/terms"
-                                      : "/kullanim-kosullari";
+                                    : link.href === "/shipping"
+                                      ? locale === "en"
+                                        ? "/en/shipping"
+                                        : "/teslimat-ve-iade"
+                                      : locale === "en"
+                                        ? "/en/terms"
+                                        : "/kullanim-kosullari";
                                 window.location.assign(path);
                                 return;
                               }
                               router.push(
-                                link.href as "/blog" | "/privacy" | "/terms",
+                                link.href as
+                                  | "/blog"
+                                  | "/privacy"
+                                  | "/terms"
+                                  | "/shipping",
                               );
                               return;
                             }
@@ -1315,6 +1324,45 @@ export default function LandingPage() {
               <MapPin className="size-3" />
               {t("footer.location")}
             </a>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center justify-start gap-4 sm:gap-5">
+            {/* Plain <img>: next/image optimizer was flattening EN alpha onto black. */}
+            {locale === "en" ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/payments/pay-with-iyzico.png"
+                  alt="Pay with iyzico"
+                  width={158}
+                  height={48}
+                  className="h-8 w-auto object-contain object-left sm:h-9"
+                  decoding="async"
+                />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/payments/payment-cards.png"
+                  alt=""
+                  width={360}
+                  height={44}
+                  className="h-7 w-auto max-w-full object-contain object-left sm:h-8"
+                  decoding="async"
+                  aria-hidden
+                />
+              </>
+            ) : (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/payments/payment-logos.png"
+                  alt={t("footer.paymentsAria")}
+                  width={429}
+                  height={32}
+                  className="h-8 w-auto max-w-full object-contain object-left sm:h-9"
+                  decoding="async"
+                />
+              </>
+            )}
           </div>
         </div>
       </footer>

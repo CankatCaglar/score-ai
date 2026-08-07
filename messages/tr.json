@@ -365,6 +365,8 @@
       "mapsAria": "Tallinn, Estonya konumunu Google Maps'te aç",
       "mailAria": "Score AI ekibine e-posta gönder",
       "location": "Tallinn, Estonya",
+      "shipping": "Teslimat ve İade",
+      "paymentsAria": "Ödeme yöntemleri: iyzico ile Öde, Visa, Mastercard, American Express, Troy",
       "columns": [
         {
           "title": "ÜRÜN",
@@ -412,6 +414,10 @@
             {
               "label": "Kullanım Koşulları",
               "href": "/terms"
+            },
+            {
+              "label": "Teslimat ve İade",
+              "href": "/shipping"
             }
           ]
         }
@@ -638,6 +644,14 @@
     "metaDescription": "Nera Social / Score AI kullanım koşulları ve hizmet şartları.",
     "home": "← Score AI",
     "title": "Kullanım Koşulları",
+    "lastUpdated": "Son güncelleme: 7 Ağustos 2026",
+    "switchLanguage": "English"
+  },
+  "shipping": {
+    "metaTitle": "Teslimat ve İade | Score AI",
+    "metaDescription": "Score AI dijital hizmet teslimatı, ödeme ve iade politikası.",
+    "home": "← Score AI",
+    "title": "Teslimat ve İade",
     "lastUpdated": "Son güncelleme: 7 Ağustos 2026",
     "switchLanguage": "English"
   },
