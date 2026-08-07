@@ -133,13 +133,13 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
       </header>
 
       <div className="border-b border-brand-dark/10 bg-bg-light">
-        <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-end gap-x-1 px-4 sm:px-6">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setView(tab.id)}
-              className={`-mb-px shrink-0 border-b-2 px-4 py-3 text-sm font-semibold transition ${
+              className={`-mb-px border-b-2 px-3 py-3 text-sm font-semibold transition sm:px-4 ${
                 view === tab.id
                   ? "border-brand-dark text-brand-dark"
                   : "border-transparent text-brand-dark/50 hover:text-brand-dark"

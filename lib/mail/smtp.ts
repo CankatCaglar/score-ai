@@ -27,11 +27,33 @@ export function isSmtpConfigured(): boolean {
   return Boolean(getSmtpConfig());
 }
 
+/**
+ * Absolute site origin for emails / redirects.
+ * Prefer the public product domain — never email `*.vercel.app` links in production
+ * (VERCEL_URL is the deployment host and opens the wrong site from mail clients).
+ */
 export function getAppBaseUrl(): string {
-  const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  const normalize = (raw: string | undefined): string | null => {
+    const value = raw?.trim().replace(/\/$/, "");
+    if (!value) return null;
+    return value.startsWith("http://") || value.startsWith("https://")
+      ? value
+      : `https://${value}`;
+  };
+
+  const fromEnv =
+    normalize(process.env.NEXT_PUBLIC_APP_URL) ||
+    normalize(process.env.APP_BASE_URL) ||
+    normalize(process.env.VERCEL_PROJECT_PRODUCTION_URL);
   if (fromEnv) return fromEnv;
-  const vercel = process.env.VERCEL_URL?.replace(/\/$/, "");
-  if (vercel) return vercel.startsWith("http") ? vercel : `https://${vercel}`;
+
+  // Production without env: custom domain, not the Vercel deployment hostname.
+  if (process.env.VERCEL_ENV === "production") {
+    return "https://usescore.net";
+  }
+
+  const vercel = normalize(process.env.VERCEL_URL);
+  if (vercel) return vercel;
   return "http://localhost:3000";
 }
 

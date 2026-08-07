@@ -8,13 +8,15 @@ export function analysisCompletedEmail(input: {
   slug: string;
 }) {
   const baseUrl = getAppBaseUrl();
+  // Dashboard score screen (logged-in analysis result).
   const resultUrl = `${baseUrl}/dashboard/analiz-sonucu?slug=${encodeURIComponent(input.slug)}`;
-  const subject = `Analiziniz hazır: ${input.title} (${Math.round(input.score)}/100)`;
+  const score = Math.round(input.score);
+  const subject = `Analiziniz hazır: ${input.title} (${score}/100)`;
   const text = [
     "Merhaba,",
     "",
     `"${input.title}" analiziniz tamamlandı.`,
-    `Skorunuz: ${Math.round(input.score)}/100`,
+    `Skorunuz: ${score}/100`,
     "",
     `Sonuçları görüntülemek için: ${resultUrl}`,
     "",
@@ -27,7 +29,10 @@ export function analysisCompletedEmail(input: {
       <strong>${escapeHtml(input.title)}</strong> analiziniz tamamlandı.
     </p>
     <p style="font-size: 16px; margin: 0 0 20px;">
-      Skorunuz: <strong>${Math.round(input.score)}/100</strong>
+      Skorunuz:
+      <a href="${resultUrl}" style="color:#0f2d33;font-weight:700;text-decoration:underline;">
+        ${score}/100
+      </a>
     </p>
     <p style="margin: 0 0 8px;">
       <a href="${resultUrl}" style="display:inline-block;background:#42B24D;color:#0f1a12;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:10px;">
@@ -91,7 +96,10 @@ export function graderAnalysisCompletedEmail(input: {
       Your analysis for <strong>${escapeHtml(input.title)}</strong> is complete.
     </p>
     <p style="font-size: 16px; margin: 0 0 20px;">
-      Your score: <strong>${score}/100</strong>
+      Your score:
+      <a href="${resultUrl}" style="color:#0f2d33;font-weight:700;text-decoration:underline;">
+        ${score}/100
+      </a>
     </p>
     <p style="margin: 0 0 8px;">
       <a href="${resultUrl}" style="display:inline-block;background:#42B24D;color:#0f1a12;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:10px;">
@@ -105,7 +113,10 @@ export function graderAnalysisCompletedEmail(input: {
       <strong>${escapeHtml(input.title)}</strong> analiziniz tamamlandı.
     </p>
     <p style="font-size: 16px; margin: 0 0 20px;">
-      Skorunuz: <strong>${score}/100</strong>
+      Skorunuz:
+      <a href="${resultUrl}" style="color:#0f2d33;font-weight:700;text-decoration:underline;">
+        ${score}/100
+      </a>
     </p>
     <p style="margin: 0 0 8px;">
       <a href="${resultUrl}" style="display:inline-block;background:#42B24D;color:#0f1a12;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:10px;">
