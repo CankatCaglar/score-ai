@@ -9,7 +9,10 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  /* Keep auto: global smooth makes route changes (e.g. footer → privacy)
+     animate from the previous scroll position. In-page smooth scroll stays
+     explicit via JS `behavior: "smooth"`. */
+  scroll-behavior: auto;
   overscroll-behavior-y: none;
 }
 

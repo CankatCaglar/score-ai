@@ -1254,8 +1254,26 @@ export default function LandingPage() {
                               return;
                             }
                             if (link.href.startsWith("/")) {
-                              // Footer hrefs are static app paths (e.g. `/blog`).
-                              router.push(link.href as "/blog");
+                              // Legal pages: full reload so the browser opens at Y=0
+                              // (SPA nav keeps the landing footer scroll position).
+                              if (
+                                link.href === "/privacy" ||
+                                link.href === "/terms"
+                              ) {
+                                const path =
+                                  link.href === "/privacy"
+                                    ? locale === "en"
+                                      ? "/en/privacy"
+                                      : "/gizlilik-politikasi"
+                                    : locale === "en"
+                                      ? "/en/terms"
+                                      : "/kullanim-kosullari";
+                                window.location.assign(path);
+                                return;
+                              }
+                              router.push(
+                                link.href as "/blog" | "/privacy" | "/terms",
+                              );
                               return;
                             }
                             window.location.href = link.href;

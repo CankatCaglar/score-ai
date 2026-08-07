@@ -407,13 +407,11 @@
             },
             {
               "label": "Gizlilik Politikası",
-              "href": "https://www.nerasocial.com/gizlilik-politikasi",
-              "newTab": true
+              "href": "/privacy"
             },
             {
               "label": "Kullanım Koşulları",
-              "href": "https://www.nerasocial.com/kullanim-kosullari",
-              "newTab": true
+              "href": "/terms"
             }
           ]
         }
@@ -629,61 +627,19 @@
   },
   "privacy": {
     "metaTitle": "Gizlilik Politikası | Score AI",
-    "metaDescription": "Score AI gizlilik politikası — hesap, analiz ve Instagram bağlantı verilerinin kullanımı.",
+    "metaDescription": "Nera Reklam Pazarlama Yazılım Teknoloji Limited Şirketi / Score AI gizlilik politikası.",
     "home": "← Score AI",
     "title": "Gizlilik Politikası",
-    "lastUpdated": "Son güncelleme: 30 Temmuz 2026",
-    "switchLanguage": "English",
-    "sections": [
-      {
-        "heading": "1. Kapsam",
-        "paragraphs": [
-          "Bu politika, Score AI (<strong>usescore.net</strong>) hizmetini kullandığınızda topladığımız verileri ve bunları nasıl kullandığımızı açıklar."
-        ]
-      },
-      {
-        "heading": "2. Topladığımız veriler",
-        "items": [
-          "Hesap bilgileri (ad, e-posta, oturum)",
-          "Yüklediğiniz içerikler ve analiz sonuçları",
-          "Marka zekâsı alanına girdiğiniz bilgiler (marka vaadi, rakip kaynakları, güven kanıtları)",
-          "Instagram’ı bağladığınızda: Instagram kullanıcı adı, hesap kimliği, erişim izni (token) ve analiz için seçilen son medya (gönderi görselleri / kapakları ve ilgili metadata)"
-        ]
-      },
-      {
-        "heading": "3. Instagram verisi nasıl kullanılır?",
-        "paragraphs": [
-          "Instagram bağlantısı yalnızca sizin başlattığınız <strong>Instagram Login</strong> akışıyla kurulur. Başkasının kullanıcı adını yazarak hesap bağlanamaz.",
-          "Instagram verilerini şu amaçlarla kullanırız:"
-        ],
-        "items": [
-          "Marka tutarlılığı ve içerik analizi",
-          "Geçmiş içerik / creative memory sinyalleri",
-          "Size gösterilen skor ve önerilerin üretilmesi"
-        ],
-        "paragraphsAfter": [
-          "Instagram verilerinizi reklam amacıyla satmayız. İzni yalnızca hizmeti sunmak için gerekli olduğu sürece saklarız; bağlantıyı kestiğinizde erişim token’ı kaldırılır."
-        ]
-      },
-      {
-        "heading": "4. Üçüncü taraflar",
-        "paragraphs": [
-          "Hizmeti sunmak için altyapı sağlayıcıları (ör. barındırma, kimlik doğrulama, yapay zekâ işleme) kullanılabilir. Instagram verisine erişim Meta’nın Instagram API’si üzerinden, verdiğiniz izinler kapsamında sağlanır."
-        ]
-      },
-      {
-        "heading": "5. Haklarınız",
-        "paragraphs": [
-          "Hesabınızı silebilir, Instagram bağlantısını koparabilir veya veri talepleriniz için bizimle iletişime geçebilirsiniz: <a class=\"font-medium text-brand-dark underline\" href=\"mailto:info@usescore.net\">info@usescore.net</a>"
-        ]
-      },
-      {
-        "heading": "6. İletişim",
-        "paragraphs": [
-          "Score AI — Nera Social / usescore.net<br />E-posta: info@usescore.net"
-        ]
-      }
-    ]
+    "lastUpdated": "Son güncelleme: 7 Ağustos 2026",
+    "switchLanguage": "English"
+  },
+  "terms": {
+    "metaTitle": "Kullanım Koşulları | Score AI",
+    "metaDescription": "Nera Social / Score AI kullanım koşulları ve hizmet şartları.",
+    "home": "← Score AI",
+    "title": "Kullanım Koşulları",
+    "lastUpdated": "Son güncelleme: 7 Ağustos 2026",
+    "switchLanguage": "English"
   },
   "liveSupport": {
     "button": "Canlı Destek",

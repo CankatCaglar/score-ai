@@ -348,6 +348,7 @@ export function GraderClient({
     links: Array<
       | { label: string; href: "/"; hash: string; newTab?: false }
       | { label: string; href: "/blog"; newTab?: false }
+      | { label: string; href: string; hardNav: true }
       | { label: string; href: string; newTab: true }
     >;
   }> = [
@@ -380,13 +381,13 @@ export function GraderClient({
         },
         {
           label: t("footerPrivacy"),
-          href: "https://www.nerasocial.com/gizlilik-politikasi",
-          newTab: true,
+          href: locale === "en" ? "/en/privacy" : "/gizlilik-politikasi",
+          hardNav: true,
         },
         {
           label: t("footerTerms"),
-          href: "https://www.nerasocial.com/kullanim-kosullari",
-          newTab: true,
+          href: locale === "en" ? "/en/terms" : "/kullanim-kosullari",
+          hardNav: true,
         },
       ],
     },
@@ -888,11 +889,18 @@ export function GraderClient({
                 <ul className="mt-4 space-y-2">
                   {col.links.map((link) => (
                     <li key={link.label}>
-                      {link.newTab ? (
+                      {"newTab" in link && link.newTab ? (
                         <a
                           href={link.href}
                           target="_blank"
                           rel="noopener noreferrer"
+                          className="text-sm text-white/50 transition hover:text-white"
+                        >
+                          {link.label}
+                        </a>
+                      ) : "hardNav" in link && link.hardNav ? (
+                        <a
+                          href={link.href}
                           className="text-sm text-white/50 transition hover:text-white"
                         >
                           {link.label}
@@ -906,7 +914,7 @@ export function GraderClient({
                         </Link>
                       ) : (
                         <Link
-                          href={link.href}
+                          href={link.href as "/blog"}
                           className="text-sm text-white/50 transition hover:text-white"
                         >
                           {link.label}

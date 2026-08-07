@@ -198,9 +198,7 @@ function SignupForm() {
           label={t.rich("signup.terms", {
             terms: (chunks) => (
               <a
-                href="https://www.nerasocial.com/kullanim-kosullari"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/kullanim-kosullari"
                 className="font-medium text-brand-dark underline-offset-2 hover:underline"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -209,9 +207,7 @@ function SignupForm() {
             ),
             privacy: (chunks) => (
               <a
-                href="https://www.nerasocial.com/gizlilik-politikasi"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/gizlilik-politikasi"
                 className="font-medium text-brand-dark underline-offset-2 hover:underline"
                 onClick={(e) => e.stopPropagation()}
               >

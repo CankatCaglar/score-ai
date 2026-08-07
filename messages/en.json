@@ -406,13 +406,11 @@
             },
             {
               "label": "Privacy Policy",
-              "href": "https://www.nerasocial.com/gizlilik-politikasi",
-              "newTab": true
+              "href": "/privacy"
             },
             {
               "label": "Terms",
-              "href": "https://www.nerasocial.com/kullanim-kosullari",
-              "newTab": true
+              "href": "/terms"
             }
           ]
         }
@@ -628,61 +626,19 @@
   },
   "privacy": {
     "metaTitle": "Privacy Policy | Score AI",
-    "metaDescription": "Score AI privacy policy — how we use account, analysis, and Instagram connection data.",
+    "metaDescription": "Privacy policy of Nera Reklam Pazarlama Yazılım Teknoloji Limited Şirketi / Score AI.",
     "home": "← Score AI",
     "title": "Privacy Policy",
-    "lastUpdated": "Last updated: July 30, 2026",
-    "switchLanguage": "Türkçe",
-    "sections": [
-      {
-        "heading": "1. Scope",
-        "paragraphs": [
-          "This policy explains what data Score AI (<strong>usescore.net</strong>) collects and how we use it when you use our service."
-        ]
-      },
-      {
-        "heading": "2. Data we collect",
-        "items": [
-          "Account details (name, email, session)",
-          "Content you upload and analysis results",
-          "Brand intelligence inputs (brand promise, competitor sources, trust proofs)",
-          "When you connect Instagram: Instagram username, account ID, access token, and recent media selected for analysis (post images/thumbnails and related metadata)"
-        ]
-      },
-      {
-        "heading": "3. How Instagram data is used",
-        "paragraphs": [
-          "Instagram is connected only through the user-initiated <strong>Instagram Login</strong> flow. Users cannot connect an account by typing someone else’s public username.",
-          "We use Instagram data to:"
-        ],
-        "items": [
-          "Analyze brand consistency and content quality",
-          "Build historical / creative memory signals",
-          "Generate scores and recommendations shown to you"
-        ],
-        "paragraphsAfter": [
-          "We do not sell Instagram data for advertising. We retain access only as needed to provide the service; disconnecting Instagram removes the stored access token."
-        ]
-      },
-      {
-        "heading": "4. Third parties",
-        "paragraphs": [
-          "We use infrastructure providers (hosting, authentication, AI processing) to operate the product. Instagram data is accessed via Meta’s Instagram APIs under the permissions you grant."
-        ]
-      },
-      {
-        "heading": "5. Your rights",
-        "paragraphs": [
-          "You may delete your account, disconnect Instagram, or contact us about data requests at <a class=\"font-medium text-brand-dark underline\" href=\"mailto:info@usescore.net\">info@usescore.net</a>."
-        ]
-      },
-      {
-        "heading": "6. Contact",
-        "paragraphs": [
-          "Score AI — usescore.net<br />Email: info@usescore.net"
-        ]
-      }
-    ]
+    "lastUpdated": "Last updated: August 7, 2026",
+    "switchLanguage": "Türkçe"
+  },
+  "terms": {
+    "metaTitle": "Terms of Use | Score AI",
+    "metaDescription": "Terms of use and service conditions for Nera Social / Score AI.",
+    "home": "← Score AI",
+    "title": "Terms of Use",
+    "lastUpdated": "Last updated: August 7, 2026",
+    "switchLanguage": "Türkçe"
   },
   "liveSupport": {
     "button": "Live Support",

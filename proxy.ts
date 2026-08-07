@@ -95,6 +95,8 @@ function isMarketingI18nPath(pathname: string): boolean {
     bare.startsWith("/blog/") ||
     bare === "/privacy" ||
     bare === "/gizlilik-politikasi" ||
+    bare === "/terms" ||
+    bare === "/kullanim-kosullari" ||
     bare === "/grader" ||
     bare.startsWith("/grader/")
   );
@@ -249,6 +251,8 @@ export const config = {
     "/blog/:path((?!.*\\..*).*)",
     "/privacy",
     "/gizlilik-politikasi",
+    "/terms",
+    "/kullanim-kosullari",
     "/grader",
     "/grader/:path((?!.*\\..*).*)",
     "/giris",

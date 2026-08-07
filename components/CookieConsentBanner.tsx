@@ -3,7 +3,6 @@
 import { NextIntlClientProvider, useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "@/i18n/navigation";
 import {
   readCookieConsent,
   writeCookieConsent,
@@ -95,13 +94,14 @@ function CookieConsentBannerInner({ locale }: { locale: AppLocale }) {
           <>
             <p className="text-[13px] leading-relaxed text-brand-dark/70 sm:text-sm">
               {t("body")}{" "}
-              <Link
-                href="/privacy"
-                locale={locale}
+              <a
+                href={
+                  locale === "en" ? "/en/privacy" : "/gizlilik-politikasi"
+                }
                 className="cursor-pointer font-medium text-brand-dark underline decoration-brand-dark/30 underline-offset-2 transition hover:decoration-brand-dark"
               >
                 {t("policy")}
-              </Link>
+              </a>
               .
             </p>
 

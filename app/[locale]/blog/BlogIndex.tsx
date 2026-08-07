@@ -285,9 +285,9 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
                 </li>
                 <li>
                   <a
-                    href="https://www.nerasocial.com/gizlilik-politikasi"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={
+                      locale === "en" ? "/en/privacy" : "/gizlilik-politikasi"
+                    }
                     className="text-sm text-white/50 transition hover:text-white"
                   >
                     {t("footer.privacy")}
@@ -295,9 +295,9 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
                 </li>
                 <li>
                   <a
-                    href="https://www.nerasocial.com/kullanim-kosullari"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={
+                      locale === "en" ? "/en/terms" : "/kullanim-kosullari"
+                    }
                     className="text-sm text-white/50 transition hover:text-white"
                   >
                     {t("footer.terms")}
