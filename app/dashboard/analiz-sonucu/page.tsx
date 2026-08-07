@@ -861,9 +861,7 @@ function AnalizSonucuPageContent() {
       shell: "border-brand-neon/50 bg-bg-light",
       iconTone: "text-brand-dark",
       badgeShell: "bg-brand-neon/70 text-brand-dark",
-      scoreShell: "text-brand-dark",
-      scoreMuted: "text-brand-dark/30",
-      divider: "border-brand-dark/10",
+      ctaTone: "text-brand-dark hover:text-brand-dark/70",
     },
     revision: {
       badge: t("publishDecision.revision.badge"),
@@ -873,9 +871,7 @@ function AnalizSonucuPageContent() {
       shell: "border-brand-dark/8 bg-bg-light",
       iconTone: "text-brand-dark",
       badgeShell: "bg-brand-neon/70 text-brand-dark",
-      scoreShell: "text-brand-dark",
-      scoreMuted: "text-brand-dark/30",
-      divider: "border-brand-dark/10",
+      ctaTone: "text-brand-dark hover:text-brand-dark/70",
     },
     negative: {
       badge: t("publishDecision.negative.badge"),
@@ -885,9 +881,7 @@ function AnalizSonucuPageContent() {
       shell: "border-red-200 bg-bg-light",
       iconTone: "text-red-500",
       badgeShell: "bg-red-50 text-red-600",
-      scoreShell: "text-red-500",
-      scoreMuted: "text-red-500/35",
-      divider: "border-red-100",
+      ctaTone: "text-red-600 hover:text-red-500",
     },
   }[decisionTone];
   const DecisionIcon = decisionCopy.Icon;
@@ -1014,18 +1008,12 @@ function AnalizSonucuPageContent() {
             </p>
           </div>
         </div>
-        <div
-          className={`flex shrink-0 items-baseline self-end sm:self-center sm:border-l sm:pl-6 ${decisionCopy.divider}`}
+        <Link
+          href={detailHref}
+          className={`inline-flex shrink-0 items-center gap-1.5 self-end text-base font-semibold underline-offset-4 transition hover:underline sm:self-center sm:text-lg ${decisionCopy.ctaTone}`}
         >
-          <span
-            className={`text-4xl font-bold tabular-nums sm:text-5xl ${decisionCopy.scoreShell}`}
-          >
-            {oldScore}
-          </span>
-          <span className={`text-lg font-medium sm:text-xl ${decisionCopy.scoreMuted}`}>
-            /100
-          </span>
-        </div>
+          {t("publishDecision.continueCta")}
+        </Link>
       </div>
 
       <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">

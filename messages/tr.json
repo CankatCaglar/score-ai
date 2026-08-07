@@ -1533,6 +1533,7 @@
       "actionFallback": "Bu skor, mevcut eksiklerin optimize edilmesiyle ulaşılabilecek potansiyel seviyeyi temsil eder.",
       "publishDecision": {
         "label": "Yayın Kararı",
+        "continueCta": "Detaylı Analizle Devam Et →",
         "positive": {
           "badge": "Yayına Hazır",
           "title": "Olumlu",

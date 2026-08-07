@@ -1532,6 +1532,7 @@
       "actionFallback": "This score represents the potential level reachable by optimizing current gaps.",
       "publishDecision": {
         "label": "Publish Decision",
+        "continueCta": "Continue With Detailed Analysis →",
         "positive": {
           "badge": "Ready To Publish",
           "title": "Positive",

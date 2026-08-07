@@ -20,8 +20,11 @@ export default getRequestConfig(async ({ requestLocale }) => {
       ? cookieLocale
       : routing.defaultLocale;
 
+  // Dynamic JSON import — keep locale in the specifier so Turbopack invalidates
+  // message modules when `messages/{locale}.json` changes.
+  const messagesModule = await import(`../messages/${locale}.json`);
   return {
     locale,
-    messages: (await import(`../messages/${locale}.json`)).default,
+    messages: messagesModule.default,
   };
 });

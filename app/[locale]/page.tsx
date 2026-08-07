@@ -1326,43 +1326,15 @@ export default function LandingPage() {
             </a>
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center justify-start gap-4 sm:gap-5">
-            {/* Plain <img>: next/image optimizer was flattening EN alpha onto black. */}
-            {locale === "en" ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/payments/pay-with-iyzico.png"
-                  alt="Pay with iyzico"
-                  width={158}
-                  height={48}
-                  className="h-8 w-auto object-contain object-left sm:h-9"
-                  decoding="async"
-                />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/payments/payment-cards.png"
-                  alt=""
-                  width={360}
-                  height={44}
-                  className="h-7 w-auto max-w-full object-contain object-left sm:h-8"
-                  decoding="async"
-                  aria-hidden
-                />
-              </>
-            ) : (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/payments/payment-logos.png"
-                  alt={t("footer.paymentsAria")}
-                  width={429}
-                  height={32}
-                  className="h-8 w-auto max-w-full object-contain object-left sm:h-9"
-                  decoding="async"
-                />
-              </>
-            )}
+          <div className="mt-6 flex justify-start">
+            <Image
+              src="/payments/payment-logos-white.webp"
+              alt={t("footer.paymentsAria")}
+              width={456}
+              height={32}
+              className="h-6 w-auto max-w-full object-contain object-left sm:h-7"
+              sizes="(max-width: 640px) 300px, 456px"
+            />
           </div>
         </div>
       </footer>
