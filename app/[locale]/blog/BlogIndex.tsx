@@ -1,13 +1,18 @@
 "use client";
 
+import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { ArrowRight, CalendarDays, Mail, MapPin, Menu, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { LocaleToggle } from "@/components/i18n/LocaleToggle";
 import { LiveSupportWidget } from "@/components/landing/LiveSupportWidget";
 import { Link } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
+import {
+  getPendingLocale,
+  subscribePendingLocale,
+} from "@/lib/i18n/pending-locale";
 
 const PAGE_CONTAINER =
   "mx-auto w-full max-w-[1880px] px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12";
@@ -20,12 +25,12 @@ export type BlogIndexPost = {
     {
       title: string;
       excerpt: string;
-      content: string;
       category: string;
     }
   >;
   coverImageUrl: string;
   publishedAt: number | null;
+  readTime: string;
 };
 
 function formatDate(ms: number | null, locale: AppLocale): string {
@@ -37,18 +42,19 @@ function formatDate(ms: number | null, locale: AppLocale): string {
   }).format(new Date(ms));
 }
 
-function estimateReadMinutes(content: string): number {
-  const text = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-  const words = text ? text.split(" ").length : 0;
-  return Math.max(1, Math.round(words / 200));
-}
-
 export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
   const locale = useLocale() as AppLocale;
+  const pendingLocale = useSyncExternalStore(
+    subscribePendingLocale,
+    getPendingLocale,
+    () => null,
+  );
+  const displayLocale = pendingLocale ?? locale;
   const t = useTranslations("blog");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const visiblePosts = posts.filter((post) => post.locale === locale);
+  // Swap cards immediately on toggle — don't wait for /en/blog RSC round-trip.
+  const visiblePosts = posts.filter((post) => post.locale === displayLocale);
 
   return (
     <div className="bg-bg-offwhite text-brand-dark [&_a]:cursor-pointer [&_button:not(:disabled)]:cursor-pointer">
@@ -148,13 +154,11 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
             </div>
           ) : (
             <div className={`grid gap-5 md:grid-cols-2 ${PAGE_CONTAINER}`}>
-              {visiblePosts.map((post) => {
+              {visiblePosts.map((post, index) => {
                 const localized = post.translations[post.locale];
                 const title = localized.title;
                 const excerpt = localized.excerpt;
-                const readTime = t("readTime", {
-                  minutes: estimateReadMinutes(localized.content),
-                });
+                const readTime = post.readTime.trim() || null;
                 return (
                   <Link
                     key={post.slug}
@@ -165,22 +169,26 @@ export function BlogIndex({ posts }: { posts: BlogIndexPost[] }) {
                     className="group flex h-full flex-col overflow-hidden rounded-2xl border border-brand-dark/10 bg-bg-light shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:flex-row"
                   >
                     {post.coverImageUrl ? (
-                      <div className="flex w-full shrink-0 items-center justify-center sm:min-w-[180px] sm:w-[45%]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={post.coverImageUrl}
-                          alt={title}
-                          className="h-auto w-full rounded-2xl object-contain p-3 sm:h-full"
-                          decoding="async"
-                          loading="lazy"
-                        />
+                      <div className="flex w-full shrink-0 items-center justify-center p-3 sm:min-w-[180px] sm:w-[45%]">
+                        <div className="overflow-hidden rounded-2xl">
+                          <Image
+                            src={post.coverImageUrl}
+                            alt={title}
+                            width={720}
+                            height={480}
+                            className="h-auto max-h-52 w-full object-contain sm:max-h-64"
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 45vw, 420px"
+                            quality={75}
+                            priority={index < 2}
+                          />
+                        </div>
                       </div>
                     ) : null}
                     <div className="flex min-w-0 flex-1 flex-col p-4 sm:p-5">
                       <div className="flex items-center gap-3 text-xs text-brand-dark/50">
                         <span className="inline-flex items-center gap-1.5">
                           <CalendarDays className="size-3.5" />
-                          {formatDate(post.publishedAt, locale)}
+                          {formatDate(post.publishedAt, displayLocale)}
                         </span>
                         {readTime ? <span>• {readTime}</span> : null}
                       </div>

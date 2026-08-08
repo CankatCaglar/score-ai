@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, CalendarDays, Mail, MapPin, User } from "lucide-react";
 import { Logo } from "@/components/Logo";
@@ -127,13 +128,15 @@ export function BlogArticle({ post }: { post: BlogArticleData }) {
 
               {post.coverImageUrl ? (
                 <figure className="mt-8 overflow-hidden rounded-[28px]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={post.coverImageUrl}
                     alt={title}
-                    className="block h-auto w-full rounded-[28px]"
-                    loading="lazy"
-                    decoding="async"
+                    width={1400}
+                    height={900}
+                    className="block h-auto w-full rounded-[28px] object-contain"
+                    sizes="(max-width: 768px) 100vw, 768px"
+                    quality={80}
+                    priority
                   />
                 </figure>
               ) : null}

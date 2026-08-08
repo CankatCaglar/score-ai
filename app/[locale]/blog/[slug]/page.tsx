@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getBlogPostBySlug } from "@/actions/blog";
 import { BlogArticle, type BlogArticleData } from "./BlogArticle";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 type PageProps = {
   params: Promise<{ slug: string }>;

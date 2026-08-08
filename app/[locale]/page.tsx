@@ -44,7 +44,7 @@ import {
 } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import {
   DashboardScreenshot,
   MacbookFrame,
@@ -1250,57 +1250,71 @@ export default function LandingPage() {
                 <ul className="mt-4 space-y-2">
                   {col.links.map((link) => (
                     <li key={link.label}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if ("href" in link && typeof link.href === "string") {
-                            if ("newTab" in link && link.newTab) {
-                              window.open(link.href, "_blank", "noopener,noreferrer");
-                              return;
-                            }
-                            if (link.href.startsWith("/")) {
-                              // Legal pages: full reload so the browser opens at Y=0
-                              // (SPA nav keeps the landing footer scroll position).
-                              if (
-                                link.href === "/privacy" ||
-                                link.href === "/terms" ||
-                                link.href === "/shipping"
-                              ) {
-                                const path =
-                                  link.href === "/privacy"
-                                    ? locale === "en"
-                                      ? "/en/privacy"
-                                      : "/gizlilik-politikasi"
-                                    : link.href === "/shipping"
-                                      ? locale === "en"
-                                        ? "/en/shipping"
-                                        : "/teslimat-ve-iade"
-                                      : locale === "en"
-                                        ? "/en/terms"
-                                        : "/kullanim-kosullari";
-                                window.location.assign(path);
+                      {"href" in link && link.href === "/blog" ? (
+                        <Link
+                          href="/blog"
+                          prefetch
+                          className="text-sm text-white/50 transition hover:text-white"
+                        >
+                          {link.label}
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if ("href" in link && typeof link.href === "string") {
+                              if ("newTab" in link && link.newTab) {
+                                window.open(
+                                  link.href,
+                                  "_blank",
+                                  "noopener,noreferrer",
+                                );
                                 return;
                               }
-                              router.push(
-                                link.href as
-                                  | "/blog"
-                                  | "/privacy"
-                                  | "/terms"
-                                  | "/shipping",
-                              );
+                              if (link.href.startsWith("/")) {
+                                // Legal pages: full reload so the browser opens at Y=0
+                                // (SPA nav keeps the landing footer scroll position).
+                                if (
+                                  link.href === "/privacy" ||
+                                  link.href === "/terms" ||
+                                  link.href === "/shipping"
+                                ) {
+                                  const path =
+                                    link.href === "/privacy"
+                                      ? locale === "en"
+                                        ? "/en/privacy"
+                                        : "/gizlilik-politikasi"
+                                      : link.href === "/shipping"
+                                        ? locale === "en"
+                                          ? "/en/shipping"
+                                          : "/teslimat-ve-iade"
+                                        : locale === "en"
+                                          ? "/en/terms"
+                                          : "/kullanim-kosullari";
+                                  window.location.assign(path);
+                                  return;
+                                }
+                                router.push(
+                                  link.href as
+                                    | "/blog"
+                                    | "/privacy"
+                                    | "/terms"
+                                    | "/shipping",
+                                );
+                                return;
+                              }
+                              window.location.href = link.href;
                               return;
                             }
-                            window.location.href = link.href;
-                            return;
-                          }
-                          if ("id" in link && typeof link.id === "string") {
-                            scrollTo(link.id);
-                          }
-                        }}
-                        className="text-sm text-white/50 transition hover:text-white"
-                      >
-                        {link.label}
-                      </button>
+                            if ("id" in link && typeof link.id === "string") {
+                              scrollTo(link.id);
+                            }
+                          }}
+                          className="text-sm text-white/50 transition hover:text-white"
+                        >
+                          {link.label}
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>

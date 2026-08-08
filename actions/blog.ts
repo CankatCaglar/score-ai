@@ -2,6 +2,7 @@
 
 import { randomUUID } from "crypto";
 import path from "path";
+import { unstable_cache } from "next/cache";
 import { cookies } from "next/headers";
 import { FieldValue } from "firebase-admin/firestore";
 import { ADMIN_COOKIE_NAME, verifySessionToken } from "@/lib/admin-auth";
@@ -373,10 +374,7 @@ export async function deleteBlogPost(id: string): Promise<{ ok: boolean }> {
   return { ok: true };
 }
 
-/** Public: yayınlanmış yazıları döndürür (locale filtresi opsiyonel). */
-export async function getPublishedBlogPosts(
-  locale?: BlogLocale,
-): Promise<BlogPost[]> {
+async function fetchPublishedBlogPosts(): Promise<BlogPost[]> {
   try {
     const db = getAdminDb();
     const snapshot = await db.collection(COLLECTION).get();
@@ -385,15 +383,28 @@ export async function getPublishedBlogPosts(
       .map((doc) => mapDoc(doc.id, doc.data() as BlogDocData))
       .filter((post) => post.status === "published")
       .filter((post) => (post.publishedAt ?? 0) <= now)
-      .filter((post) => (locale ? post.locale === locale : true))
       .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0));
   } catch {
     return [];
   }
 }
 
-/** Public: slug ile tek yazı döndürür. */
-export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
+const getCachedPublishedBlogPosts = unstable_cache(
+  fetchPublishedBlogPosts,
+  ["blog-published-posts"],
+  { revalidate: 60, tags: ["blog-posts"] },
+);
+
+/** Public: yayınlanmış yazıları döndürür (locale filtresi opsiyonel). */
+export async function getPublishedBlogPosts(
+  locale?: BlogLocale,
+): Promise<BlogPost[]> {
+  const posts = await getCachedPublishedBlogPosts();
+  if (!locale) return posts;
+  return posts.filter((post) => post.locale === locale);
+}
+
+async function fetchBlogPostBySlug(slug: string): Promise<BlogPost | null> {
   try {
     const db = getAdminDb();
     const snapshot = await db
@@ -409,4 +420,13 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
   } catch {
     return null;
   }
+}
+
+/** Public: slug ile tek yazı döndürür. */
+export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
+  return unstable_cache(
+    () => fetchBlogPostBySlug(slug),
+    ["blog-post", slug],
+    { revalidate: 60, tags: ["blog-posts", `blog-post-${slug}`] },
+  )();
 }

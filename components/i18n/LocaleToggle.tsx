@@ -6,6 +6,7 @@ import { startTransition, useEffect, useState } from "react";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
 import { preloadAnalyzerAssets } from "@/lib/analyzer/preload-assets";
+import { setPendingLocale as setSharedPendingLocale } from "@/lib/i18n/pending-locale";
 import {
   preloadLandingHero,
   preloadLandingScreenshots,
@@ -22,43 +23,54 @@ export function LocaleToggle({
   /** Warm opposite-locale analyzer hero before the user clicks. */
   prefetchAnalyzerAssets?: boolean;
 }) {
-  const locale = useLocale() as AppLocale;
+  const intlLocale = useLocale() as AppLocale;
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
   const isDark = variant === "dark";
   const [pendingLocale, setPendingLocale] = useState<AppLocale | null>(null);
 
-  // Clear optimistic state once the real locale catches up.
+  // URL segment is source of truth — not optimistic useLocale().
+  const routeLocale = (
+    typeof params.locale === "string" ? params.locale : intlLocale
+  ) as AppLocale;
+
+  // Clear optimistic state once the URL locale catches up.
   useEffect(() => {
     setPendingLocale(null);
-  }, [locale]);
+    setSharedPendingLocale(null);
+  }, [routeLocale]);
 
-  const displayLocale = pendingLocale ?? locale;
+  // Prefetch opposite locale + warm hero as soon as the toggle mounts.
+  useEffect(() => {
+    const other: AppLocale = routeLocale === "tr" ? "en" : "tr";
+    router.prefetch(localeHrefFor(pathname, params), { locale: other });
+    if (prefetchAnalyzerAssets) {
+      void preloadAnalyzerAssets(other);
+    }
+    if (prefetchLandingScreenshots) {
+      void preloadLandingHero(other).then(() => {
+        const run = () => {
+          void preloadLandingScreenshots(other);
+        };
+        if (typeof window.requestIdleCallback === "function") {
+          window.requestIdleCallback(run);
+        } else {
+          setTimeout(run, 400);
+        }
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- warm once per route locale/path
+  }, [routeLocale, pathname, router, prefetchAnalyzerAssets, prefetchLandingScreenshots]);
 
-  const localeHref = () => {
-    // App Router `[locale]` must not be passed into next-intl hrefs —
-    // next-intl already prefixes non-default locales (`as-needed`).
-    const restParams = Object.fromEntries(
-      Object.entries(params).filter(([key]) => key !== "locale"),
-    );
+  const displayLocale = pendingLocale ?? routeLocale;
 
-    // Guard against a pathname that already includes a locale prefix.
-    const normalizedPathname =
-      pathname.replace(/^\/(tr|en)(?=\/|$)/, "") || "/";
-
-    return (
-      Object.keys(restParams).length > 0
-        ? { pathname: normalizedPathname, params: restParams }
-        : normalizedPathname
-    ) as Parameters<typeof router.replace>[0];
-  };
+  const localeHref = () => localeHrefFor(pathname, params);
 
   const warmLocale = (next: AppLocale) => {
-    if (next === locale) return;
+    if (next === routeLocale) return;
     router.prefetch(localeHref(), { locale: next });
     if (prefetchLandingScreenshots) {
-      // Hero first for instant paint; rest idle so click bandwidth stays free.
       void preloadLandingHero(next).then(() => {
         const run = () => {
           void preloadLandingScreenshots(next);
@@ -76,11 +88,17 @@ export function LocaleToggle({
   };
 
   const switchLocale = (next: AppLocale) => {
-    if (next === locale || next === pendingLocale) return;
+    if (next === routeLocale || next === pendingLocale) return;
 
-    // Instant toggle feedback — don't wait for navigation/RSC/images.
+    // Instant toggle + marketing copy/hero swap — don't wait for RSC.
     setPendingLocale(next);
-    void preloadLandingHero(next);
+    setSharedPendingLocale(next);
+    if (prefetchLandingScreenshots) {
+      void preloadLandingHero(next);
+    }
+    if (prefetchAnalyzerAssets) {
+      void preloadAnalyzerAssets(next);
+    }
 
     startTransition(() => {
       router.replace(localeHref(), { locale: next, scroll: false });
@@ -106,6 +124,7 @@ export function LocaleToggle({
       <button
         type="button"
         onClick={() => switchLocale("tr")}
+        onPointerDown={() => warmLocale("tr")}
         onPointerEnter={() => warmLocale("tr")}
         onFocus={() => warmLocale("tr")}
         className={buttonClass(displayLocale === "tr")}
@@ -116,6 +135,7 @@ export function LocaleToggle({
       <button
         type="button"
         onClick={() => switchLocale("en")}
+        onPointerDown={() => warmLocale("en")}
         onPointerEnter={() => warmLocale("en")}
         onFocus={() => warmLocale("en")}
         className={buttonClass(displayLocale === "en")}
@@ -125,4 +145,21 @@ export function LocaleToggle({
       </button>
     </div>
   );
+}
+
+function localeHrefFor(
+  pathname: string,
+  params: ReturnType<typeof useParams>,
+): Parameters<ReturnType<typeof useRouter>["replace"]>[0] {
+  const restParams = Object.fromEntries(
+    Object.entries(params).filter(([key]) => key !== "locale"),
+  );
+  const normalizedPathname =
+    pathname.replace(/^\/(tr|en)(?=\/|$)/, "") || "/";
+
+  return (
+    Object.keys(restParams).length > 0
+      ? { pathname: normalizedPathname, params: restParams }
+      : normalizedPathname
+  ) as Parameters<ReturnType<typeof useRouter>["replace"]>[0];
 }

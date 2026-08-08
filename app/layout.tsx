@@ -36,19 +36,15 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   // Fallback provider for non-locale routes (dashboard/auth) + cookie banner.
-  // Marketing pages nest a locale-keyed provider in `app/[locale]/layout.tsx`
-  // so TR↔EN navigations remount messages instead of keeping a stale root cache.
+  // Marketing pages nest `MarketingIntlProvider` (dual TR/EN) — no key here so
+  // analyzer/blog locale toggles aren't wiped by a root remount.
   const locale = await getLocale();
   const messages = await getMessages();
 
   return (
     <html lang={locale} className={`${inter.variable} min-h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-bg-offwhite font-sans font-normal text-brand-dark">
-        <NextIntlClientProvider
-          key={locale}
-          locale={locale}
-          messages={messages}
-        >
+        <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
           <CookieConsentBanner />
           <ConsentAnalytics />
