@@ -102,7 +102,8 @@ export function DashboardScreenshot({
     );
   }
 
-  // Video (inside MacbookFrame): fill the bezel, soft contain, no crop of UI chrome.
+  // Video (inside MacbookFrame): stretch to fill bezel (vertical stretch OK;
+  // avoid cover crop which clips UI chrome).
   return (
     <div
       className={`relative aspect-[16/9] w-full overflow-hidden bg-bg-offwhite ${className}`}
@@ -112,7 +113,7 @@ export function DashboardScreenshot({
           src={src}
           alt={alt}
           fill
-          className="object-contain object-center"
+          className="object-fill object-center"
           sizes="(max-width: 1024px) 100vw, 50vw"
           quality={80}
           priority={priority}

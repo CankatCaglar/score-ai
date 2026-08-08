@@ -79,7 +79,8 @@ const UPLOAD_SOURCE_ICONS: {
   { label: "Link", icon: Link2, className: "text-brand-dark/70" },
 ];
 
-const PRODUCT_VIDEO_EMBED_URL = "https://www.youtube.com/embed/ALk-ws_XffI?autoplay=1&rel=0";
+const PRODUCT_VIDEO_EMBED_URL =
+  "https://www.youtube.com/embed/Kmk4GXzNg14?autoplay=1&rel=0";
 
 /** Survives client-side locale remounts without hydration mismatch. */
 let hasPlayedLandingEntranceMotion = false;
@@ -566,7 +567,9 @@ export default function LandingPage() {
                 </ul>
                 <button
                   type="button"
-                  className="mt-8 w-full rounded-xl bg-brand-dark py-4 text-base font-semibold text-white transition hover:brightness-110"
+                  tabIndex={-1}
+                  aria-disabled="true"
+                  className="mt-8 w-full !cursor-default rounded-xl bg-brand-dark py-4 text-base font-semibold text-white"
                 >
                   {t("scorePreview.updateInCanva")}
                 </button>
@@ -1009,7 +1012,9 @@ export default function LandingPage() {
                       </div>
                       <button
                         type="button"
-                        className="mt-2.5 w-full rounded-lg bg-brand-dark py-2 text-sm font-semibold text-white transition hover:brightness-110"
+                        tabIndex={-1}
+                        aria-disabled="true"
+                        className="mt-2.5 w-full !cursor-default rounded-lg bg-brand-dark py-2 text-sm font-semibold text-white"
                       >
                         {t("howItWorks.step5.openInCanva")}
                       </button>
@@ -1330,10 +1335,10 @@ export default function LandingPage() {
             <Image
               src="/payments/payment-logos-white.webp"
               alt={t("footer.paymentsAria")}
-              width={456}
-              height={32}
-              className="h-6 w-auto max-w-full object-contain object-left sm:h-7"
-              sizes="(max-width: 640px) 300px, 456px"
+              width={380}
+              height={27}
+              className="h-5 w-auto max-w-full object-contain object-left"
+              sizes="(max-width: 640px) 240px, 380px"
             />
           </div>
         </div>
