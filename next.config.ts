@@ -26,6 +26,7 @@ const nextConfig: NextConfig = {
   },
   // Profile photo uploads allow up to 5 MB; leave headroom for multipart framing.
   experimental: {
+    optimizePackageImports: ["lucide-react", "react-icons"],
     serverActions: {
       bodySizeLimit: "6mb",
     },

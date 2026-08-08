@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { Logo } from "@/components/Logo";
 import {
@@ -49,13 +50,22 @@ import {
   DashboardScreenshot,
   MacbookFrame,
 } from "@/components/landing/DashboardScreenshot";
-import { LiveSupportWidget } from "@/components/landing/LiveSupportWidget";
+import { DeferredMedia } from "@/components/landing/DeferredMedia";
 import { LocaleToggle } from "@/components/i18n/LocaleToggle";
 import { joinWaitlist } from "@/actions/waitlist";
 import {
   ANALYSIS_PREVIEW_IMAGES,
   LANDING_SCREENSHOTS,
 } from "@/lib/landing/screenshots";
+
+const LiveSupportWidget = dynamic(
+  () =>
+    import("@/components/landing/LiveSupportWidget").then(
+      (mod) => mod.LiveSupportWidget,
+    ),
+  { ssr: false },
+);
+
 const PAGE_CONTAINER =
   "mx-auto w-full max-w-[1880px] px-4 sm:px-6 lg:px-8 xl:px-10  2xl:px-12";
 
@@ -508,7 +518,12 @@ export default function LandingPage() {
                 <p className="mt-2 text-center text-5xl leading-none font-bold text-brand-dark">
                   78<span className="text-xl text-brand-dark/35">/100</span>
                 </p>
-                <div className="relative mt-4 overflow-hidden rounded-xl bg-brand-dark/5">
+                <DeferredMedia
+                  className="relative mt-4 overflow-hidden rounded-xl bg-brand-dark/5"
+                  placeholder={
+                    <div className="aspect-square w-full animate-pulse bg-brand-dark/5" aria-hidden />
+                  }
+                >
                   <Image
                     src={analysisPreviewImages.current}
                     alt={t("scorePreview.currentAlt")}
@@ -517,9 +532,8 @@ export default function LandingPage() {
                     className="h-auto w-full object-contain"
                     sizes="(max-width: 1024px) 100vw, 280px"
                     quality={75}
-                    loading="lazy"
                   />
-                </div>
+                </DeferredMedia>
               </div>
 
               <div className="flex flex-col items-center justify-center gap-3 px-5">
@@ -539,7 +553,12 @@ export default function LandingPage() {
                 <p className="mt-2 text-center text-5xl leading-none font-bold text-brand-dark">
                   86<span className="text-xl text-brand-dark/35">/100</span>
                 </p>
-                <div className="relative mt-4 overflow-hidden rounded-xl bg-brand-dark/5">
+                <DeferredMedia
+                  className="relative mt-4 overflow-hidden rounded-xl bg-brand-dark/5"
+                  placeholder={
+                    <div className="aspect-square w-full animate-pulse bg-brand-dark/5" aria-hidden />
+                  }
+                >
                   <Image
                     src={analysisPreviewImages.suggested}
                     alt={t("scorePreview.suggestedAlt")}
@@ -548,9 +567,8 @@ export default function LandingPage() {
                     className="h-auto w-full object-contain"
                     sizes="(max-width: 1024px) 100vw, 280px"
                     quality={75}
-                    loading="lazy"
                   />
-                </div>
+                </DeferredMedia>
               </div>
 
               <div className="rounded-2xl border border-brand-dark/10 bg-bg-light p-6 shadow-sm lg:ml-3 lg:min-h-[500px]">
@@ -998,7 +1016,12 @@ export default function LandingPage() {
                   )}
                   {step.num === 5 && (
                     <div className="mt-3 rounded-xl border border-brand-dark/10 bg-bg-light p-3">
-                      <div className="overflow-hidden rounded-lg border border-brand-dark/10">
+                      <DeferredMedia
+                        className="overflow-hidden rounded-lg border border-brand-dark/10"
+                        placeholder={
+                          <div className="aspect-video w-full animate-pulse bg-brand-dark/5" aria-hidden />
+                        }
+                      >
                         <Image
                           src={landingScreens.brandDna}
                           alt={t("howItWorks.step5.canvaPreviewAlt")}
@@ -1007,9 +1030,8 @@ export default function LandingPage() {
                           className="block h-auto w-full object-contain"
                           sizes="(max-width: 1024px) 100vw, 220px"
                           quality={75}
-                          loading="lazy"
                         />
-                      </div>
+                      </DeferredMedia>
                       <button
                         type="button"
                         tabIndex={-1}
@@ -1054,10 +1076,14 @@ export default function LandingPage() {
               <FadeIn key={item.title} delay={i * 0.05}>
                 <article className="flex h-full min-h-[340px] flex-col rounded-2xl border border-brand-dark/10 bg-bg-light p-5 shadow-sm transition hover:border-brand-neon/40 hover:shadow-md">
                   <div className="mx-auto">
-                    <div className="relative size-32 overflow-hidden rounded-2xl bg-brand-dark/5">
-                      <div className="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-brand-dark/40">
-                        {t("audience.visualPlaceholder")}
-                      </div>
+                    <DeferredMedia
+                      className="relative size-32 overflow-hidden rounded-2xl bg-brand-dark/5"
+                      placeholder={
+                        <div className="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-brand-dark/40">
+                          {t("audience.visualPlaceholder")}
+                        </div>
+                      }
+                    >
                       <Image
                         src={AUDIENCE_CARD_IMAGES[i]}
                         alt={`${item.title} ${t("audience.visualAltSuffix")}`}
@@ -1065,9 +1091,8 @@ export default function LandingPage() {
                         className="z-10 object-cover"
                         sizes="128px"
                         quality={75}
-                        loading="lazy"
                       />
-                    </div>
+                    </DeferredMedia>
                   </div>
                   <h3 className="mt-4 text-center text-base font-bold text-brand-dark">{item.title}</h3>
                   <p className="mt-3 flex-1 text-center text-sm leading-relaxed text-brand-dark/65">
@@ -1195,7 +1220,12 @@ export default function LandingPage() {
       <section className="bg-brand-dark py-16">
         <div className={`grid items-center gap-10 lg:grid-cols-2 lg:gap-16 xl:gap-20 ${PAGE_CONTAINER}`}>
           <FadeIn>
-            <div className="mx-auto w-full max-w-[720px] overflow-hidden rounded-3xl lg:max-w-none">
+            <DeferredMedia
+              className="mx-auto w-full max-w-[720px] overflow-hidden rounded-3xl lg:max-w-none"
+              placeholder={
+                <div className="aspect-video w-full animate-pulse rounded-3xl bg-white/5" aria-hidden />
+              }
+            >
               <Image
                 src={landingScreens.footerQuote}
                 alt={t("quote.imageAlt")}
@@ -1204,9 +1234,8 @@ export default function LandingPage() {
                 className="h-auto w-full object-contain"
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 quality={75}
-                loading="lazy"
               />
-            </div>
+            </DeferredMedia>
           </FadeIn>
           <FadeIn delay={0.1}>
             <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-brand-neon">
@@ -1254,6 +1283,8 @@ export default function LandingPage() {
                         <Link
                           href="/blog"
                           prefetch={false}
+                          onPointerEnter={() => router.prefetch("/blog")}
+                          onFocus={() => router.prefetch("/blog")}
                           className="text-sm text-white/50 transition hover:text-white"
                         >
                           {link.label}
@@ -1345,7 +1376,10 @@ export default function LandingPage() {
             </a>
           </div>
 
-          <div className="mt-6 flex justify-start">
+          <DeferredMedia
+            className="mt-6 flex justify-start"
+            placeholder={<div className="h-5 w-48 animate-pulse rounded bg-white/10" aria-hidden />}
+          >
             <Image
               src="/payments/payment-logos-white.webp"
               alt={t("footer.paymentsAria")}
@@ -1354,7 +1388,7 @@ export default function LandingPage() {
               className="h-5 w-auto max-w-full object-contain object-left"
               sizes="(max-width: 640px) 240px, 380px"
             />
-          </div>
+          </DeferredMedia>
         </div>
       </footer>
 

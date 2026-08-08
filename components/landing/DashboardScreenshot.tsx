@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { DeferredMedia } from "@/components/landing/DeferredMedia";
 
 /** Screenshot dosyalarını public/screenshots/ altında */
 export const DASHBOARD_SCREENSHOTS = {
@@ -30,8 +31,7 @@ export function DashboardScreenshot({
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const showPlaceholder = !src || failedSrc === src;
 
-  // Hero: fixed box for TR/EN (no layout shift). Slightly taller than source
-  // (~2.05 → 2/1) so it gains a touch of height without cropping.
+  // Hero: fixed box for TR/EN (no layout shift). Eager when priority (LCP).
   if (variant === "hero") {
     return (
       <div
@@ -68,59 +68,63 @@ export function DashboardScreenshot({
 
   // Section: rounded image only (no white card behind), full width, natural height.
   if (variant === "section") {
-    if (src && !showPlaceholder) {
+    if (!src || showPlaceholder) {
       return (
-        <div className={`relative w-full ${className}`}>
-          <Image
-            src={src}
-            alt={alt}
-            width={1600}
-            height={1000}
-            className="h-auto w-full rounded-2xl shadow-[0_20px_48px_-18px_rgba(0,0,0,0.45)]"
-            sizes="(max-width: 1024px) 100vw, 55vw"
-            quality={80}
-            priority={priority}
-            loading={priority ? undefined : "lazy"}
-            onError={() => setFailedSrc(src)}
-          />
+        <div
+          className={`flex min-h-[240px] items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/5 p-6 text-center ${className}`}
+        >
+          <div>
+            <p className="text-sm font-semibold text-white/70">Dashboard görseli</p>
+            <p className="mt-1 text-xs text-white/45">
+              {src
+                ? "Görsel yüklenemedi — dosyayı kontrol edin"
+                : "Screenshot buraya eklenecek"}
+            </p>
+          </div>
         </div>
       );
     }
+
+    const image = (
+      <Image
+        src={src}
+        alt={alt}
+        width={1600}
+        height={1000}
+        className="h-auto w-full rounded-2xl shadow-[0_20px_48px_-18px_rgba(0,0,0,0.45)]"
+        sizes="(max-width: 1024px) 100vw, 55vw"
+        quality={75}
+        priority={priority}
+        loading={priority ? undefined : "lazy"}
+        onError={() => setFailedSrc(src)}
+      />
+    );
+
+    if (priority) {
+      return <div className={`relative w-full ${className}`}>{image}</div>;
+    }
+
     return (
-      <div
-        className={`flex min-h-[240px] items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/5 p-6 text-center ${className}`}
+      <DeferredMedia
+        className={`relative w-full ${className}`}
+        placeholder={
+          <div
+            className="min-h-[240px] w-full animate-pulse rounded-2xl bg-brand-dark/5"
+            aria-hidden
+          />
+        }
       >
-        <div>
-          <p className="text-sm font-semibold text-white/70">Dashboard görseli</p>
-          <p className="mt-1 text-xs text-white/45">
-            {src
-              ? "Görsel yüklenemedi — dosyayı kontrol edin"
-              : "Screenshot buraya eklenecek"}
-          </p>
-        </div>
-      </div>
+        {image}
+      </DeferredMedia>
     );
   }
 
-  // Video (inside MacbookFrame): stretch to fill bezel (vertical stretch OK;
-  // avoid cover crop which clips UI chrome).
-  return (
-    <div
-      className={`relative aspect-[16/9] w-full overflow-hidden bg-bg-offwhite ${className}`}
-    >
-      {src && !showPlaceholder ? (
-        <Image
-          src={src}
-          alt={alt}
-          fill
-          className="object-fill object-center"
-          sizes="(max-width: 1024px) 100vw, 50vw"
-          quality={80}
-          priority={priority}
-          loading={priority ? undefined : "lazy"}
-          onError={() => setFailedSrc(src)}
-        />
-      ) : (
+  // Video (inside MacbookFrame): stretch to fill bezel.
+  const videoShellClass = `relative aspect-[16/9] w-full overflow-hidden bg-bg-offwhite ${className}`;
+
+  if (!src || showPlaceholder) {
+    return (
+      <div className={videoShellClass}>
         <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
           <div className="rounded-lg border border-dashed border-brand-dark/20 bg-white/60 px-4 py-3">
             <p className="text-sm font-semibold text-brand-dark/70">
@@ -133,8 +137,37 @@ export function DashboardScreenshot({
             </p>
           </div>
         </div>
-      )}
-    </div>
+      </div>
+    );
+  }
+
+  const videoImage = (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      className="object-fill object-center"
+      sizes="(max-width: 1024px) 100vw, 50vw"
+      quality={75}
+      priority={priority}
+      loading={priority ? undefined : "lazy"}
+      onError={() => setFailedSrc(src)}
+    />
+  );
+
+  if (priority) {
+    return <div className={videoShellClass}>{videoImage}</div>;
+  }
+
+  return (
+    <DeferredMedia
+      className={videoShellClass}
+      placeholder={
+        <div className="absolute inset-0 animate-pulse bg-brand-dark/5" aria-hidden />
+      }
+    >
+      {videoImage}
+    </DeferredMedia>
   );
 }
 

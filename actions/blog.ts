@@ -374,6 +374,68 @@ export async function deleteBlogPost(id: string): Promise<{ ok: boolean }> {
   return { ok: true };
 }
 
+/** Index card fields only — strips HTML body so list cache stays small/fast. */
+export type BlogIndexCard = {
+  slug: string;
+  locale: BlogLocale;
+  coverImageUrl: string;
+  publishedAt: number | null;
+  readTime: string;
+  translations: Record<
+    BlogLocale,
+    { title: string; excerpt: string; category: string }
+  >;
+};
+
+function toIndexCard(post: BlogPost): BlogIndexCard {
+  return {
+    slug: post.slug,
+    locale: post.locale,
+    coverImageUrl: post.coverImageUrl,
+    publishedAt: post.publishedAt,
+    readTime: post.readTime,
+    translations: {
+      tr: {
+        title: post.translations.tr.title,
+        excerpt: post.translations.tr.excerpt,
+        category: post.translations.tr.category,
+      },
+      en: {
+        title: post.translations.en.title,
+        excerpt: post.translations.en.excerpt,
+        category: post.translations.en.category,
+      },
+    },
+  };
+}
+
+async function fetchPublishedBlogIndex(): Promise<BlogIndexCard[]> {
+  try {
+    const db = getAdminDb();
+    const snapshot = await db.collection(COLLECTION).get();
+    const now = Date.now();
+    return snapshot.docs
+      .map((doc) => mapDoc(doc.id, doc.data() as BlogDocData))
+      .filter((post) => post.status === "published")
+      .filter((post) => (post.publishedAt ?? 0) <= now)
+      .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0))
+      .map(toIndexCard);
+  } catch {
+    return [];
+  }
+}
+
+const getCachedPublishedBlogIndex = unstable_cache(
+  fetchPublishedBlogIndex,
+  ["blog-published-index-v2"],
+  { revalidate: 300, tags: ["blog-posts"] },
+);
+
+/** Public list cards for /blog — no article HTML in the payload. */
+export async function getPublishedBlogIndexPosts(): Promise<BlogIndexCard[]> {
+  return getCachedPublishedBlogIndex();
+}
+
 async function fetchPublishedBlogPosts(): Promise<BlogPost[]> {
   try {
     const db = getAdminDb();
@@ -392,7 +454,7 @@ async function fetchPublishedBlogPosts(): Promise<BlogPost[]> {
 const getCachedPublishedBlogPosts = unstable_cache(
   fetchPublishedBlogPosts,
   ["blog-published-posts"],
-  { revalidate: 60, tags: ["blog-posts"] },
+  { revalidate: 300, tags: ["blog-posts"] },
 );
 
 /** Public: yayınlanmış yazıları döndürür (locale filtresi opsiyonel). */
@@ -427,6 +489,6 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
   return unstable_cache(
     () => fetchBlogPostBySlug(slug),
     ["blog-post", slug],
-    { revalidate: 60, tags: ["blog-posts", `blog-post-${slug}`] },
+    { revalidate: 300, tags: ["blog-posts", `blog-post-${slug}`] },
   )();
 }

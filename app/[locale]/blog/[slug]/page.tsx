@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getBlogPostBySlug } from "@/actions/blog";
 import { BlogArticle, type BlogArticleData } from "./BlogArticle";
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 type PageProps = {
   params: Promise<{ slug: string }>;

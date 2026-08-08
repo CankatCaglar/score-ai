@@ -1,18 +1,26 @@
 "use client";
 
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useSyncExternalStore } from "react";
 import { ArrowRight, CalendarDays, Mail, MapPin, Menu, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { LocaleToggle } from "@/components/i18n/LocaleToggle";
-import { LiveSupportWidget } from "@/components/landing/LiveSupportWidget";
 import { Link } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
 import {
   getPendingLocale,
   subscribePendingLocale,
 } from "@/lib/i18n/pending-locale";
+
+const LiveSupportWidget = dynamic(
+  () =>
+    import("@/components/landing/LiveSupportWidget").then(
+      (mod) => mod.LiveSupportWidget,
+    ),
+  { ssr: false },
+);
 
 const PAGE_CONTAINER =
   "mx-auto w-full max-w-[1880px] px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12";
