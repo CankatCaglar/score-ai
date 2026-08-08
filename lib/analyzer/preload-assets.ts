@@ -18,20 +18,12 @@ function warmUrl(url: string): Promise<void> {
       return;
     }
 
+    // Image() alone — skip extra <link rel="preload"> (same URL, double-count risk).
     const img = new window.Image();
     img.decoding = "async";
     img.onload = () => resolve();
     img.onerror = () => resolve();
     img.src = url;
-
-    if (!document.head.querySelector(`link[data-analyzer-preload="${url}"]`)) {
-      const link = document.createElement("link");
-      link.rel = "preload";
-      link.as = "image";
-      link.href = url;
-      link.setAttribute("data-analyzer-preload", url);
-      document.head.appendChild(link);
-    }
   });
 
   inFlight.set(url, promise);

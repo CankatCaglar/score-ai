@@ -7,10 +7,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
 import { preloadAnalyzerAssets } from "@/lib/analyzer/preload-assets";
 import { setPendingLocale as setSharedPendingLocale } from "@/lib/i18n/pending-locale";
-import {
-  preloadLandingHero,
-  preloadLandingScreenshots,
-} from "@/lib/landing/preload-screenshots";
+import { preloadLandingHero } from "@/lib/landing/preload-screenshots";
 
 export function LocaleToggle({
   variant = "light",
@@ -18,7 +15,7 @@ export function LocaleToggle({
   prefetchAnalyzerAssets = false,
 }: {
   variant?: "light" | "dark";
-  /** Warm opposite-locale landing assets before the user clicks. */
+  /** Warm opposite-locale landing hero on hover/click (not on mount). */
   prefetchLandingScreenshots?: boolean;
   /** Warm opposite-locale analyzer hero before the user clicks. */
   prefetchAnalyzerAssets?: boolean;
@@ -41,27 +38,16 @@ export function LocaleToggle({
     setSharedPendingLocale(null);
   }, [routeLocale]);
 
-  // Prefetch opposite locale + warm hero as soon as the toggle mounts.
+  // Prefetch opposite RSC only — no image warm on mount (keeps HubSpot request count down).
   useEffect(() => {
     const other: AppLocale = routeLocale === "tr" ? "en" : "tr";
     router.prefetch(localeHrefFor(pathname, params), { locale: other });
+    // Analyzer hero is one small asset; safe to warm on analyzer pages only.
     if (prefetchAnalyzerAssets) {
       void preloadAnalyzerAssets(other);
     }
-    if (prefetchLandingScreenshots) {
-      void preloadLandingHero(other).then(() => {
-        const run = () => {
-          void preloadLandingScreenshots(other);
-        };
-        if (typeof window.requestIdleCallback === "function") {
-          window.requestIdleCallback(run);
-        } else {
-          setTimeout(run, 400);
-        }
-      });
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- warm once per route locale/path
-  }, [routeLocale, pathname, router, prefetchAnalyzerAssets, prefetchLandingScreenshots]);
+  }, [routeLocale, pathname, router, prefetchAnalyzerAssets]);
 
   const displayLocale = pendingLocale ?? routeLocale;
 
@@ -71,16 +57,7 @@ export function LocaleToggle({
     if (next === routeLocale) return;
     router.prefetch(localeHref(), { locale: next });
     if (prefetchLandingScreenshots) {
-      void preloadLandingHero(next).then(() => {
-        const run = () => {
-          void preloadLandingScreenshots(next);
-        };
-        if (typeof window.requestIdleCallback === "function") {
-          window.requestIdleCallback(run);
-        } else {
-          setTimeout(run, 400);
-        }
-      });
+      void preloadLandingHero(next);
     }
     if (prefetchAnalyzerAssets) {
       void preloadAnalyzerAssets(next);

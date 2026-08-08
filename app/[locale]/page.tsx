@@ -1253,7 +1253,7 @@ export default function LandingPage() {
                       {"href" in link && link.href === "/blog" ? (
                         <Link
                           href="/blog"
-                          prefetch
+                          prefetch={false}
                           className="text-sm text-white/50 transition hover:text-white"
                         >
                           {link.label}
